@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   Londrina_Solid,
   Balsamiq_Sans,
@@ -39,9 +39,30 @@ const jetbrains = JetBrains_Mono({
   variable: "--font-mono",
 });
 
+export const viewport: Viewport = {
+  themeColor: "#09090b",
+};
+
 export const metadata: Metadata = {
-  title: "SUS — Social Party Game",
-  description: "Find the impostor among your friends!",
+  title: "SUS — Jogo de Deduzir",
+  description: "Um jogo social de dedução online para jogar com a galera! Descubra quem é o impostor.",
+  manifest: "/manifest.json",
+  icons: {
+    icon: "/icons/icon.svg",
+    apple: "/icons/icon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "SUS",
+  },
+  openGraph: {
+    title: "SUS — Jogo de Deduzir",
+    description: "Um jogo social de dedução para jogar com os amigos.",
+    siteName: "SUS",
+    locale: "pt_BR",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

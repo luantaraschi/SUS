@@ -4,24 +4,27 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Doc } from "../../../../convex/_generated/dataModel";
-import { useSessionId } from "@/lib/useSessionId";
 import { Button } from "@/components/ui/button";
 import PlayerAvatar from "../PlayerAvatar";
+import ShareResult from "../ShareResult";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface ResultsPhaseProps {
-  round: Doc<"rounds">;
+  round: Omit<Doc<"rounds">, "impostorId">;
   players: Doc<"players">[];
   myPlayer: Doc<"players">;
+  sessionId: string;
+  room: Doc<"rooms">;
 }
 
-export function ResultsPhase({ round, players, myPlayer }: ResultsPhaseProps) {
-  const isMaster = round.masterId === myPlayer._id;
-  const sessionId = useSessionId();
+export function ResultsPhase({ round, players, myPlayer, sessionId, room }: ResultsPhaseProps) {
+  const isHost = myPlayer.isHost;
   const [showResults, setShowResults] = useState(false);
   const startNextRound = useMutation(api.rooms.startNextRound);
 
   const votes = useQuery(api.votes.getVotes, { roundId: round._id });
+  // Usa query segura que só retorna impostorId quando round.status === "results"
+  const roundResult = useQuery(api.rounds.getRoundResult, { roundId: round._id });
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -30,13 +33,14 @@ export function ResultsPhase({ round, players, myPlayer }: ResultsPhaseProps) {
     return () => clearTimeout(timer);
   }, []);
 
-  // Let's grab the real impostor details
-  const realImpostor = players.find((p) => p._id === round.impostorId);
-  const votedOut = players.find((p) => p._id === round.votedOutId);
-  const groupWon = !round.impostorWon;
+  const realImpostors = roundResult 
+    ? players.filter((p) => roundResult.impostorIds?.includes(p._id) || p._id === roundResult.impostorId)
+    : [];
+  const votedOut = roundResult?.votedOutId ? players.find((p) => p._id === roundResult.votedOutId) : null;
+  const groupWon = roundResult ? !roundResult.impostorWon : false;
 
   return (
-    <div className="flex flex-col items-center justify-center w-full max-w-2xl mx-auto h-[100dvh] pt-12 pb-6 px-4">
+    <div className="fixed inset-0 z-40 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center w-full h-[100dvh] pt-12 pb-6 px-4">
       <AnimatePresence>
         {!showResults ? (
           <motion.div
@@ -63,55 +67,69 @@ export function ResultsPhase({ round, players, myPlayer }: ResultsPhaseProps) {
               {groupWon ? "VITORIA DO GRUPO" : "VITORIA DO IMPOSTOR"}
             </h1>
 
-            <div className="bg-black/40 rounded-3xl p-6 flex flex-col items-center gap-6 w-full border border-white/10">
+            <div className="bg-surface-primary rounded-3xl p-6 flex flex-col items-center gap-6 w-full max-w-xl mx-auto shadow-2xl border-2 border-white/10">
               <span className="text-white/60 text-sm font-bold uppercase tracking-widest">
-                O Impostor era:
+                {realImpostors.length > 1 ? "Os Impostores eram:" : "O Impostor era:"}
               </span>
-              {realImpostor && (
-                <div className="flex flex-col items-center gap-3">
-                  <PlayerAvatar
-                    name={realImpostor.name}
-                    emoji={realImpostor.emoji}
-                    avatarSeed={realImpostor.emoji}
-                    size="xl"
-                  />
-                  <span className="text-xl font-bold text-white">{realImpostor.name}</span>
-                </div>
-              )}
+              <div className="flex flex-row flex-wrap justify-center gap-6">
+                {realImpostors.map((imp) => (
+                  <div key={imp._id} className="flex flex-col items-center gap-3">
+                    <PlayerAvatar
+                      name={imp.name}
+                      avatarSeed={imp.emoji}
+                      size="xl"
+                    />
+                    <span className="text-xl font-bold text-white">{imp.name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
 
             <div className="w-full text-center">
               <p className="text-white/80 text-lg mb-2">
-                {round.votedOutId 
-                  ? `${votedOut?.name} foi votado e ${votedOut?._id === realImpostor?._id ? "era" : "NÃO era"} o Impostor.`
+                {roundResult?.votedOutId 
+                  ? `${votedOut?.name} foi votado e ${realImpostors.find(p => p._id === votedOut?._id) ? "era" : "NÃO era"} o Impostor.`
                   : "Houve um empate nos votos!"}
               </p>
             </div>
 
              {/* Votes Recap */}
-             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full mt-4 max-h-[25dvh] overflow-y-auto pr-1">
+             <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 w-full max-w-xl mx-auto mt-4 max-h-[25dvh] overflow-y-auto pr-1">
                 {votes?.map((vote) => {
                   const voterPlayer = players.find(p => p._id === vote.voterId);
                   const targetPlayer = players.find(p => p._id === vote.targetId);
                   if (!voterPlayer || !targetPlayer) return null;
                   return (
-                    <div key={vote._id} className="bg-white/5 rounded-lg p-2 flex items-center gap-2">
-                       <span className="text-xs text-white/50">{voterPlayer.name}</span>
-                       <span className="text-xs text-white/30">→</span>
-                       <span className="text-xs font-bold text-red-400">{targetPlayer.name}</span>
+                    <div key={vote._id} className="bg-surface-primary/50 rounded-lg p-2 gap-2 flex flex-col sm:flex-row items-center sm:justify-center border border-white/5">
+                       <span className="text-xs text-white/70 truncate max-w-[80px]">{voterPlayer.name}</span>
+                       <span className="text-xs text-white/30 hidden sm:block">→</span>
+                       <span className="text-[10px] text-white/30 sm:hidden">Votou em</span>
+                       <span className="text-xs font-bold text-red-400 truncate max-w-[80px]">{targetPlayer.name}</span>
                     </div>
                   );
                 })}
              </div>
 
-             {isMaster && (
-                <Button
-                  className="w-full py-6 mt-8 font-bold"
-                  variant="default"
-                  onClick={() => sessionId && startNextRound({ roomId: round.roomId, sessionId })}
-                >
-                  Próxima Rodada
-                </Button>
+              <div className="w-full max-w-sm mx-auto flex flex-col gap-3 mt-4">
+                <ShareResult
+                  title={`SUS - Sala ${room.code}`}
+                  text={`O Impostor era: ${realImpostors.map(imp => imp.name).join(", ")}!\n\n${groupWon ? "Vitória do GRUPO! 🕵️" : "Vitória do IMPOSTOR! 🤡"}`}
+                  url={typeof window !== "undefined" ? `${window.location.origin}/room/${room.code}` : ""}
+                />
+             
+               {isHost && (
+                  <Button
+                    className="w-full py-6 font-bold"
+                    variant="default"
+                    onClick={() => sessionId && startNextRound({ roomId: round.roomId, sessionId })}
+                  >
+                    Próxima Rodada
+                  </Button>
+               )}
+              </div>
+
+              {!isHost && (
+                <p className="mt-8 text-white/60 text-center font-medium">Aguardando o host...</p>
               )}
           </motion.div>
         )}

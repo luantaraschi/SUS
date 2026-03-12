@@ -4,21 +4,21 @@ import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Doc, Id } from "../../../../convex/_generated/dataModel";
-import { useSessionId } from "@/lib/useSessionId";
 import { Button } from "@/components/ui/button";
 import PlayerAvatar from "../PlayerAvatar";
 import { motion } from "framer-motion";
 
 interface VotingPhaseProps {
-  round: Doc<"rounds">;
+  round: Omit<Doc<"rounds">, "impostorId">;
   players: Doc<"players">[];
   myPlayer: Doc<"players">;
+  sessionId: string;
+  room: Doc<"rooms">;
 }
 
-export function VotingPhase({ round, players, myPlayer }: VotingPhaseProps) {
+export function VotingPhase({ round, players, myPlayer, sessionId, room }: VotingPhaseProps) {
   const isMaster = round.masterId === myPlayer._id;
   const me = myPlayer;
-  const sessionId = useSessionId();
   const [selectedSuspect, setSelectedSuspect] = useState<Id<"players"> | null>(null);
   
   const submitVote = useMutation(api.votes.submitVote);
@@ -97,7 +97,7 @@ export function VotingPhase({ round, players, myPlayer }: VotingPhaseProps) {
                   : "bg-white/5 border-2 border-transparent hover:bg-white/10"
               } ${(hasVoted || isMe || isMaster) ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
             >
-              <PlayerAvatar name={player.name} emoji={player.emoji} avatarSeed={player.emoji} size="lg" />
+              <PlayerAvatar name={player.name} avatarSeed={player.emoji} size="lg" />
               <span className="text-white font-medium">{player.name}</span>
             </motion.button>
           );

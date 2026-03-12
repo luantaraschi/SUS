@@ -11,6 +11,8 @@ import GameButton from "@/components/game/GameButton";
 import GameInput from "@/components/game/GameInput";
 import PlayerAvatar from "@/components/game/PlayerAvatar";
 import HowToPlayModal from "@/components/game/HowToPlayModal";
+import SignInModal from "@/components/auth/SignInModal";
+import Footer from "@/components/game/Footer";
 import { BubbleText } from "@/components/ui/bubble-text";
 import { Icon } from "@iconify/react";
 
@@ -32,6 +34,9 @@ export default function HomePage() {
   const router = useRouter();
   const sessionId = useSessionId();
   const { setVariant, flashInvalid } = useBackground();
+  
+  const user = useQuery(api.users.current);
+  const linkSession = useMutation(api.users.linkSession);
 
   const [name, setName] = useState("");
   const [code, setCode] = useState("");
@@ -39,6 +44,7 @@ export default function HomePage() {
   const [avatarSeed, setAvatarSeed] = useState(() => randomSeed());
   const [isAvatarModalOpen, setIsAvatarModalOpen] = useState(false);
   const [showHowToPlay, setShowHowToPlay] = useState(false);
+  const [showSignIn, setShowSignIn] = useState(false);
   const [spinning, setSpinning] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -120,15 +126,36 @@ export default function HomePage() {
   }
 
   return (
-    <div className="flex w-full flex-col items-center gap-4">
+    <div className="flex w-full flex-col items-center gap-4 relative">
+      {/* Botão de Conta Superior Direito */}
+      <div className="absolute top-4 right-4 z-50">
+        {user ? (
+          <button
+            onClick={() => router.push("/profile")}
+            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full backdrop-blur-sm transition-all shadow-sm"
+          >
+            <PlayerAvatar name={user.name || "Conta"} avatarSeed={user.image || "default"} size="sm" hideName />
+            <span className="font-display tracking-widest text-sm hidden sm:inline">Perfil</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setShowSignIn(true)}
+            className="flex items-center gap-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-full backdrop-blur-sm transition-all shadow-sm"
+          >
+            <Icon icon="solar:user-circle-bold" width={24} height={24} />
+            <span className="font-display tracking-widest text-sm hidden sm:inline">Criar Conta</span>
+          </button>
+        )}
+      </div>
+
       {/* Logo */}
       <BubbleText 
         text="SUS" 
-        className="font-display text-6xl tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)] sm:text-7xl"
+        className="font-display text-6xl tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)] sm:text-7xl mt-8 sm:mt-12"
       />
 
       {/* Avatar preview + botão shuffle */}
-      <div className="z-20 -mb-28 sm:-mb-32 relative flex flex-col items-center">
+      <div className="z-20 -mb-28 sm:-mb-32 relative flex flex-col items-center mt-4">
         <button
           onClick={() => setIsAvatarModalOpen(true)}
           className="relative transition-transform hover:scale-105 active:scale-95 focus:outline-none"
@@ -155,8 +182,8 @@ export default function HomePage() {
         </button>
       </div>
 
-      <div className={`w-full max-w-[700px] flex flex-col items-center justify-center ${shakeCircle ? "animate-shake" : ""}`}>
-        <GameCircle className="pt-20 sm:pt-28 shadow-[0_12px_60px_rgba(0,0,0,0.3)]">
+      <div className={`w-full flex flex-col items-center justify-center ${shakeCircle ? "animate-shake" : ""}`}>
+        <GameCircle className="pt-20 pb-10 sm:pt-28 sm:pb-16 shadow-[0_12px_60px_rgba(0,0,0,0.3)]">
           <div className="flex w-full max-w-[340px] sm:max-w-[380px] flex-col items-center gap-3 sm:gap-4 px-4 sm:px-6">
             <GameInput
               value={name}
@@ -277,6 +304,19 @@ export default function HomePage() {
       {/* Modal Como Jogar */}
       {showHowToPlay && (
         <HowToPlayModal onClose={() => setShowHowToPlay(false)} />
+      )}
+
+      {/* Modal Autenticação */}
+      {showSignIn && (
+        <SignInModal 
+          onClose={() => setShowSignIn(false)} 
+          onSuccess={() => {
+            setShowSignIn(false);
+            if (sessionId) {
+              linkSession({ sessionId }).catch(console.error);
+            }
+          }} 
+        />
       )}
     </div>
   );

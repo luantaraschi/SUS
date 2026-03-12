@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server.js";
+import { mutation, query } from "./_generated/server.js";
+import { Id } from "./_generated/dataModel.js";
 
 export const submitAnswer = mutation({
   args: {
@@ -61,13 +62,73 @@ export const submitAnswer = mutation({
   },
 });
 
-import { query } from "./_generated/server.js";
-
 export const getAnswersByRound = query({
   args: {
     roundId: v.id("rounds"),
   },
   handler: async (ctx, args) => {
-    return ctx.db.query("answers").withIndex("by_round", q => q.eq("roundId", args.roundId)).collect();
+    const round = await ctx.db.get(args.roundId);
+    // Só retornar respostas nas fases de revelação, votação ou resultados, 
+    // ou na fase answering ocultando o texto para saber quem respondeu
+    if (!round || !["answering", "revealing", "voting", "results"].includes(round.status)) {
+      return [];
+    }
+    const answers = await ctx.db.query("answers").withIndex("by_round", (q: any) => q.eq("roundId", args.roundId)).collect();
+
+    if (round.status === "answering") {
+      return answers.map(a => ({ ...a, text: "***" }));
+    }
+
+    return answers;
   },
 });
+
+export async function castBotAnswers(ctx: any, roundId: Id<"rounds">) {
+  const round = await ctx.db.get(roundId);
+  if (!round) return;
+
+  const players = await ctx.db
+    .query("players")
+    .withIndex("by_room", (q: any) => q.eq("roomId", round.roomId))
+    .collect();
+
+  const activePlayers = players.filter((p: any) => p.status !== "disconnected" && p._id !== round.masterId);
+  const bots = activePlayers.filter((p: any) => p.isBot);
+
+  if (bots.length === 0) return;
+
+  const fakeAnswers = ["Não sei", "Acho que sim", "Depende...", "Talvez", "Interessante..."];
+
+  for (const bot of bots) {
+    const existing = await ctx.db
+      .query("answers")
+      .withIndex("by_round_player", (q: any) =>
+        q.eq("roundId", roundId).eq("playerId", bot._id)
+      )
+      .first();
+
+    if (!existing) {
+      await ctx.db.insert("answers", {
+        roundId,
+        playerId: bot._id,
+        text: fakeAnswers[Math.floor(Math.random() * fakeAnswers.length)],
+        submittedAt: Date.now(),
+      });
+    }
+  }
+
+  // Determine se todos os jogadores requisitados responderam (para quando a rodada inteira for de bots)
+  const room = await ctx.db.get(round.roomId);
+  const answers = await ctx.db
+    .query("answers")
+    .withIndex("by_round", (q: any) => q.eq("roundId", roundId))
+    .collect();
+
+  if (answers.length >= activePlayers.length) {
+    if (room?.mode === "question") {
+      await ctx.db.patch(roundId, { status: "revealing" });
+    } else {
+      await ctx.db.patch(roundId, { status: "voting" });
+    }
+  }
+}

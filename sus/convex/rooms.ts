@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server.js";
+import { Id } from "./_generated/dataModel.js";
 import { generateUniqueCode } from "./lib/generateCode";
+import { distributeRolesInternal } from "./rounds.js";
 
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 12;
@@ -73,6 +75,7 @@ export const createRoom = mutation({
         votingTime: v.optional(v.number()),
         impostorHint: v.optional(v.boolean()),
         isLocalMode: v.optional(v.boolean()),
+        customMasterId: v.optional(v.string()),
       })
     ),
     sessionId: v.string(),
@@ -92,6 +95,7 @@ export const createRoom = mutation({
         votingTime: args.settings?.votingTime ?? 60,
         impostorHint: args.settings?.impostorHint ?? false,
         isLocalMode: args.settings?.isLocalMode ?? false,
+        customMasterId: undefined, // Defaults to the host later
       },
       currentRound: 0,
     });
@@ -247,8 +251,12 @@ export const updateSettings = mutation({
       votingTime: v.optional(v.number()),
       impostorHint: v.optional(v.boolean()),
       isLocalMode: v.optional(v.boolean()),
+      customMasterId: v.optional(v.string()),
+      customPackId: v.optional(v.id("customPacks")),
+      numImpostors: v.optional(v.number()),
     }),
     mode: v.optional(v.union(v.literal("word"), v.literal("question"))),
+    questionMode: v.optional(v.union(v.literal("system"), v.literal("master"))),
   },
   handler: async (ctx, args) => {
     const room = await ctx.db.get(args.roomId);
@@ -292,10 +300,22 @@ export const updateSettings = mutation({
     if (args.settings.isLocalMode !== undefined) {
       merged.isLocalMode = args.settings.isLocalMode;
     }
+    if (args.settings.customMasterId !== undefined) {
+      merged.customMasterId = args.settings.customMasterId;
+    }
+    if (args.settings.customPackId !== undefined) {
+      merged.customPackId = args.settings.customPackId;
+    }
+    if (args.settings.numImpostors !== undefined) {
+      merged.numImpostors = args.settings.numImpostors;
+    }
 
     const patch: Record<string, unknown> = { settings: merged };
     if (args.mode) {
       patch.mode = args.mode;
+    }
+    if (args.questionMode) {
+      patch.questionMode = args.questionMode;
     }
 
     await ctx.db.patch(args.roomId, patch);
@@ -432,14 +452,36 @@ export const startGame = mutation({
       );
     }
 
-    const impostorIndex = Math.floor(Math.random() * activePlayers.length);
-    const impostorId = activePlayers[impostorIndex]._id;
+    const numImpostorsToPick = room.settings.numImpostors || 1;
+    const impostorIds: Id<"players">[] = [];
+    const availableIndices = Array.from({ length: activePlayers.length }, (_, i) => i);
+    // At least 1 player must not be the impostor
+    const maxImpostors = Math.max(1, Math.min(numImpostorsToPick, activePlayers.length - 1));
+    for (let i = 0; i < maxImpostors; i++) {
+       const randomIndex = Math.floor(Math.random() * availableIndices.length);
+       const pickedIndex = availableIndices[randomIndex];
+       impostorIds.push(activePlayers[pickedIndex]._id);
+       availableIndices.splice(randomIndex, 1);
+    }
+    const impostorId = impostorIds[0] as Id<"players">;
 
     let masterId = null;
     if (room.mode === "question" && room.questionMode === "master") {
-      const candidates = activePlayers.filter((p) => p._id !== impostorId);
-      if (candidates.length > 0) {
-        masterId = candidates[Math.floor(Math.random() * candidates.length)]._id;
+      const hostPlayer = activePlayers.find(p => p.isHost);
+      const specifiedMaster = activePlayers.find(p => p._id === room.settings.customMasterId);
+      
+      let candidateMaster = specifiedMaster || hostPlayer;
+      
+      // If the chosen master happens to be an impostor, fallback to someone else (who is not the impostor) to prevent conflicts
+      if (candidateMaster && impostorIds.includes(candidateMaster._id)) {
+        const fallbackCandidates = activePlayers.filter((p) => !impostorIds.includes(p._id));
+        if (fallbackCandidates.length > 0) {
+           candidateMaster = fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)];
+        }
+      }
+
+      if (candidateMaster && !impostorIds.includes(candidateMaster._id)) {
+        masterId = candidateMaster._id;
       }
     }
 
@@ -449,6 +491,7 @@ export const startGame = mutation({
       mode: room.mode,
       status: "distributing",
       impostorId,
+      impostorIds,
       masterId,
     });
 
@@ -456,6 +499,8 @@ export const startGame = mutation({
       status: "playing",
       currentRound: 1,
     });
+
+    await distributeRolesInternal(ctx, args.roomId, roundId, activePlayers, impostorIds, masterId);
 
     return { roundId };
   },
@@ -482,7 +527,22 @@ export const getPlayers = query({
       .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
       .collect();
 
-    return players.sort((a, b) => a.joinedAt - b.joinedAt);
+    // Retorna apenas campos seguros — nunca expor role ou secretContent
+    return players
+      .sort((a, b) => a.joinedAt - b.joinedAt)
+      .map((p) => ({
+        _id: p._id,
+        _creationTime: p._creationTime,
+        roomId: p.roomId,
+        sessionId: p.sessionId,
+        name: p.name,
+        emoji: p.emoji,
+        isHost: p.isHost,
+        isBot: p.isBot,
+        status: p.status,
+        score: p.score,
+        joinedAt: p.joinedAt,
+      }));
   },
 });
 
@@ -575,30 +635,53 @@ export const startNextRound = mutation({
       await ctx.db.patch(p._id, { role: undefined, secretContent: undefined });
     }
 
-    const impostorIndex = Math.floor(Math.random() * activePlayers.length);
-    const impostorId = activePlayers[impostorIndex]._id;
+    const numImpostorsToPick = room.settings.numImpostors || 1;
+    const impostorIds: Id<"players">[] = [];
+    const availableIndices = Array.from({ length: activePlayers.length }, (_, i) => i);
+    const maxImpostors = Math.max(1, Math.min(numImpostorsToPick, activePlayers.length - 1));
+    for (let i = 0; i < maxImpostors; i++) {
+       const randomIndex = Math.floor(Math.random() * availableIndices.length);
+       const pickedIndex = availableIndices[randomIndex];
+       impostorIds.push(activePlayers[pickedIndex]._id);
+       availableIndices.splice(randomIndex, 1);
+    }
+    const impostorId = impostorIds[0] as Id<"players">;
 
     let masterId = null;
     if (room.mode === "question" && room.questionMode === "master") {
-      const candidates = activePlayers.filter((p) => p._id !== impostorId);
-      if (candidates.length > 0) {
-        masterId =
-          candidates[Math.floor(Math.random() * candidates.length)]._id;
+      const hostPlayer = activePlayers.find(p => p.isHost);
+      const specifiedMaster = activePlayers.find(p => p._id === room.settings.customMasterId);
+      
+      let candidateMaster = specifiedMaster || hostPlayer;
+      
+      // If the chosen master happens to be the impostor, fallback to someone else
+      if (candidateMaster && impostorIds.includes(candidateMaster._id)) {
+        const fallbackCandidates = activePlayers.filter((p) => !impostorIds.includes(p._id));
+        if (fallbackCandidates.length > 0) {
+           candidateMaster = fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)];
+        }
+      }
+
+      if (candidateMaster && !impostorIds.includes(candidateMaster._id)) {
+        masterId = candidateMaster._id;
       }
     }
 
-    await ctx.db.insert("rounds", {
+    const roundId = await ctx.db.insert("rounds", {
       roomId: args.roomId,
       number: nextNumber,
       mode: room.mode,
       status: "distributing",
       impostorId,
+      impostorIds,
       masterId,
     });
 
     await ctx.db.patch(args.roomId, {
       currentRound: nextNumber,
     });
+
+    await distributeRolesInternal(ctx, args.roomId, roundId, activePlayers, impostorIds, masterId);
 
     return { finished: false };
   },

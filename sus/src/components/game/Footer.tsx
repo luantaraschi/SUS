@@ -2,7 +2,7 @@ import { Instagram, Github, Linkedin } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="relative z-10 w-full px-6 py-3 flex items-center justify-between mt-auto">
+    <footer className="absolute bottom-0 w-full px-6 py-3 flex items-center justify-between z-10 pointer-events-auto">
       <div className="flex-1">
         <a
           href="https://github.com/luantaraschi"

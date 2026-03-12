@@ -1,7 +1,10 @@
 import { defineSchema, defineTable } from "convex/server";
+import { authTables } from "@convex-dev/auth/server";
 import { v } from "convex/values";
 
 export default defineSchema({
+  ...authTables,
+
   rooms: defineTable({
     code: v.string(),
     hostId: v.string(),
@@ -21,6 +24,9 @@ export default defineSchema({
       votingTime: v.number(),
       impostorHint: v.boolean(),
       isLocalMode: v.boolean(),
+      customMasterId: v.optional(v.string()),
+      customPackId: v.optional(v.id("customPacks")),
+      numImpostors: v.optional(v.number()),
     }),
     currentRound: v.number(),
   })
@@ -54,30 +60,26 @@ export default defineSchema({
     roomId: v.id("rooms"),
     number: v.number(),
     mode: v.union(v.literal("word"), v.literal("question")),
-    phase: v.optional(v.string()),
     status: v.union(
       v.literal("waiting"),
       v.literal("distributing"),
+      v.literal("playing"),
       v.literal("answering"),
       v.literal("revealing"),
       v.literal("voting"),
       v.literal("results")
     ),
-    impostorId: v.id("players"),
-    masterId: v.optional(v.union(v.id("players"), v.null())),
-
-    // Word mode
-    word: v.optional(v.union(v.string(), v.null())),
-    hint: v.optional(v.union(v.string(), v.null())),
+    word: v.optional(v.string()), // Apenas modo "word"
+    hint: v.optional(v.string()), // Dica do impostor em modo word, opcional  
     category: v.optional(v.union(v.string(), v.null())),
-
-    // Question mode
-    questionMain: v.optional(v.union(v.string(), v.null())),
-    questionImpostor: v.optional(v.union(v.string(), v.null())),
-
-    phaseEndsAt: v.optional(v.number()),
-    votedOutId: v.optional(v.id("players")),
+    questionMain: v.optional(v.string()), // Modo question
+    questionImpostor: v.optional(v.string()), // Pergunta que faz sentido diferente
+    impostorId: v.optional(v.id("players")), // DEPRECATED: use impostorIds
+    impostorIds: v.optional(v.array(v.id("players"))), // Support multiple impostors
+    masterId: v.optional(v.union(v.id("players"), v.null())), // Master id para modo master
     impostorWon: v.optional(v.boolean()),
+    votedOutId: v.optional(v.union(v.id("players"), v.null())),
+    startedAt: v.optional(v.number()),
   })
     .index("by_room", ["roomId"])
     .index("by_room_number", ["roomId", "number"]),
@@ -110,4 +112,35 @@ export default defineSchema({
     question: v.string(),
     impostorQuestion: v.string(),
   }).index("by_category", ["category"]),
+
+  gameHistory: defineTable({
+    userId: v.optional(v.id("users")),
+    sessionId: v.string(),
+    roomCode: v.string(),
+    mode: v.union(v.literal("word"), v.literal("question")),
+    totalRounds: v.number(),
+    wasImpostor: v.number(),
+    timesDetected: v.number(),
+    timesSurvived: v.number(),
+    correctVotes: v.number(),
+    finalScore: v.number(),
+    finalRank: v.number(),
+    totalPlayers: v.number(),
+    playedAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_session", ["sessionId"]),
+
+  customPacks: defineTable({
+    authorId: v.id("users"),
+    title: v.string(),
+    mode: v.union(v.literal("word"), v.literal("question")),
+    items: v.array(
+      v.object({
+        content: v.string(), // word or question
+        hint: v.string(),    // hint or impostorQuestion
+      })
+    ),
+    createdAt: v.number(),
+  }).index("by_author", ["authorId"]),
 });

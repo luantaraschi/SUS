@@ -2,16 +2,18 @@ import React, { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import PlayerAvatar from "../PlayerAvatar";
 
 interface AnsweringPhaseProps {
   round: any;
   myPlayer: any;
+  myRole?: any;
   players: any[];
   room: any;
   sessionId: string;
 }
 
-export function AnsweringPhase({ round, myPlayer, players, room, sessionId }: AnsweringPhaseProps) {
+export function AnsweringPhase({ round, myPlayer, myRole, players, room, sessionId }: AnsweringPhaseProps) {
   const [answer, setAnswer] = useState("");
   const submitAnswer = useMutation(api.answers.submitAnswer);
   const answers = useQuery(api.answers.getAnswersByRound, { roundId: round._id });
@@ -38,7 +40,7 @@ export function AnsweringPhase({ round, myPlayer, players, room, sessionId }: An
             return (
               <div key={p._id} className="relative flex flex-col items-center text-center">
                 <div className={`relative flex items-center justify-center w-16 h-16 rounded-2xl bg-surface-primary/10 border ${answered ? "border-game-safe/50" : "border-surface-primary/20"}`}>
-                  <span className="text-3xl">{p.emoji}</span>
+                  <PlayerAvatar name={p.name} avatarSeed={p.emoji} size="sm" hideName />
                   {answered ? (
                     <div className="absolute -bottom-2 -right-2 bg-game-safe text-black rounded-full w-6 h-6 flex items-center justify-center text-sm shadow-md">
                       ✓
@@ -49,7 +51,12 @@ export function AnsweringPhase({ round, myPlayer, players, room, sessionId }: An
                     </div>
                   )}
                 </div>
-                <p className="mt-2 text-white/70 font-condensed text-sm truncate w-16">{p.name}</p>
+                <p className="mt-2 text-white/70 font-condensed text-sm truncate w-16 flex justify-center items-center gap-1">
+                  {p.name}
+                  {myPlayer.role === "master" && myRole?.masterImpostorIds?.includes(p._id) && (
+                     <span className="text-game-impostor text-xs" title="Impostor">🤡</span>
+                  )}
+                </p>
               </div>
             );
           })}
@@ -61,10 +68,7 @@ export function AnsweringPhase({ round, myPlayer, players, room, sessionId }: An
   return (
     <div className="w-full max-w-md mx-auto flex flex-col items-center p-4">
       <div className="flex flex-col items-center mb-6">
-        <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-surface-primary/10 border border-surface-primary/20 mb-2">
-          <span className="text-2xl">{myPlayer.emoji}</span>
-        </div>
-        <span className="font-condensed text-white/70 uppercase tracking-widest text-sm">{myPlayer.name}</span>
+        <PlayerAvatar name={myPlayer.name} avatarSeed={myPlayer.emoji} size="md" />
       </div>
 
       <div className="bg-white rounded-3xl p-6 shadow-2xl w-full flex flex-col items-center text-center border-b-4 border-surface-primary/20">

@@ -14,6 +14,7 @@ interface GameButtonProps {
   onClick?: () => void;
   disabled?: boolean;
   className?: string;
+  type?: "button" | "submit" | "reset";
 }
 
 const VARIANT_STYLES: Record<ButtonVariant, string> = {
@@ -41,9 +42,11 @@ export default function GameButton({
   onClick,
   disabled = false,
   className = "",
+  type = "button",
 }: GameButtonProps) {
   return (
     <motion.button
+      type={type}
       whileHover={disabled ? undefined : { scale: 1.02 }}
       whileTap={disabled ? undefined : { scale: 0.98 }}
       onClick={onClick}

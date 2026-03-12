@@ -43,16 +43,28 @@ export default function PlayPage({
 
   const updateStatus = useMutation(api.players.updateStatus);
 
+  // Fix 1.4: cleanup de disconnection — marca jogador como disconnected ao sair da página
   useEffect(() => {
     if (!myPlayer?._id || !sessionId) return;
     void updateStatus({ playerId: myPlayer._id, sessionId, status: "connected" });
+    return () => {
+      void updateStatus({ playerId: myPlayer._id, sessionId, status: "disconnected" });
+    };
   }, [myPlayer?._id, sessionId, updateStatus]);
 
+  // Redireciona para lobby se a sala não estiver em jogo
   useEffect(() => {
     if (room && room.status !== "playing") {
       router.push(`/room/${code}`);
     }
   }, [room, code, router]);
+
+  // Fix 1.5: Se myPlayer é null (não undefined/loading), o jogador não é membro da sala
+  useEffect(() => {
+    if (myPlayer === null) {
+      router.push("/");
+    }
+  }, [myPlayer, router]);
 
   if (!room || !myPlayer || !round || !players) {
     return (
@@ -77,7 +89,7 @@ export default function PlayPage({
     case "answering":
       return <AnsweringPhase {...phaseProps} />;
     case "revealing":
-      return <RevealingPhase round={round} players={players} />;
+      return <RevealingPhase {...phaseProps} />;
     case "voting":
       return <VotingPhase {...phaseProps} />;
     case "results":

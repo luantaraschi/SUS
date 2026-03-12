@@ -1,16 +1,23 @@
 import React, { useState, useEffect } from "react";
-import { useQuery } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import PlayerAvatar from "../PlayerAvatar";
 
 interface RevealingPhaseProps {
   round: any;
   players: any[];
+  room: any;
+  myPlayer: any;
+  myRole?: any;
+  sessionId: string;
 }
 
-export function RevealingPhase({ round, players }: RevealingPhaseProps) {
+export function RevealingPhase({ round, players, room, myPlayer, myRole, sessionId }: RevealingPhaseProps) {
   const [countdown, setCountdown] = useState(3);
   const answers = useQuery(api.answers.getAnswersByRound, { roundId: round._id });
+  const advancePhase = useMutation(api.rounds.advanceToVoting);
+  const isHost = myPlayer?.isHost === true;
 
   useEffect(() => {
     if (countdown > 0) {
@@ -46,8 +53,13 @@ export function RevealingPhase({ round, players }: RevealingPhaseProps) {
               className="bg-white rounded-2xl p-5 shadow-lg flex flex-col items-center text-center animate-in slide-in-from-bottom-8 fade-in fill-mode-both duration-500"
             >
               <div className="flex flex-col items-center mb-3">
-                <span className="text-3xl mb-1">{player.emoji}</span>
-                <span className="font-condensed text-black/50 text-xs uppercase font-bold tracking-wider">{player.name}</span>
+                <PlayerAvatar name={player.name} avatarSeed={player.emoji} size="sm" hideName />
+                <span className="mt-1.5 font-hand text-surface-primary/60 text-sm flex items-center gap-1">
+                  [{player.name}]
+                  {myPlayer.role === "master" && myRole?.masterImpostorIds?.includes(player._id) && (
+                    <span className="text-game-impostor font-bold ml-1 text-xs uppercase" title="Impostor">🤡</span>
+                  )}
+                </span>
               </div>
               <p className="font-body text-xl font-medium text-black break-words w-full">
                 "{answer.text}"
@@ -56,6 +68,21 @@ export function RevealingPhase({ round, players }: RevealingPhaseProps) {
           );
         })}
       </div>
+
+      {isHost && (
+        <div className="mt-8 w-full max-w-sm mx-auto">
+          <Button
+            onClick={() => advancePhase({ roundId: round._id, sessionId })}
+            className="w-full py-6 text-lg font-bold"
+          >
+            Continuar para Votação
+          </Button>
+        </div>
+      )}
+
+      {!isHost && (
+        <p className="mt-8 text-white/60 text-center font-medium">Aguardando o host continuar...</p>
+      )}
     </div>
   );
 }
