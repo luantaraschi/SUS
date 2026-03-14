@@ -74,6 +74,7 @@ export default function RootLayout({
     <html
       lang="pt-BR"
       className={`${londrina.variable} ${balsamiq.variable} ${kalam.variable} ${oswald.variable} ${jetbrains.variable}`}
+      suppressHydrationWarning
     >
       <body className="antialiased font-body">
         <Providers>{children}</Providers>
