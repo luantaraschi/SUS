@@ -6,28 +6,7 @@ import { Icon } from "@iconify/react";
 import { useConvex, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useBackground } from "@/lib/BackgroundContext";
-
-const THEME_ICON_MAP: Record<string, string> = {
-  star: "solar:star-bold",
-  football: "solar:ball-bold",
-  health: "solar:health-bold",
-  laptop: "solar:laptop-bold",
-  sparkles: "solar:magic-stick-3-bold",
-  bolt: "solar:flash-bold",
-  leaf: "solar:leaf-bold",
-  target: "solar:target-bold",
-  swords: "solar:sledgehammer-bold",
-  pickaxe: "solar:hammer-bold",
-  skull: "solar:skull-bold",
-  blaster: "solar:rocket-bold",
-  pokeball: "solar:planet-bold",
-  lightsaber: "solar:sword-bold",
-  crown: "solar:crown-bold",
-  fist: "solar:bolt-circle-bold",
-  katana: "solar:danger-triangle-bold",
-  coffee: "solar:cup-bold",
-  shield: "solar:shield-bold",
-};
+import { THEME_ICON_MAP } from "@/lib/themeIcons";
 
 interface GameSettingsButtonProps {
   sessionId: string;
@@ -188,7 +167,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
-          <div className="w-full max-w-4xl rounded-[32px] border border-white/10 bg-[var(--panel-surface)] p-5 text-[var(--panel-text)] shadow-[0_30px_80px_rgba(0,0,0,0.35)] sm:p-6">
+          <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[min(1080px,96vw)] flex-col overflow-hidden rounded-[32px] border border-[var(--panel-border)] bg-[var(--panel-surface)] p-4 text-[var(--panel-text)] shadow-[0_30px_80px_rgba(0,0,0,0.35)] sm:p-6">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <h2 className="font-display text-3xl">Configuracoes</h2>
@@ -206,8 +185,8 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
               </button>
             </div>
 
-            <div className="grid gap-5 lg:grid-cols-[0.92fr_1.08fr]">
-              <section className="rounded-[28px] border border-black/10 bg-[var(--panel-muted)] p-4">
+            <div className="grid max-h-full items-start gap-5 overflow-y-auto pr-1 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] custom-scrollbar">
+              <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4 lg:self-start">
                 <h3 className="font-display text-2xl">Relatar bug</h3>
                 <p className="mt-2 font-body text-sm text-[var(--panel-soft-text)]">
                   Descreva o problema e envie o contexto desta tela automaticamente.
@@ -216,7 +195,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                   value={bugMessage}
                   onChange={(event) => setBugMessage(event.target.value)}
                   placeholder="Explique o que aconteceu, em qual etapa e se isso se repete."
-                  className="mt-4 min-h-[180px] w-full resize-none rounded-[24px] border border-black/10 bg-white/80 px-4 py-3 font-body text-base text-surface-primary outline-none focus:border-surface-primary"
+                  className="mt-4 min-h-[180px] w-full resize-none rounded-[24px] border border-[var(--control-border)] bg-[var(--control-surface)] px-4 py-3 font-body text-base text-[var(--control-text)] outline-none transition-colors placeholder:text-[var(--control-soft-text)] focus:border-surface-primary"
                 />
                 {(bugState.error || bugState.success) && (
                   <p className={`mt-3 font-body text-sm ${bugState.error ? "text-game-impostor" : "text-game-safe"}`}>
@@ -234,7 +213,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
               </section>
 
               <div className="grid gap-5">
-                <section className="rounded-[28px] border border-black/10 bg-[var(--panel-muted)] p-4">
+                <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4">
                   <h3 className="font-display text-2xl">Aparencia</h3>
                   <div className="mt-4 flex flex-wrap gap-3">
                     {[
@@ -248,10 +227,10 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                         onClick={() =>
                           handleColorSchemeChange(option.value as "system" | "light" | "dark")
                         }
-                        className={`rounded-full px-4 py-2 font-condensed text-sm uppercase tracking-[0.24em] transition-colors ${
+                        className={`rounded-full border px-4 py-2 font-condensed text-sm uppercase tracking-[0.24em] transition-colors ${
                           colorScheme === option.value
-                            ? "bg-surface-primary text-white"
-                            : "bg-white/80 text-surface-primary"
+                            ? "border-surface-primary bg-surface-primary text-white"
+                            : "border-[var(--control-border)] bg-[var(--control-surface)] text-[var(--control-text)]"
                         }`}
                       >
                         {option.label}
@@ -260,7 +239,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                   </div>
                 </section>
 
-                <section className="rounded-[28px] border border-black/10 bg-[var(--panel-muted)] p-4">
+                <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4">
                   <div className="flex items-center justify-between gap-4">
                     <div>
                       <h3 className="font-display text-2xl">Background</h3>
@@ -272,7 +251,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                       type="button"
                       onClick={() => handleAnimationChange(!backgroundAnimationEnabled)}
                       className={`relative h-8 w-14 rounded-full transition-colors ${
-                        backgroundAnimationEnabled ? "bg-game-safe" : "bg-black/15"
+                        backgroundAnimationEnabled ? "bg-game-safe" : "bg-[var(--control-surface-muted)]"
                       }`}
                     >
                       <span
@@ -295,8 +274,8 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                             active
                               ? "border-surface-primary bg-surface-primary text-white"
                               : theme.enabled
-                                ? "border-black/10 bg-white/80 text-surface-primary"
-                                : "border-black/10 bg-slate-400/20 text-surface-primary/55"
+                                ? "border-[var(--control-border)] bg-[var(--control-surface)] text-[var(--control-text)]"
+                                : "border-[var(--control-border)] bg-[var(--control-surface-muted)] text-[var(--control-soft-text)]"
                           }`}
                         >
                           <span className="flex items-center gap-3">
@@ -314,7 +293,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                   </div>
                 </section>
 
-                <section className="rounded-[28px] border border-black/10 bg-[var(--panel-muted)] p-4">
+                <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4">
                   <h3 className="font-display text-2xl">Acessibilidade visual</h3>
                   <p className="mt-2 font-body text-sm text-[var(--panel-soft-text)]">
                     Desligar a animacao ajuda em navegadores mais pesados e em sessoes longas.

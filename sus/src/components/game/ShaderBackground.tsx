@@ -1,7 +1,6 @@
 "use client";
 
-import { useSyncExternalStore } from "react";
-import { ShaderGradientCanvas, ShaderGradient } from "@shadergradient/react";
+import { useEffect, useState } from "react";
 
 type BackgroundVariant = "default" | "valid" | "invalid";
 
@@ -11,107 +10,94 @@ interface ShaderBackgroundProps {
   animated?: boolean;
 }
 
-const gradientConfigs: Record<
+const VARIANT_STYLES: Record<
   BackgroundVariant,
-  { color1: string; color2: string; color3: string; fallback: string }
+  { overlayA: string; overlayB: string; overlayC: string; fallback: string }
 > = {
   default: {
-    color1: "#D64DC2",
-    color2: "#902EED",
-    color3: "#FAFA39",
-    fallback: "radial-gradient(circle at 30% 20%, #ff8bd4 0%, #d64dc2 35%, #4d16ba 70%, #16003f 100%)",
+    overlayA: "radial-gradient(circle at 20% 24%, rgba(250,250,57,0.32), transparent 42%)",
+    overlayB: "radial-gradient(circle at 82% 18%, rgba(255,137,64,0.28), transparent 34%)",
+    overlayC: "radial-gradient(circle at 76% 78%, rgba(214,77,194,0.22), transparent 32%)",
+    fallback:
+      "radial-gradient(circle at 24% 22%, #ff9adf 0%, #d64dc2 26%, #5b1ad0 62%, #18004c 100%)",
   },
   valid: {
-    color1: "#4DDBA8",
-    color2: "#602BFF",
-    color3: "#00B8EB",
-    fallback: "radial-gradient(circle at 30% 20%, #7cf0c7 0%, #4ddba8 30%, #00b8eb 65%, #2a1078 100%)",
+    overlayA: "radial-gradient(circle at 18% 26%, rgba(77,219,168,0.28), transparent 38%)",
+    overlayB: "radial-gradient(circle at 82% 18%, rgba(0,184,235,0.22), transparent 34%)",
+    overlayC: "radial-gradient(circle at 72% 76%, rgba(96,43,255,0.24), transparent 32%)",
+    fallback:
+      "radial-gradient(circle at 24% 22%, #90ffd8 0%, #4ddba8 26%, #00b8eb 60%, #1d115a 100%)",
   },
   invalid: {
-    color1: "#FF577B",
-    color2: "#8100B0",
-    color3: "#D12977",
-    fallback: "radial-gradient(circle at 30% 20%, #ff7f9a 0%, #ff577b 30%, #d12977 65%, #41004f 100%)",
+    overlayA: "radial-gradient(circle at 20% 26%, rgba(255,87,123,0.32), transparent 40%)",
+    overlayB: "radial-gradient(circle at 84% 18%, rgba(209,41,119,0.26), transparent 34%)",
+    overlayC: "radial-gradient(circle at 74% 78%, rgba(129,0,176,0.24), transparent 32%)",
+    fallback:
+      "radial-gradient(circle at 24% 22%, #ff8ea7 0%, #ff577b 28%, #c11d8b 62%, #30063d 100%)",
   },
 };
-
-function StaticBackground({ background }: { background: string }) {
-  return (
-    <div
-      className="pointer-events-none fixed inset-0 z-[-1]"
-      style={{
-        background,
-      }}
-      aria-hidden="true"
-    />
-  );
-}
 
 export default function ShaderBackground({
   variant = "default",
   themeId = "classico",
   animated = true,
 }: ShaderBackgroundProps) {
-  const mounted = useSyncExternalStore(
-    () => () => undefined,
-    () => true,
-    () => false
-  );
+  const [canAnimate, setCanAnimate] = useState(false);
 
-  if (!mounted) return null;
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
 
-  const colors = gradientConfigs[variant];
-  if (!animated || themeId !== "classico") {
-    return <StaticBackground background={colors.fallback} />;
-  }
+    const widthQuery = window.matchMedia("(min-width: 1024px)");
+    const motionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    const sync = () => {
+      setCanAnimate(animated && themeId === "classico" && widthQuery.matches && !motionQuery.matches);
+    };
+
+    sync();
+    widthQuery.addEventListener("change", sync);
+    motionQuery.addEventListener("change", sync);
+    return () => {
+      widthQuery.removeEventListener("change", sync);
+      motionQuery.removeEventListener("change", sync);
+    };
+  }, [animated, themeId]);
+
+  const colors = VARIANT_STYLES[variant];
 
   return (
-    <ShaderGradientCanvas
-      style={{
-        position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100vw",
-        height: "100vh",
-        zIndex: -1,
-        pointerEvents: "none",
-      }}
-      pixelDensity={1.5}
-      fov={45}
+    <div
+      className="pointer-events-none fixed inset-0 z-[-1] overflow-hidden"
+      aria-hidden="true"
+      style={{ background: colors.fallback }}
     >
-      <ShaderGradient
-        animate="on"
-        type="sphere"
-        shader="defaults"
-        color1={colors.color1}
-        color2={colors.color2}
-        color3={colors.color3}
-        uSpeed={0.3}
-        uStrength={1.2}
-        uDensity={0.9}
-        uFrequency={5.5}
-        uAmplitude={7}
-        uTime={0}
-        cAzimuthAngle={98}
-        cPolarAngle={41}
-        cDistance={1.5}
-        cameraZoom={17.2}
-        positionX={0}
-        positionY={0}
-        positionZ={0}
-        rotationX={0}
-        rotationY={0}
-        rotationZ={140}
-        brightness={1.4}
-        envPreset="city"
-        lightType="3d"
-        grain="on"
-        reflection={0.5}
-        wireframe={false}
-        range="disabled"
-        rangeStart={0}
-        rangeEnd={40}
+      <div
+        className="absolute inset-0 opacity-90"
+        style={{
+          background: `var(--bg-base), ${colors.overlayA}, ${colors.overlayB}, ${colors.overlayC}`,
+        }}
       />
-    </ShaderGradientCanvas>
+      <div
+        className={`absolute -left-[12%] top-[-14%] h-[48vh] w-[42vw] rounded-full blur-3xl ${
+          canAnimate ? "animate-[background-float-a_18s_ease-in-out_infinite]" : ""
+        }`}
+        style={{ background: "var(--bg-blob-1)" }}
+      />
+      <div
+        className={`absolute right-[-8%] top-[8%] h-[42vh] w-[34vw] rounded-full blur-3xl ${
+          canAnimate ? "animate-[background-float-b_20s_ease-in-out_infinite]" : ""
+        }`}
+        style={{ background: "var(--bg-blob-2)" }}
+      />
+      <div
+        className={`absolute bottom-[-10%] left-[18%] h-[40vh] w-[44vw] rounded-full blur-3xl ${
+          canAnimate ? "animate-[background-float-a_24s_ease-in-out_infinite]" : ""
+        }`}
+        style={{ background: "var(--bg-blob-3)" }}
+      />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(10,5,25,0.08)_100%)]" />
+    </div>
   );
 }

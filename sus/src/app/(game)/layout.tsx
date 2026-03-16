@@ -16,7 +16,7 @@ function GameLayoutInner({ children }: { children: React.ReactNode }) {
         animated={backgroundAnimationEnabled}
       />
       <ConvexStatusBanner />
-      <main className="relative z-10 flex w-full flex-1 flex-col items-center justify-start px-3 py-4 pb-28 sm:px-4 sm:py-6 sm:pb-32">
+      <main className="relative z-10 flex w-full flex-1 flex-col items-center justify-start px-3 py-3 sm:px-4 sm:py-4">
         {children}
       </main>
       <Footer />

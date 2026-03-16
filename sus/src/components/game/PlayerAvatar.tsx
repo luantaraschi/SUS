@@ -136,8 +136,8 @@ const SIZE_MAP = {
     name: "text-sm sm:text-base",
   },
   orbit: {
-    container: "h-14 w-14 sm:h-[4rem] sm:w-[4rem] lg:h-[4.5rem] lg:w-[4.5rem]",
-    img: 90,
+    container: "h-12 w-12 sm:h-[3.5rem] sm:w-[3.5rem] lg:h-[4rem] lg:w-[4rem]",
+    img: 78,
     crown: "text-sm sm:text-base",
     botBadge: "left-1 top-1 h-5 w-5 border-2 sm:h-6 sm:w-6",
     botIcon: "h-3 w-3 sm:h-3.5 sm:w-3.5",
@@ -163,9 +163,9 @@ const SIZE_MAP = {
     name: "text-lg",
   },
   "2xl": {
-    container: "h-40 w-40 sm:h-48 sm:w-48",
-    img: 192,
-    crown: "text-4xl sm:text-5xl",
+    container: "h-32 w-32 sm:h-36 sm:w-36 lg:h-40 lg:w-40",
+    img: 160,
+    crown: "text-3xl sm:text-4xl",
     botBadge: "left-2 top-2 h-10 w-10 border-[3px] sm:h-11 sm:w-11",
     botIcon: "h-5 w-5 sm:h-6 sm:w-6",
     statusIndicator: "bottom-1 right-1 h-6 w-6 border-[3px] sm:h-7 sm:w-7",

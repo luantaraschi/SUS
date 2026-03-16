@@ -13,6 +13,7 @@ import SignInModal from "@/components/auth/SignInModal";
 import GameSettingsButton from "@/components/game/GameSettingsButton";
 import IdentityBar from "@/components/game/IdentityBar";
 import { BubbleText } from "@/components/ui/bubble-text";
+import { THEME_ICON_MAP } from "@/lib/themeIcons";
 import { Icon } from "@iconify/react";
 import { Plus } from "lucide-react";
 
@@ -23,17 +24,17 @@ const MAX_ROUNDS = 10;
 const MAX_IMPOSTORS = 3;
 
 const DESKTOP_POSITIONS = [
-  { top: "10%", left: "22%", transform: "translate(-50%, -50%)" },
-  { top: "11%", left: "50%", transform: "translate(-50%, -50%)" },
-  { top: "10%", left: "78%", transform: "translate(-50%, -50%)" },
-  { top: "31%", left: "8%", transform: "translate(-50%, -50%)" },
-  { top: "54%", left: "6%", transform: "translate(-50%, -50%)" },
-  { top: "77%", left: "10%", transform: "translate(-50%, -50%)" },
-  { top: "31%", left: "92%", transform: "translate(-50%, -50%)" },
-  { top: "54%", left: "94%", transform: "translate(-50%, -50%)" },
-  { top: "77%", left: "90%", transform: "translate(-50%, -50%)" },
-  { top: "96%", left: "28%", transform: "translate(-50%, -20%)" },
-  { top: "96%", left: "72%", transform: "translate(-50%, -20%)" },
+  { top: "12%", left: "18%", transform: "translate(-50%, -50%)" },
+  { top: "12%", left: "82%", transform: "translate(-50%, -50%)" },
+  { top: "31%", left: "6%", transform: "translate(-50%, -50%)" },
+  { top: "53%", left: "6%", transform: "translate(-50%, -50%)" },
+  { top: "75%", left: "10%", transform: "translate(-50%, -50%)" },
+  { top: "31%", left: "94%", transform: "translate(-50%, -50%)" },
+  { top: "53%", left: "94%", transform: "translate(-50%, -50%)" },
+  { top: "75%", left: "90%", transform: "translate(-50%, -50%)" },
+  { top: "94%", left: "24%", transform: "translate(-50%, -35%)" },
+  { top: "94%", left: "50%", transform: "translate(-50%, -35%)" },
+  { top: "94%", left: "76%", transform: "translate(-50%, -35%)" },
 ];
 
 function getAvatarStatus(status: "connected" | "ready" | "disconnected") {
@@ -46,7 +47,7 @@ function CodeBlock({ code, hidden }: { code: string; hidden: boolean }) {
       {code.split("").map((char, index) => (
         <div
           key={`${char}-${index}`}
-          className="flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-primary font-display text-2xl font-black text-white sm:h-16 sm:w-16 sm:text-4xl"
+          className="flex h-11 w-11 items-center justify-center rounded-2xl bg-surface-primary font-display text-xl font-black text-white sm:h-14 sm:w-14 sm:text-3xl"
         >
           {hidden ? "X" : char}
         </div>
@@ -72,7 +73,7 @@ function Counter({
 }) {
   return (
     <div className="flex min-w-[110px] flex-col items-center gap-1.5">
-      <span className="font-condensed text-xs uppercase tracking-wider text-surface-primary/70 sm:text-sm">
+      <span className="font-condensed text-xs uppercase tracking-wider text-[var(--panel-soft-text)] sm:text-sm">
         {label}
       </span>
       <div className="flex items-center gap-2 sm:gap-3">
@@ -84,7 +85,7 @@ function Counter({
         >
           <Icon icon="solar:alt-arrow-down-bold" width={20} height={20} />
         </button>
-        <span className="w-10 text-center font-display text-3xl text-surface-primary sm:w-14 sm:text-5xl">
+        <span className="w-10 text-center font-display text-3xl text-[var(--panel-text)] sm:w-14 sm:text-5xl">
           {value}
         </span>
         <button
@@ -251,7 +252,7 @@ export default function RoomLobbyPage({
   const startDisabled = playerCount < MIN_PLAYERS || isStartingGame || !startReadiness.ready;
 
   return (
-    <div className="relative flex min-h-[calc(100dvh-8rem)] w-full flex-col items-center gap-4 pb-16 sm:pb-20">
+    <div className="relative flex min-h-0 w-full flex-1 flex-col items-center gap-3 py-2 sm:gap-4">
       <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
         <GameSettingsButton sessionId={sessionId} />
         {profile ? (
@@ -273,10 +274,10 @@ export default function RoomLobbyPage({
         )}
       </div>
 
-      <BubbleText text="SUS" className="mt-4 font-display text-7xl tracking-wide drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)] sm:mt-6 sm:text-[100px]" />
+      <BubbleText text="SUS" className="mt-2 font-display text-[clamp(3.8rem,7vw,6.25rem)] tracking-wide drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)] sm:mt-3" />
 
       {myPlayer && (
-        <div className="relative z-20 -mb-10 flex flex-col items-center sm:-mb-12">
+        <div className="relative z-20 -mb-7 flex flex-col items-center sm:-mb-9">
           <PlayerAvatar
             name={myPlayer.name}
             avatarSeed={myPlayer.emoji}
@@ -290,7 +291,7 @@ export default function RoomLobbyPage({
         </div>
       )}
 
-      <div className="w-full max-w-[1100px] px-2 sm:px-4">
+      <div className="w-full max-w-[1080px] px-2 sm:px-4">
         <div className="flex flex-col gap-4 lg:hidden">
           <div className="flex flex-wrap items-center justify-center gap-3">
             {mobileTopPlayers.map((player) => (
@@ -309,7 +310,7 @@ export default function RoomLobbyPage({
             ))}
           </div>
 
-          <GameCircle className="min-h-[620px] max-w-[760px] px-5 pb-6 pt-14 sm:px-6 sm:pb-8 sm:pt-16">
+          <GameCircle className="min-h-[clamp(30rem,62vh,36rem)] max-w-[740px] px-4 pb-5 pt-12 sm:px-6 sm:pb-7 sm:pt-14">
             <div className="flex h-full min-h-[inherit] w-full flex-col">
               <LobbyPanel
                 room={room}
@@ -387,7 +388,7 @@ export default function RoomLobbyPage({
           )}
         </div>
 
-        <div className="relative hidden min-h-[760px] items-center justify-center lg:flex">
+        <div className="relative hidden min-h-[680px] items-center justify-center lg:flex">
           {surroundingPlayers.map((player, index) => {
             const position = DESKTOP_POSITIONS[index];
             if (!position) return null;
@@ -408,7 +409,7 @@ export default function RoomLobbyPage({
             );
           })}
 
-          <GameCircle className="min-h-[620px] max-w-[760px] px-7 pb-8 pt-14">
+          <GameCircle className="min-h-[clamp(31rem,64vh,37rem)] max-w-[740px] px-6 pb-7 pt-12">
             <div className="flex h-full min-h-[inherit] w-full flex-col">
               <LobbyPanel
                 room={room}
@@ -525,7 +526,7 @@ function LobbyPanel({
   copied: boolean;
   playerCount: number;
   numImpostors: number;
-  packOptions: Array<{ key: string; title: string; source: "default" | "custom"; count: number }>;
+  packOptions: Array<{ key: string; title: string; icon: string; source: "default" | "custom"; count: number }>;
   players: Array<{ _id: Id<"players">; name: string; isHost: boolean; status: "connected" | "ready" | "disconnected" }>;
   isHost: boolean;
   actionError: string;
@@ -548,19 +549,21 @@ function LobbyPanel({
   const selectedPackValue = room.settings.customPackId
     ? `custom:${room.settings.customPackId}`
     : `default:${room.settings.defaultPackKey || "classico"}`;
+  const systemPackOptions = packOptions.filter((pack) => pack.source === "default");
+  const customPackOptions = packOptions.filter((pack) => pack.source === "custom");
 
   return (
     <>
-      <div className="flex flex-1 flex-col overflow-y-auto pb-3 pr-1 custom-scrollbar">
-        <div className="flex flex-col items-center gap-6">
+      <div className="flex flex-1 flex-col pb-2">
+        <div className="flex flex-col items-center gap-5">
           <div className="flex flex-col items-center gap-2">
-            <span className="font-condensed text-sm uppercase tracking-[0.28em] text-surface-primary/70">Codigo da Sala</span>
+            <span className="font-condensed text-sm uppercase tracking-[0.28em] text-[var(--panel-soft-text)]">Codigo da Sala</span>
             <div className="flex items-center gap-4 sm:gap-5">
-              <button type="button" onClick={onToggleCodeHidden} className="text-surface-primary/60 transition-colors hover:text-surface-primary">
+              <button type="button" onClick={onToggleCodeHidden} className="text-[var(--panel-soft-text)] transition-colors hover:text-[var(--panel-text)]">
                 <Icon icon={codeHidden ? "solar:eye-closed-bold" : "solar:eye-bold"} width={28} height={28} />
               </button>
               <CodeBlock code={code.toUpperCase()} hidden={codeHidden} />
-              <button type="button" onClick={onShare} className="text-surface-primary/60 transition-colors hover:text-surface-primary">
+              <button type="button" onClick={onShare} className="text-[var(--panel-soft-text)] transition-colors hover:text-[var(--panel-text)]">
                 <Icon icon="solar:share-bold" width={28} height={28} />
               </button>
             </div>
@@ -573,58 +576,81 @@ function LobbyPanel({
             <Counter label="Impostores" value={numImpostors} onDecrement={() => onChangeImpostors(-1)} onIncrement={() => onChangeImpostors(1)} disableDecrement={!isHost || numImpostors <= 1} disableIncrement={!isHost || numImpostors >= Math.min(MAX_IMPOSTORS, room.settings.maxPlayers - 2)} />
           </div>
 
-          <div className="flex rounded-full bg-surface-primary/10 p-1.5">
-            <button type="button" onClick={() => onModeChange("word")} disabled={!isHost} className={room.mode === "word" ? "rounded-full bg-surface-primary px-7 py-2.5 text-sm font-black uppercase tracking-wider text-white transition-all sm:px-8 sm:text-base" : "px-7 py-2.5 text-sm font-black uppercase tracking-wider text-surface-primary/50 transition-all sm:px-8 sm:text-base"}>Palavra</button>
-            <button type="button" onClick={() => onModeChange("question")} disabled={!isHost} className={room.mode === "question" ? "rounded-full bg-surface-primary px-7 py-2.5 text-sm font-black uppercase tracking-wider text-white transition-all sm:px-8 sm:text-base" : "px-7 py-2.5 text-sm font-black uppercase tracking-wider text-surface-primary/50 transition-all sm:px-8 sm:text-base"}>Pergunta</button>
+          <div className="flex rounded-full bg-[var(--panel-muted)] p-1.5">
+            <button type="button" onClick={() => onModeChange("word")} disabled={!isHost} className={room.mode === "word" ? "rounded-full bg-surface-primary px-7 py-2.5 text-sm font-black uppercase tracking-wider text-white transition-all sm:px-8 sm:text-base" : "px-7 py-2.5 text-sm font-black uppercase tracking-wider text-[var(--panel-soft-text)] transition-all sm:px-8 sm:text-base"}>Palavra</button>
+            <button type="button" onClick={() => onModeChange("question")} disabled={!isHost} className={room.mode === "question" ? "rounded-full bg-surface-primary px-7 py-2.5 text-sm font-black uppercase tracking-wider text-white transition-all sm:px-8 sm:text-base" : "px-7 py-2.5 text-sm font-black uppercase tracking-wider text-[var(--panel-soft-text)] transition-all sm:px-8 sm:text-base"}>Pergunta</button>
           </div>
 
           {packOptions.length > 0 && (
-            <div className="flex w-full max-w-[320px] flex-col items-center gap-2">
-              <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-surface-primary/70 sm:text-sm">Pack da rodada</span>
-              <select value={selectedPackValue} onChange={(event) => onPackChange(event.target.value)} disabled={!isHost} className="w-full rounded-xl border border-surface-primary/20 bg-surface-primary/10 px-3 py-2 text-sm text-surface-primary outline-none focus:border-surface-primary focus:ring-1 focus:ring-surface-primary disabled:opacity-50">
-                <optgroup label="Packs do sistema">
-                  {packOptions.filter((pack) => pack.source === "default").map((pack) => (
-                    <option key={pack.key} value={`default:${pack.key}`}>
-                      {pack.title} ({pack.count})
-                    </option>
-                  ))}
-                </optgroup>
-                {packOptions.some((pack) => pack.source === "custom") && (
-                  <optgroup label="Meus packs">
-                    {packOptions.filter((pack) => pack.source === "custom").map((pack) => (
+            <div className="flex w-full max-w-[560px] flex-col items-center gap-3">
+              <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)] sm:text-sm">Tema</span>
+              <div className="grid w-full gap-3 sm:grid-cols-2">
+                {systemPackOptions.map((pack) => {
+                  const isSelected = selectedPackValue === `default:${pack.key}`;
+                  return (
+                    <button
+                      key={pack.key}
+                      type="button"
+                      onClick={() => onPackChange(`default:${pack.key}`)}
+                      disabled={!isHost}
+                      className={`flex items-center justify-between rounded-[18px] border px-4 py-3 text-left transition-colors ${
+                        isSelected
+                          ? "border-surface-primary bg-surface-primary text-white"
+                          : "border-[var(--control-border)] bg-[var(--control-surface)] text-[var(--control-text)]"
+                      } ${!isHost ? "opacity-70" : "hover:border-surface-primary/60 hover:bg-[var(--panel-muted)]"}`}
+                    >
+                      <span className="flex items-center gap-3">
+                        <Icon icon={THEME_ICON_MAP[pack.icon] ?? "solar:star-bold"} width={18} height={18} />
+                        <span className="font-body text-base">{pack.title}</span>
+                      </span>
+                      <span className={`font-condensed text-[11px] uppercase tracking-[0.22em] ${isSelected ? "text-white/80" : "text-[var(--panel-soft-text)]"}`}>
+                        {pack.count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {customPackOptions.length > 0 && (
+                <div className="flex w-full flex-col gap-2">
+                  <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)]">
+                    Meus packs
+                  </span>
+                  <select value={selectedPackValue.startsWith("custom:") ? selectedPackValue : ""} onChange={(event) => onPackChange(event.target.value)} disabled={!isHost} className="w-full rounded-xl border border-[var(--control-border)] bg-[var(--control-surface)] px-3 py-2 text-sm text-[var(--control-text)] outline-none focus:border-surface-primary focus:ring-1 focus:ring-surface-primary disabled:opacity-50">
+                    <option value="">Usar pack do sistema</option>
+                    {customPackOptions.map((pack) => (
                       <option key={pack.key} value={`custom:${pack.key}`}>
                         {pack.title} ({pack.count})
                       </option>
                     ))}
-                  </optgroup>
-                )}
-              </select>
+                  </select>
+                </div>
+              )}
             </div>
           )}
 
           {room.mode === "word" && (
             <div className="flex items-center gap-4">
-              <button type="button" onClick={onToggleHint} disabled={!isHost} className={`relative h-7 w-12 rounded-full transition-colors sm:h-8 sm:w-14 ${room.settings.impostorHint ? "bg-game-safe" : "bg-surface-primary/20"} ${!isHost ? "pointer-events-none opacity-50" : ""}`}>
+              <button type="button" onClick={onToggleHint} disabled={!isHost} className={`relative h-7 w-12 rounded-full transition-colors sm:h-8 sm:w-14 ${room.settings.impostorHint ? "bg-game-safe" : "bg-[var(--control-surface-muted)]"} ${!isHost ? "pointer-events-none opacity-50" : ""}`}>
                 <div className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform sm:h-7 sm:w-7 ${room.settings.impostorHint ? "translate-x-5 sm:translate-x-6" : ""}`} />
               </button>
-              <span className="font-condensed text-xs uppercase tracking-wider text-surface-primary/70 sm:text-sm">Dica do Impostor</span>
+              <span className="font-condensed text-xs uppercase tracking-wider text-[var(--panel-soft-text)] sm:text-sm">Dica do Impostor</span>
             </div>
           )}
 
           {room.mode === "question" && (
-            <div className="flex w-full flex-col gap-3 rounded-3xl border border-surface-primary/10 bg-black/5 px-4 py-4">
+            <div className="flex w-full flex-col gap-3 rounded-3xl border border-[var(--control-border)] bg-[var(--panel-muted)] px-4 py-4">
               <div className="flex flex-col items-center gap-2">
-                <span className="font-condensed text-xs uppercase tracking-[0.24em] text-surface-primary/70 sm:text-sm">Tipo de Pergunta</span>
-                <div className="flex rounded-full bg-surface-primary/10 p-1">
-                  <button type="button" onClick={() => onQuestionModeChange("system")} disabled={!isHost} className={room.questionMode !== "master" ? "rounded-full bg-surface-primary px-4 py-1.5 text-xs font-black uppercase text-white transition-all" : "px-4 py-1.5 text-xs font-black uppercase text-surface-primary/50 transition-all"}>Prontas</button>
-                  <button type="button" onClick={() => onQuestionModeChange("master")} disabled={!isHost} className={room.questionMode === "master" ? "rounded-full bg-surface-primary px-4 py-1.5 text-xs font-black uppercase text-white transition-all" : "px-4 py-1.5 text-xs font-black uppercase text-surface-primary/50 transition-all"}>Mestre Cria</button>
+                <span className="font-condensed text-xs uppercase tracking-[0.24em] text-[var(--panel-soft-text)] sm:text-sm">Tipo de Pergunta</span>
+                <div className="flex rounded-full bg-[var(--control-surface-muted)] p-1">
+                  <button type="button" onClick={() => onQuestionModeChange("system")} disabled={!isHost} className={room.questionMode !== "master" ? "rounded-full bg-surface-primary px-4 py-1.5 text-xs font-black uppercase text-white transition-all" : "px-4 py-1.5 text-xs font-black uppercase text-[var(--panel-soft-text)] transition-all"}>Prontas</button>
+                  <button type="button" onClick={() => onQuestionModeChange("master")} disabled={!isHost} className={room.questionMode === "master" ? "rounded-full bg-surface-primary px-4 py-1.5 text-xs font-black uppercase text-white transition-all" : "px-4 py-1.5 text-xs font-black uppercase text-[var(--panel-soft-text)] transition-all"}>Mestre Cria</button>
                 </div>
               </div>
 
               {room.questionMode === "master" && (
                 <div className="flex flex-col items-center gap-2">
-                  <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-surface-primary/70 sm:text-sm">Quem sera o Mestre?</span>
-                  <select value={room.settings.customMasterId || players.find((player) => player.isHost)?._id} onChange={(event) => onMasterChange(event.target.value)} disabled={!isHost} className="w-full max-w-[220px] rounded-xl border border-surface-primary/20 bg-surface-primary/10 px-3 py-2 text-sm text-surface-primary outline-none focus:border-surface-primary focus:ring-1 focus:ring-surface-primary">
+                  <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)] sm:text-sm">Quem sera o Mestre?</span>
+                  <select value={room.settings.customMasterId || players.find((player) => player.isHost)?._id} onChange={(event) => onMasterChange(event.target.value)} disabled={!isHost} className="w-full max-w-[220px] rounded-xl border border-[var(--control-border)] bg-[var(--control-surface)] px-3 py-2 text-sm text-[var(--control-text)] outline-none focus:border-surface-primary focus:ring-1 focus:ring-surface-primary">
                     {players.filter((player) => player.status !== "disconnected").map((player) => <option key={player._id} value={player._id}>{player.name} {player.isHost ? "(Host)" : ""}</option>)}
                   </select>
                 </div>
@@ -633,25 +659,25 @@ function LobbyPanel({
           )}
 
           <div className="flex flex-col items-center gap-2">
-            <p className="text-center font-body text-sm text-surface-primary/60 sm:text-base">
+            <p className="text-center font-body text-sm text-[var(--panel-soft-text)] sm:text-base">
               {playerCount} jogador{playerCount !== 1 ? "es" : ""} na sala
               {playerCount < MIN_PLAYERS && <span className="ml-1 text-game-warning">(minimo 3)</span>}
             </p>
             {isHost && playerCount < room.settings.maxPlayers && (
-              <button onClick={onAddBot} className="flex items-center gap-1.5 rounded-full border border-surface-primary/20 bg-surface-primary/10 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-surface-primary/60 transition-all hover:bg-surface-primary/20 hover:text-surface-primary sm:px-4 sm:py-2 sm:text-sm">
+              <button onClick={onAddBot} className="flex items-center gap-1.5 rounded-full border border-[var(--control-border)] bg-[var(--control-surface)] px-3 py-1.5 text-xs font-black uppercase tracking-wider text-[var(--control-text)] transition-all hover:border-surface-primary/50 hover:bg-[var(--panel-muted)] sm:px-4 sm:py-2 sm:text-sm">
                 <Plus size={16} /> Adicionar Bot
               </button>
             )}
             {startReadinessMessage && <p className="max-w-[460px] text-center font-body text-xs text-game-impostor sm:text-sm">{startReadinessMessage}</p>}
-            {playerCount < MIN_PLAYERS && <p className="text-center font-condensed text-[10px] uppercase tracking-widest text-surface-primary/40 sm:text-xs">Aguarde jogadores entrarem ou adicione bots.</p>}
+            {playerCount < MIN_PLAYERS && <p className="text-center font-condensed text-[10px] uppercase tracking-widest text-[var(--panel-soft-text)] sm:text-xs">Aguarde jogadores entrarem ou adicione bots.</p>}
           </div>
         </div>
       </div>
 
-      <div className="mt-auto flex w-full flex-col gap-2 border-t border-surface-primary/10 pt-4">
+      <div className="mt-auto flex w-full flex-col gap-2 border-t border-[var(--control-border)] pt-4">
         {actionError && <p className="text-center font-body text-xs text-game-impostor sm:text-sm">{actionError}</p>}
         {isHost && (
-          <GameButton variant="filled" size="lg" icon={<Icon icon="solar:play-bold" width={20} height={20} />} onClick={onStart} disabled={startDisabled} className={startDisabled ? "!pointer-events-auto !cursor-not-allowed !border-gray-200 !bg-gray-200 !text-gray-400 !shadow-none !opacity-100" : ""}>
+          <GameButton variant="filled" size="lg" icon={<Icon icon="solar:play-bold" width={20} height={20} />} onClick={onStart} disabled={startDisabled}>
             Iniciar
           </GameButton>
         )}

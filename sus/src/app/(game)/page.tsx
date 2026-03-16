@@ -157,7 +157,7 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative flex min-h-[calc(100dvh-8rem)] w-full flex-col items-center justify-center gap-4 pb-16 pt-2 sm:gap-5 sm:pb-20">
+    <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-3 py-2 sm:gap-4">
       <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
         <GameSettingsButton sessionId={sessionId} />
         {isLoggedIn ? (
@@ -187,10 +187,10 @@ export default function HomePage() {
 
       <BubbleText
         text="SUS"
-        className="mt-4 font-display text-6xl tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)] sm:mt-8 sm:text-7xl"
+        className="mt-2 font-display text-[clamp(3.8rem,7vw,6.25rem)] tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)] sm:mt-4"
       />
 
-      <div className="relative z-20 -mb-12 flex flex-col items-center sm:-mb-14">
+      <div className="relative z-20 -mb-8 flex flex-col items-center sm:-mb-10">
         <button
           onClick={() => {
             if (isLoggedIn) {
@@ -218,7 +218,7 @@ export default function HomePage() {
         {isLoggedIn ? (
           <button
             onClick={() => router.push("/profile")}
-            className="mt-3 rounded-full border border-white/30 bg-white/15 px-4 py-2 text-xs font-condensed uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm transition-colors hover:bg-white/25"
+            className="mt-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-condensed uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm transition-colors hover:bg-white/20"
           >
             Editar no perfil
           </button>
@@ -234,9 +234,9 @@ export default function HomePage() {
       </div>
 
       <div className={`flex w-full justify-center ${shakePanel ? "animate-shake" : ""}`}>
-        <GameCircle className="min-h-[500px] max-w-[660px] px-5 pb-8 pt-20 sm:min-h-[540px] sm:px-8 sm:pb-10 sm:pt-24">
+        <GameCircle className="min-h-[clamp(25rem,58vh,32rem)] max-w-[680px] px-5 pb-6 pt-16 sm:px-7 sm:pb-8 sm:pt-[4.5rem]">
           <div className="flex h-full w-full flex-col items-center justify-center">
-            <div className="flex w-full max-w-[430px] flex-col items-center gap-4">
+            <div className="flex w-full max-w-[420px] flex-col items-center gap-3.5">
               <div className="w-full">
                 <GameInput
                   value={displayName}
@@ -247,7 +247,7 @@ export default function HomePage() {
                   readOnly={isLoggedIn}
                 />
                 {isLoggedIn && (
-                  <p className="mt-2 text-center font-body text-xs text-surface-primary/55">
+                  <p className="mt-2 text-center font-body text-xs text-[var(--panel-soft-text)]">
                     O nome e a foto usados nas salas vem do seu perfil.
                   </p>
                 )}
@@ -266,7 +266,7 @@ export default function HomePage() {
                 <p className="text-center font-body text-sm text-game-impostor">{error}</p>
               )}
 
-              <div className="my-2 h-px w-full bg-surface-primary/12" />
+              <div className="my-1.5 h-px w-full bg-[var(--control-border)]" />
 
               <div className="flex w-full flex-col gap-3">
                 <GameButton
@@ -277,7 +277,7 @@ export default function HomePage() {
                   onClick={handleJoin}
                   className={
                     code.length !== 4 || loading
-                      ? "!bg-[#e5e7eb] !text-[#9ca3af] !border-[#e5e7eb] !shadow-none !opacity-100 hover:!shadow-none"
+                      ? "!bg-[var(--control-disabled-bg)] !text-[var(--control-disabled-text)] !border-[var(--control-disabled-border)] !shadow-none !opacity-100 hover:!shadow-none"
                       : "!bg-[#1e1b6e] !text-white !border-[#1e1b6e] !shadow-[0_4px_0_rgba(0,0,0,0.3)] hover:!brightness-110 !opacity-100"
                   }
                 >
@@ -310,12 +310,12 @@ export default function HomePage() {
 
       {isAvatarModalOpen && !isLoggedIn && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="flex w-full max-w-md flex-col gap-4 rounded-3xl bg-white p-5 shadow-2xl animate-in fade-in zoom-in duration-200 sm:p-6">
+          <div className="flex w-full max-w-md flex-col gap-4 rounded-3xl bg-[var(--panel-elevated)] p-5 text-[var(--panel-text)] shadow-2xl animate-in fade-in zoom-in duration-200 sm:p-6">
             <div className="flex items-center justify-between">
-              <h2 className="font-display text-2xl text-surface-primary">Escolha seu Avatar</h2>
+              <h2 className="font-display text-2xl text-[var(--panel-text)]">Escolha seu Avatar</h2>
               <button
                 onClick={() => setIsAvatarModalOpen(false)}
-                className="rounded-full p-1 text-surface-primary/60 transition-colors hover:bg-gray-100 hover:text-surface-primary"
+                className="rounded-full p-1 text-[var(--panel-soft-text)] transition-colors hover:bg-[var(--panel-muted)] hover:text-[var(--panel-text)]"
               >
                 <Icon icon="solar:close-circle-bold" width={32} height={32} />
               </button>
@@ -330,7 +330,7 @@ export default function HomePage() {
                     setIsAvatarModalOpen(false);
                   }}
                   className={`flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${
-                    guestAvatarSeed === seed ? "scale-105 rounded-full ring-4 ring-[#1e1b6e]" : ""
+                    guestAvatarSeed === seed ? "scale-105 rounded-full ring-4 ring-surface-primary" : ""
                   }`}
                 >
                   <PlayerAvatar name={displayName} avatarSeed={seed} size="md" hideName />
@@ -338,7 +338,7 @@ export default function HomePage() {
               ))}
             </div>
 
-            <div className="mt-1 border-t border-gray-100 pt-3">
+            <div className="mt-1 border-t border-[var(--control-border)] pt-3">
               <GameButton
                 variant="outline"
                 size="md"

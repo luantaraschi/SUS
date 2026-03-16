@@ -4,21 +4,17 @@ import { auth } from "./auth.js";
 import { getDefaultPackCatalog } from "./content.js";
 
 async function buildDefaultPackOptions(
-  ctx: QueryCtx,
+  _ctx: QueryCtx,
   mode: "word" | "question"
 ) {
   const catalog = getDefaultPackCatalog(mode);
-  const entries =
-    mode === "word"
-      ? await ctx.db.query("wordPacks").collect()
-      : await ctx.db.query("questionPacks").collect();
 
   return catalog.map((pack) => ({
     key: pack.key,
     title: pack.title,
     icon: pack.icon,
     source: "default" as const,
-    count: entries.filter((entry) => entry.category === pack.title).length,
+    count: pack.items.length,
   }));
 }
 

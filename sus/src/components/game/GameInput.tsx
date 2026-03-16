@@ -37,7 +37,7 @@ export default function GameInput({
   return (
     <div className="flex w-full flex-col gap-1.5">
       {label && (
-        <label className="font-condensed text-xs uppercase tracking-widest text-surface-primary/70">
+        <label className="font-condensed text-xs uppercase tracking-widest text-[var(--panel-soft-text)]">
           {label}
         </label>
       )}
@@ -48,10 +48,10 @@ export default function GameInput({
         placeholder={placeholder}
         maxLength={maxLength}
         className={`
-          w-full text-center rounded-pill border-[3px] bg-white px-5 sm:px-6 py-3.5 sm:py-4
-          font-display text-xl sm:text-2xl text-surface-primary
+          w-full rounded-pill border-[3px] bg-[var(--control-surface)] px-5 py-3 text-center
+          font-display text-xl text-[var(--control-text)] sm:px-6 sm:py-4 sm:text-2xl
           outline-none transition-all duration-200
-          placeholder:text-surface-primary/30
+          placeholder:text-[var(--control-soft-text)]
           ${STATE_STYLES[state]}
           ${isCode ? "tracking-widest text-2xl sm:text-3xl uppercase font-bold" : ""}
         `}

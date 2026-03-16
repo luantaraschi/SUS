@@ -21,7 +21,7 @@ const VARIANT_STYLES: Record<ButtonVariant, string> = {
   filled:
     "bg-[#1e1b6e] text-white border-[#1e1b6e] shadow-[0_4px_0_rgba(0,0,0,0.3)] hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(0,0,0,0.3)] hover:brightness-110 active:translate-y-1 active:shadow-none",
   outline:
-    "bg-white text-[#1e1b6e] border-[#1e1b6e] shadow-[0_4px_0_rgba(30,27,110,0.4)] hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(30,27,110,0.4)] active:translate-y-1 active:shadow-none",
+    "bg-[var(--control-surface)] text-[var(--control-text)] border-[var(--control-border)] shadow-[0_4px_0_rgba(30,27,110,0.18)] hover:-translate-y-0.5 hover:shadow-[0_6px_0_rgba(30,27,110,0.2)] active:translate-y-1 active:shadow-none",
   danger:
     "bg-game-impostor text-white border-game-impostor shadow-[0_4px_0_theme(colors.game.impostor)] hover:-translate-y-0.5 hover:shadow-[0_6px_0_theme(colors.game.impostor)] active:translate-y-1 active:shadow-none",
   success:
@@ -57,7 +57,7 @@ export default function GameButton({
         transition-all duration-200 mb-1
         ${VARIANT_STYLES[variant]}
         ${SIZE_STYLES[size]}
-        ${disabled ? "pointer-events-none opacity-50" : "cursor-pointer hover:shadow-[0_4px_24px_rgba(0,0,0,0.25)]"}
+        ${disabled ? "pointer-events-none border-[var(--control-disabled-border)] bg-[var(--control-disabled-bg)] text-[var(--control-disabled-text)] opacity-100 shadow-none" : "cursor-pointer hover:shadow-[0_4px_24px_rgba(0,0,0,0.25)]"}
         ${className}
       `}
     >

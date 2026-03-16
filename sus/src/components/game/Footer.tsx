@@ -2,20 +2,20 @@ import { Instagram, Github, Linkedin } from "lucide-react";
 
 export default function Footer() {
   return (
-    <footer className="relative z-10 mt-auto w-full border-t border-white/10 bg-black/15 px-4 py-3 backdrop-blur-sm sm:px-6">
+    <footer className="relative z-10 mt-auto w-full border-t border-[var(--control-border)] bg-black/10 px-4 py-3 backdrop-blur-sm sm:px-6">
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
       <div className="flex-1">
         <a
           href="https://github.com/luantaraschi"
           target="_blank"
           rel="noopener noreferrer"
-          className="font-black uppercase tracking-wider text-xs text-white/70 hover:text-white transition-colors"
+          className="font-black uppercase tracking-wider text-xs text-white/70 transition-colors hover:text-white"
         >
           luantaraschi
         </a>
       </div>
 
-      <nav className="hidden flex-1 justify-center gap-6 font-condensed uppercase tracking-widest text-xs text-white/50 sm:flex">
+      <nav className="hidden flex-1 justify-center gap-6 font-condensed text-xs uppercase tracking-widest text-white/50 sm:flex">
         <a href="#" className="hover:text-white/80 transition-colors">
           PRIVACY
         </a>

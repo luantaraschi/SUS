@@ -83,16 +83,13 @@ export async function getDefaultPackCount(
   mode: DefaultMode,
   packKey?: string
 ) {
+  void ctx;
   const pack =
     mode === "word" ? getDefaultWordPack(packKey) : getDefaultQuestionPack(packKey);
-  const entries =
-    mode === "word"
-      ? await ctx.db.query("wordPacks").collect()
-      : await ctx.db.query("questionPacks").collect();
 
   return {
     pack,
-    count: entries.filter((entry) => entry.category === pack.title).length,
+    count: pack.items.length,
   };
 }
 
