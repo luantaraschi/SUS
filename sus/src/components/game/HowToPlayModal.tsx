@@ -1,37 +1,41 @@
+"use client";
+
 import { useState } from "react";
 import { Icon } from "@iconify/react";
 
+const tabs = ["Geral", "Palavra", "Pergunta"] as const;
+
 export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
-  const tabs = ["Geral", "Palavra", "Pergunta"];
-  const [activeTab, setActiveTab] = useState("Geral");
+  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Geral");
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-3xl bg-white p-8 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-        onClick={(e) => e.stopPropagation()}
+        className="custom-scrollbar relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-[32px] border border-[var(--panel-border)] bg-[var(--panel-surface)] p-6 text-[var(--panel-text)] shadow-2xl sm:p-8"
+        onClick={(event) => event.stopPropagation()}
       >
-        {/* Botão fechar */}
         <button
+          type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--panel-muted)] text-[var(--panel-soft-text)] transition-colors hover:bg-[var(--control-surface-muted)] hover:text-[var(--panel-text)]"
+          aria-label="Fechar como jogar"
         >
-          <Icon icon="solar:close-circle-bold" width={32} height={32} />
+          <Icon icon="solar:close-circle-bold" width={28} height={28} />
         </button>
 
-        {/* Tabs */}
-        <div className="bg-[#1e1b6e]/10 rounded-full p-1 flex gap-1 mb-6 mt-2">
+        <div className="mt-2 mb-6 flex gap-1 rounded-full bg-[var(--panel-muted)] p-1">
           {tabs.map((tab) => (
             <button
               key={tab}
+              type="button"
               onClick={() => setActiveTab(tab)}
-              className={`flex-1 px-4 py-1.5 font-black uppercase tracking-wider text-xs transition-colors rounded-full ${
+              className={`flex-1 rounded-full px-4 py-2 font-condensed text-xs uppercase tracking-[0.24em] transition-colors ${
                 activeTab === tab
-                  ? "bg-[#1e1b6e] text-white"
-                  : "text-[#1e1b6e]/50 hover:text-[#1e1b6e]/80"
+                  ? "bg-surface-primary text-white"
+                  : "text-[var(--panel-soft-text)] hover:text-[var(--panel-text)]"
               }`}
             >
               {tab}
@@ -39,83 +43,149 @@ export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
           ))}
         </div>
 
-        {/* Conteúdo */}
-        <div className="flex flex-col">
+        <div className="space-y-6 font-body text-[15px] leading-relaxed text-[var(--panel-soft-text)]">
           {activeTab === "Geral" && (
-            <div className="animate-in fade-in duration-200">
-              <h3 className="font-display text-lg font-black text-gray-800 mb-2">O que é o SUS?</h3>
-              <p className="font-body text-sm text-gray-600 leading-relaxed mb-3">
-                O SUS é um jogo de dedução social para grupos. Um jogador entre vocês é o <span className="font-black text-gray-800">impostor</span> — e ninguém sabe quem é, exceto ele mesmo.
-              </p>
+            <>
+              <section>
+                <h3 className="mb-2 font-display text-2xl text-[var(--panel-text)]">
+                  O que e o SUS?
+                </h3>
+                <p>
+                  O SUS e um jogo de deducao social para grupos. Um jogador entre voces
+                  e o <span className="font-display text-[var(--panel-text)]">impostor</span>
+                  , e ninguem sabe quem e, exceto ele mesmo.
+                </p>
+              </section>
 
-              <h3 className="font-display text-lg font-black text-gray-800 mt-6 mb-2">Como funciona:</h3>
-              <ol className="list-decimal list-inside space-y-1 text-sm text-gray-600 font-body mb-3">
-                <li>O dono da sala configura e inicia a partida</li>
-                <li>Cada jogador recebe uma informação secreta no próprio dispositivo</li>
-                <li>A rodada começa — observem, respondam, blefem</li>
-                <li>Ao final, todos <span className="font-black text-gray-800">votam</span> em quem acham que é o impostor</li>
-                <li>O impostor vence se não for descoberto. O grupo vence se acertar</li>
-              </ol>
-            </div>
+              <section>
+                <h3 className="mb-3 font-display text-2xl text-[var(--panel-text)]">
+                  Como funciona
+                </h3>
+                <ol className="space-y-2 pl-5">
+                  <li className="list-decimal">O dono da sala configura e inicia a partida.</li>
+                  <li className="list-decimal">
+                    Cada jogador recebe uma informacao secreta no proprio dispositivo.
+                  </li>
+                  <li className="list-decimal">
+                    A rodada comeca: observem, respondam e blefem.
+                  </li>
+                  <li className="list-decimal">
+                    Ao final, todos votam em quem acham que e o impostor.
+                  </li>
+                  <li className="list-decimal">
+                    O impostor vence se nao for descoberto. O grupo vence se acertar.
+                  </li>
+                </ol>
+              </section>
+            </>
           )}
 
           {activeTab === "Palavra" && (
-            <div className="animate-in fade-in duration-200">
-              <h3 className="font-display text-lg font-black text-gray-800 mb-2">Como funciona:</h3>
-              <p className="font-body text-sm text-gray-600 leading-relaxed mb-3">
-                Todos os jogadores recebem a <span className="font-black text-gray-800">mesma palavra secreta</span> — exceto o impostor, que não recebe nada.
-              </p>
-              <p className="font-body text-sm text-gray-600 leading-relaxed mb-6">
-                O impostor precisa fingir que sabe a palavra sem entregá-la. Os outros precisam provar que sabem sem facilitar demais para o impostor adivinhar.
-              </p>
-
-              <div className="bg-[#1e1b6e]/10 rounded-2xl p-4 mb-6">
-                <h4 className="font-display text-base font-black text-gray-800 mb-1">Dica do Impostor <span className="text-xs font-body font-normal text-gray-500">(opcional)</span></h4>
-                <p className="font-body text-sm text-gray-600 leading-relaxed">
-                  Quando ativada pelo dono da sala, o impostor recebe uma <span className="font-black text-gray-800">palavra de dica</span> relacionada à palavra principal. Ele ainda não sabe a palavra exata, mas tem uma pista para blefar melhor.
+            <>
+              <section>
+                <h3 className="mb-2 font-display text-2xl text-[var(--panel-text)]">
+                  Modo Palavra
+                </h3>
+                <p>
+                  Todos os jogadores recebem a mesma palavra secreta, exceto o
+                  impostor, que nao recebe nada.
                 </p>
-              </div>
+                <p className="mt-3">
+                  O impostor precisa fingir que sabe a palavra sem entrega-la. Os
+                  outros precisam provar que sabem sem facilitar demais para o
+                  impostor adivinhar.
+                </p>
+              </section>
 
-              <h3 className="font-display text-lg font-black text-gray-800 mb-2">Dicas para jogar:</h3>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 font-body mb-3">
-                <li>Seja específico o suficiente para provar que sabe, mas vago o suficiente para não entregar</li>
-                <li>Observe quem está sendo genérico demais — pode ser o impostor</li>
-                <li>O impostor deve arriscar respostas plausíveis, não óbvias</li>
-              </ul>
-            </div>
+              <section className="rounded-[24px] border border-[var(--control-border)] bg-[var(--control-surface-muted)] p-4">
+                <h4 className="mb-1 font-display text-xl text-[var(--panel-text)]">
+                  Dica do impostor
+                </h4>
+                <p>
+                  Quando ativada pelo dono da sala, o impostor recebe uma palavra de
+                  dica relacionada a palavra principal. Ele ainda nao sabe a palavra
+                  exata, mas ganha uma pista para blefar melhor.
+                </p>
+              </section>
+
+              <section>
+                <h3 className="mb-3 font-display text-2xl text-[var(--panel-text)]">
+                  Dicas para jogar
+                </h3>
+                <ul className="space-y-2 pl-5">
+                  <li className="list-disc">
+                    Seja especifico o suficiente para provar que sabe, mas vago o
+                    suficiente para nao entregar.
+                  </li>
+                  <li className="list-disc">
+                    Observe quem esta sendo generico demais: pode ser o impostor.
+                  </li>
+                  <li className="list-disc">
+                    O impostor deve arriscar respostas plausiveis, nao obvias.
+                  </li>
+                </ul>
+              </section>
+            </>
           )}
 
           {activeTab === "Pergunta" && (
-            <div className="animate-in fade-in duration-200">
-              <h3 className="font-display text-lg font-black text-gray-800 mb-2">Como funciona:</h3>
-              <p className="font-body text-sm text-gray-600 leading-relaxed mb-3">
-                Todos recebem uma <span className="font-black text-gray-800">pergunta</span>, mas o impostor recebe uma <span className="font-black text-gray-800">pergunta diferente</span> — pensada para produzir uma resposta parecida com a dos outros.
-              </p>
-              <p className="font-body text-sm text-gray-600 leading-relaxed mb-6">
-                Todos digitam suas respostas no app. Quando todos estiverem prontos, as respostas aparecem simultaneamente na tela.
-              </p>
-
-              <div className="bg-[#1e1b6e]/10 rounded-2xl p-4 mb-3">
-                <h4 className="font-display text-base font-black text-gray-800 mb-1">Modo Automático</h4>
-                <p className="font-body text-sm text-gray-600 leading-relaxed">
-                  A plataforma escolhe automaticamente a pergunta dos jogadores e a pergunta do impostor.
+            <>
+              <section>
+                <h3 className="mb-2 font-display text-2xl text-[var(--panel-text)]">
+                  Modo Pergunta
+                </h3>
+                <p>
+                  Todos recebem uma pergunta, mas o impostor recebe uma pergunta
+                  diferente, pensada para produzir uma resposta parecida com a dos
+                  outros.
                 </p>
-              </div>
-
-              <div className="bg-[#1e1b6e]/10 rounded-2xl p-4 mb-6">
-                <h4 className="font-display text-base font-black text-gray-800 mb-1">Modo Mestre</h4>
-                <p className="font-body text-sm text-gray-600 leading-relaxed">
-                  Um jogador é nomeado <span className="font-black text-gray-800">mestre da rodada</span> pelo dono da sala. O mestre cria as duas perguntas e não participa como jogador — apenas observa a rodada.
+                <p className="mt-3">
+                  Todos digitam suas respostas no app. Quando todos estiverem prontos,
+                  as respostas aparecem simultaneamente na tela.
                 </p>
-              </div>
+              </section>
 
-              <h3 className="font-display text-lg font-black text-gray-800 mb-2">Dicas para jogar:</h3>
-              <ul className="list-disc list-inside space-y-1 text-sm text-gray-600 font-body mb-3">
-                <li>Respostas muito longas ou muito curtas podem denunciar o impostor</li>
-                <li>O impostor deve calibrar o tom e o estilo das respostas dos outros</li>
-                <li>Na discussão, preste atenção em quem muda de assunto rápido demais</li>
-              </ul>
-            </div>
+              <section className="rounded-[24px] border border-[var(--control-border)] bg-[var(--control-surface-muted)] p-4">
+                <h4 className="mb-1 font-display text-xl text-[var(--panel-text)]">
+                  Modo automatico
+                </h4>
+                <p>
+                  A plataforma escolhe automaticamente a pergunta dos jogadores e a
+                  pergunta do impostor.
+                </p>
+              </section>
+
+              <section className="rounded-[24px] border border-[var(--control-border)] bg-[var(--control-surface-muted)] p-4">
+                <h4 className="mb-1 font-display text-xl text-[var(--panel-text)]">
+                  Modo mestre
+                </h4>
+                <p>
+                  Um jogador e nomeado mestre da rodada pelo dono da sala. O mestre
+                  cria as duas perguntas e nao participa como jogador, apenas observa
+                  a rodada.
+                </p>
+              </section>
+
+              <section>
+                <h3 className="mb-3 font-display text-2xl text-[var(--panel-text)]">
+                  Dicas para jogar
+                </h3>
+                <ul className="space-y-2 pl-5">
+                  <li className="list-disc">
+                    Respostas muito longas ou muito curtas podem denunciar o
+                    impostor.
+                  </li>
+                  <li className="list-disc">
+                    O impostor deve calibrar o tom e o estilo das respostas dos
+                    outros.
+                  </li>
+                  <li className="list-disc">
+                    Na discussao, preste atencao em quem muda de assunto rapido
+                    demais.
+                  </li>
+                </ul>
+              </section>
+            </>
           )}
         </div>
       </div>

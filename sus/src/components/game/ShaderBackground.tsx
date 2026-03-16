@@ -66,6 +66,7 @@ export default function ShaderBackground({
   }, [animated, themeId]);
 
   const colors = VARIANT_STYLES[variant];
+  const showEnhancedLayers = themeId === "classico";
 
   return (
     <div
@@ -74,29 +75,33 @@ export default function ShaderBackground({
       style={{ background: colors.fallback }}
     >
       <div
-        className="absolute inset-0 opacity-90"
+        className={`absolute inset-0 ${animated ? "opacity-90" : "opacity-100"}`}
         style={{
           background: `var(--bg-base), ${colors.overlayA}, ${colors.overlayB}, ${colors.overlayC}`,
         }}
       />
-      <div
-        className={`absolute -left-[12%] top-[-14%] h-[48vh] w-[42vw] rounded-full blur-3xl ${
-          canAnimate ? "animate-[background-float-a_18s_ease-in-out_infinite]" : ""
-        }`}
-        style={{ background: "var(--bg-blob-1)" }}
-      />
-      <div
-        className={`absolute right-[-8%] top-[8%] h-[42vh] w-[34vw] rounded-full blur-3xl ${
-          canAnimate ? "animate-[background-float-b_20s_ease-in-out_infinite]" : ""
-        }`}
-        style={{ background: "var(--bg-blob-2)" }}
-      />
-      <div
-        className={`absolute bottom-[-10%] left-[18%] h-[40vh] w-[44vw] rounded-full blur-3xl ${
-          canAnimate ? "animate-[background-float-a_24s_ease-in-out_infinite]" : ""
-        }`}
-        style={{ background: "var(--bg-blob-3)" }}
-      />
+      {showEnhancedLayers && animated && (
+        <>
+          <div
+            className={`absolute -left-[12%] top-[-14%] h-[48vh] w-[42vw] rounded-full blur-3xl ${
+              canAnimate ? "animate-[background-float-a_18s_ease-in-out_infinite]" : ""
+            }`}
+            style={{ background: "var(--bg-blob-1)" }}
+          />
+          <div
+            className={`absolute right-[-8%] top-[8%] h-[42vh] w-[34vw] rounded-full blur-3xl ${
+              canAnimate ? "animate-[background-float-b_20s_ease-in-out_infinite]" : ""
+            }`}
+            style={{ background: "var(--bg-blob-2)" }}
+          />
+          <div
+            className={`absolute bottom-[-10%] left-[18%] h-[40vh] w-[44vw] rounded-full blur-3xl ${
+              canAnimate ? "animate-[background-float-a_24s_ease-in-out_infinite]" : ""
+            }`}
+            style={{ background: "var(--bg-blob-3)" }}
+          />
+        </>
+      )}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(10,5,25,0.08)_100%)]" />
     </div>
   );

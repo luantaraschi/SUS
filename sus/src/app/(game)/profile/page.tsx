@@ -305,14 +305,14 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <div className="w-full max-w-4xl rounded-[36px] bg-white p-6 shadow-2xl sm:p-8">
-        <h3 className="mb-6 flex items-center gap-2 font-display text-2xl text-[#1e1b6e]">
+      <div className="w-full max-w-4xl rounded-[36px] border border-[var(--panel-border)] bg-[var(--panel-surface)] p-6 text-[var(--panel-text)] shadow-2xl sm:p-8">
+        <h3 className="mb-6 flex items-center gap-2 font-display text-2xl text-[var(--panel-text)]">
           <Icon icon="solar:history-bold" width={28} height={28} />
           Ultimas Partidas
         </h3>
 
         {recentGames.length === 0 ? (
-          <div className="py-8 text-center font-body text-gray-400">
+          <div className="py-8 text-center font-body text-[var(--panel-soft-text)]">
             Nenhuma partida registrada ainda.
             <br />
             Jogue uma partida ate o final para salvar seu historico!
@@ -322,25 +322,25 @@ export default function ProfilePage() {
             {recentGames.map((game) => (
               <div
                 key={game._id}
-                className="flex items-center justify-between rounded-2xl border border-gray-100 bg-gray-50 p-4 transition-colors hover:border-gray-200"
+                className="flex items-center justify-between rounded-2xl border border-[var(--control-border)] bg-[var(--control-surface)] p-4 transition-colors hover:bg-[var(--control-surface-muted)]"
               >
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-2">
-                    <span className="font-display text-lg text-gray-800">Sala {game.roomCode}</span>
-                    <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-condensed uppercase tracking-wider text-gray-600">
+                    <span className="font-display text-lg text-[var(--panel-text)]">Sala {game.roomCode}</span>
+                    <span className="rounded-full bg-[var(--control-surface-muted)] px-2 py-0.5 text-[10px] font-condensed uppercase tracking-wider text-[var(--control-soft-text)]">
                       {game.mode}
                     </span>
                   </div>
-                  <span className="font-body text-sm text-gray-500">
+                  <span className="font-body text-sm text-[var(--panel-soft-text)]">
                     {new Date(game.playedAt).toLocaleDateString()} • {game.totalPlayers} jogadores
                   </span>
                 </div>
 
                 <div className="flex flex-col items-end gap-1">
-                  <span className={`font-display text-xl ${game.finalRank === 1 ? "text-yellow-500" : "text-gray-400"}`}>
+                  <span className={`font-display text-xl ${game.finalRank === 1 ? "text-yellow-400" : "text-[var(--panel-soft-text)]"}`}>
                     {game.finalRank}º Lugar
                   </span>
-                  <span className="text-xs font-condensed uppercase tracking-widest text-gray-400">
+                  <span className="text-xs font-condensed uppercase tracking-widest text-[var(--control-soft-text)]">
                     {game.wasImpostor > 0 ? "Fui Impostor" : "Fui Tripulante"}
                   </span>
                 </div>

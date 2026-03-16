@@ -240,26 +240,35 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                 </section>
 
                 <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4">
-                  <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-start justify-between gap-4">
                     <div>
-                      <h3 className="font-display text-2xl">Background</h3>
-                      <p className="font-body text-sm text-[var(--panel-soft-text)]">
-                        O tema classico ja esta ativo. Os proximos entram assim que os fundos forem adicionados.
+                      <h3 className="font-display text-2xl">Animacao do background</h3>
+                      <p className="mt-1 font-body text-sm text-[var(--panel-soft-text)]">
+                        Ligue para usar o fundo animado. Desligado deixa a tela mais limpa e leve.
                       </p>
                     </div>
                     <button
                       type="button"
+                      role="switch"
+                      aria-checked={backgroundAnimationEnabled}
                       onClick={() => handleAnimationChange(!backgroundAnimationEnabled)}
-                      className={`relative h-8 w-14 rounded-full transition-colors ${
-                        backgroundAnimationEnabled ? "bg-game-safe" : "bg-[var(--control-surface-muted)]"
+                      className={`flex h-8 w-14 shrink-0 items-center rounded-full px-1 transition-colors ${
+                        backgroundAnimationEnabled
+                          ? "justify-end bg-game-safe"
+                          : "justify-start bg-[var(--control-surface-muted)]"
                       }`}
                     >
-                      <span
-                        className={`absolute top-0.5 h-7 w-7 rounded-full bg-white shadow transition-transform ${
-                          backgroundAnimationEnabled ? "translate-x-6" : "translate-x-0.5"
-                        }`}
-                      />
+                      <span className="h-6 w-6 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.25)] transition-transform" />
                     </button>
+                  </div>
+                </section>
+
+                <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4">
+                  <div>
+                    <h3 className="font-display text-2xl">Temas do background</h3>
+                    <p className="mt-1 font-body text-sm text-[var(--panel-soft-text)]">
+                      O tema classico esta ativo. Os proximos entram assim que os fundos forem adicionados.
+                    </p>
                   </div>
                   <div className="mt-4 grid gap-3 sm:grid-cols-2">
                     {themes.map((theme) => {
@@ -296,7 +305,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                 <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4">
                   <h3 className="font-display text-2xl">Acessibilidade visual</h3>
                   <p className="mt-2 font-body text-sm text-[var(--panel-soft-text)]">
-                    Desligar a animacao ajuda em navegadores mais pesados e em sessoes longas.
+                    O app respeita seu tema claro ou escuro e permite desligar a animacao do fundo em sessoes longas.
                   </p>
                 </section>
               </div>

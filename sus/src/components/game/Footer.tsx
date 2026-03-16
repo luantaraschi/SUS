@@ -1,8 +1,14 @@
 import { Instagram, Github, Linkedin } from "lucide-react";
 
-export default function Footer() {
+interface FooterProps {
+  fixed?: boolean;
+}
+
+export default function Footer({ fixed = false }: FooterProps) {
   return (
-    <footer className="relative z-10 mt-auto w-full border-t border-[var(--control-border)] bg-black/10 px-4 py-3 backdrop-blur-sm sm:px-6">
+    <footer
+      className={`${fixed ? "fixed inset-x-0 bottom-0" : "relative mt-auto"} z-10 w-full border-t border-[var(--control-border)] bg-black/10 px-4 py-3 backdrop-blur-sm sm:px-6`}
+    >
       <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4">
       <div className="flex-1">
         <a
