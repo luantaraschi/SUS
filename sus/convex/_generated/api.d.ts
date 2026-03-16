@@ -17,6 +17,7 @@ import type * as feedback from "../feedback.js";
 import type * as history from "../history.js";
 import type * as http from "../http.js";
 import type * as lib_generateCode from "../lib/generateCode.js";
+import type * as meta from "../meta.js";
 import type * as packs from "../packs.js";
 import type * as players from "../players.js";
 import type * as preferences from "../preferences.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   history: typeof history;
   http: typeof http;
   "lib/generateCode": typeof lib_generateCode;
+  meta: typeof meta;
   packs: typeof packs;
   players: typeof players;
   preferences: typeof preferences;

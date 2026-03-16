@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Icon } from "@iconify/react";
-import { useMutation } from "convex/react";
+import { useConvex, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useBackground } from "@/lib/BackgroundContext";
 
@@ -35,7 +35,9 @@ interface GameSettingsButtonProps {
 
 export default function GameSettingsButton({ sessionId }: GameSettingsButtonProps) {
   const pathname = usePathname();
+  const convex = useConvex();
   const submitBugReport = useMutation(api.feedback.submitBugReport);
+  const updatePreferences = useMutation(api.preferences.update);
   const {
     colorScheme,
     themeId,
@@ -44,10 +46,14 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
     setColorScheme,
     setThemeId,
     setBackgroundAnimationEnabled,
+    replacePreferences,
   } = useBackground();
 
   const [open, setOpen] = useState(false);
   const [bugMessage, setBugMessage] = useState("");
+  const [remotePreferencesState, setRemotePreferencesState] = useState<
+    "idle" | "loading" | "ready" | "unavailable"
+  >("idle");
   const [bugState, setBugState] = useState<{ error: string; success: string; loading: boolean }>({
     error: "",
     success: "",
@@ -58,6 +64,67 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
     () => themes.find((theme) => theme.id === themeId)?.id ?? "classico",
     [themeId, themes]
   );
+
+  useEffect(() => {
+    if (!open || remotePreferencesState !== "idle") {
+      return;
+    }
+
+    let cancelled = false;
+
+    const loadRemotePreferences = async () => {
+      setRemotePreferencesState("loading");
+
+      try {
+        const remote = await convex.query(api.preferences.current, {});
+        if (cancelled) {
+          return;
+        }
+
+        if (remote) {
+          replacePreferences({
+            colorScheme: remote.colorScheme,
+            themeId: remote.backgroundThemeId,
+            backgroundAnimationEnabled: remote.backgroundAnimationEnabled,
+          });
+          setRemotePreferencesState("ready");
+          return;
+        }
+
+        setRemotePreferencesState("unavailable");
+      } catch {
+        if (!cancelled) {
+          setRemotePreferencesState("unavailable");
+        }
+      }
+    };
+
+    void loadRemotePreferences();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [convex, open, remotePreferencesState, replacePreferences]);
+
+  const persistRemotePreferences = async (next: {
+    colorScheme: "system" | "light" | "dark";
+    themeId: string;
+    backgroundAnimationEnabled: boolean;
+  }) => {
+    if (remotePreferencesState !== "ready") {
+      return;
+    }
+
+    try {
+      await updatePreferences({
+        colorScheme: next.colorScheme,
+        backgroundThemeId: next.themeId,
+        backgroundAnimationEnabled: next.backgroundAnimationEnabled,
+      });
+    } catch {
+      setRemotePreferencesState("unavailable");
+    }
+  };
 
   const handleSubmitBug = async () => {
     setBugState({ error: "", success: "", loading: true });
@@ -79,6 +146,33 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
         loading: false,
       });
     }
+  };
+
+  const handleColorSchemeChange = (scheme: "system" | "light" | "dark") => {
+    setColorScheme(scheme);
+    void persistRemotePreferences({
+      colorScheme: scheme,
+      themeId: enabledThemeId,
+      backgroundAnimationEnabled,
+    });
+  };
+
+  const handleThemeChange = (nextThemeId: string) => {
+    setThemeId(nextThemeId);
+    void persistRemotePreferences({
+      colorScheme,
+      themeId: nextThemeId,
+      backgroundAnimationEnabled,
+    });
+  };
+
+  const handleAnimationChange = (enabled: boolean) => {
+    setBackgroundAnimationEnabled(enabled);
+    void persistRemotePreferences({
+      colorScheme,
+      themeId: enabledThemeId,
+      backgroundAnimationEnabled: enabled,
+    });
   };
 
   return (
@@ -151,7 +245,9 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                       <button
                         key={option.value}
                         type="button"
-                        onClick={() => setColorScheme(option.value as "system" | "light" | "dark")}
+                        onClick={() =>
+                          handleColorSchemeChange(option.value as "system" | "light" | "dark")
+                        }
                         className={`rounded-full px-4 py-2 font-condensed text-sm uppercase tracking-[0.24em] transition-colors ${
                           colorScheme === option.value
                             ? "bg-surface-primary text-white"
@@ -174,7 +270,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                     </div>
                     <button
                       type="button"
-                      onClick={() => setBackgroundAnimationEnabled(!backgroundAnimationEnabled)}
+                      onClick={() => handleAnimationChange(!backgroundAnimationEnabled)}
                       className={`relative h-8 w-14 rounded-full transition-colors ${
                         backgroundAnimationEnabled ? "bg-game-safe" : "bg-black/15"
                       }`}
@@ -193,7 +289,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                         <button
                           key={theme.id}
                           type="button"
-                          onClick={() => theme.enabled && setThemeId(theme.id)}
+                          onClick={() => theme.enabled && handleThemeChange(theme.id)}
                           disabled={!theme.enabled}
                           className={`flex items-center justify-between rounded-[18px] border px-4 py-3 text-left transition-colors ${
                             active

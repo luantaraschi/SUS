@@ -128,7 +128,6 @@ export default function RoomLobbyPage({
   const startReadiness = useQuery(api.rooms.getStartReadiness, room ? { roomId: room._id } : "skip");
 
   const linkSession = useMutation(api.users.linkSession);
-  const ensureDefaultData = useMutation(api.content.ensureDefaultData);
   const updateSettings = useMutation(api.rooms.updateSettings);
   const leaveRoom = useMutation(api.rooms.leaveRoom);
   const startGame = useMutation(api.rooms.startGame);
@@ -163,11 +162,6 @@ export default function RoomLobbyPage({
     },
     [isHost, room, sessionId, updateSettings]
   );
-
-  useEffect(() => {
-    if (!sessionId) return;
-    void ensureDefaultData({});
-  }, [ensureDefaultData, sessionId]);
 
   const handleShare = useCallback(async () => {
     try {

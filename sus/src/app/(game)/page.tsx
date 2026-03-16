@@ -58,7 +58,6 @@ export default function HomePage() {
   const linkSession = useMutation(api.users.linkSession);
   const createRoom = useMutation(api.rooms.createRoom);
   const joinRoom = useMutation(api.rooms.joinRoom);
-  const ensureDefaultData = useMutation(api.content.ensureDefaultData);
 
   const [guestName, setGuestName] = useState("");
   const [code, setCode] = useState("");
@@ -76,11 +75,6 @@ export default function HomePage() {
     api.rooms.checkRoomExists,
     code.length === 4 ? { code: code.toUpperCase() } : "skip"
   );
-
-  useEffect(() => {
-    if (!sessionId) return;
-    void ensureDefaultData({});
-  }, [ensureDefaultData, sessionId]);
 
   useEffect(() => {
     if (code.length < 4) {

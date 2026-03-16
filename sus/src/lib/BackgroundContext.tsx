@@ -9,8 +9,6 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useMutation, useQuery } from "convex/react";
-import { api } from "../../convex/_generated/api";
 import { BACKGROUND_THEMES, getEnabledBackgroundTheme } from "./backgroundThemes";
 
 type BackgroundVariant = "default" | "valid" | "invalid";
@@ -34,6 +32,7 @@ interface BackgroundContextType {
   setColorScheme: (scheme: ColorScheme) => void;
   setThemeId: (themeId: string) => void;
   setBackgroundAnimationEnabled: (enabled: boolean) => void;
+  replacePreferences: (next: Partial<PreferencesState>) => void;
 }
 
 const LOCAL_STORAGE_KEY = "sus.preferences.v2";
@@ -55,6 +54,7 @@ const BackgroundContext = createContext<BackgroundContextType>({
   setColorScheme: () => undefined,
   setThemeId: () => undefined,
   setBackgroundAnimationEnabled: () => undefined,
+  replacePreferences: () => undefined,
 });
 
 function readStoredPreferences(): PreferencesState {
@@ -88,10 +88,6 @@ function readStoredPreferences(): PreferencesState {
 }
 
 export function BackgroundProvider({ children }: { children: ReactNode }) {
-  const profile = useQuery(api.profiles.current);
-  const remotePreferences = useQuery(api.preferences.current);
-  const updatePreferences = useMutation(api.preferences.update);
-
   const [variant, setVariant] = useState<BackgroundVariant>("default");
   const [preferences, setPreferences] = useState<PreferencesState>(() => readStoredPreferences());
   const [systemScheme, setSystemScheme] = useState<"light" | "dark">("light");
@@ -108,43 +104,44 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
     return () => media.removeEventListener("change", syncScheme);
   }, []);
 
-  const resolvedPreferences = useMemo<PreferencesState>(() => {
-    if (!profile || remotePreferences === undefined || remotePreferences === null) {
-      return preferences;
-    }
-
-    return {
-      colorScheme: remotePreferences.colorScheme,
-      themeId: getEnabledBackgroundTheme(remotePreferences.backgroundThemeId).id,
-      backgroundAnimationEnabled: remotePreferences.backgroundAnimationEnabled,
-    };
-  }, [preferences, profile, remotePreferences]);
-
   useEffect(() => {
     if (typeof window === "undefined") {
       return;
     }
-    window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(resolvedPreferences));
-  }, [resolvedPreferences]);
+    window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(preferences));
+  }, [preferences]);
 
-  const persistPreferences = useCallback(
-    (next: PreferencesState) => {
-      setPreferences(next);
+  const persistPreferences = useCallback((next: PreferencesState) => {
+    setPreferences(next);
+
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(next));
+    }
+  }, []);
+
+  const replacePreferences = useCallback((next: Partial<PreferencesState>) => {
+    setPreferences((current) => {
+      const merged = {
+        colorScheme:
+          next.colorScheme === "light" ||
+          next.colorScheme === "dark" ||
+          next.colorScheme === "system"
+            ? next.colorScheme
+            : current.colorScheme,
+        themeId: getEnabledBackgroundTheme(next.themeId ?? current.themeId).id,
+        backgroundAnimationEnabled:
+          typeof next.backgroundAnimationEnabled === "boolean"
+            ? next.backgroundAnimationEnabled
+            : current.backgroundAnimationEnabled,
+      };
 
       if (typeof window !== "undefined") {
-        window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(next));
+        window.localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(merged));
       }
 
-      if (profile) {
-        void updatePreferences({
-          colorScheme: next.colorScheme,
-          backgroundThemeId: next.themeId,
-          backgroundAnimationEnabled: next.backgroundAnimationEnabled,
-        });
-      }
-    },
-    [profile, updatePreferences]
-  );
+      return merged;
+    });
+  }, []);
 
   const flashInvalid = useCallback(() => {
     setVariant("invalid");
@@ -152,39 +149,40 @@ export function BackgroundProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const effectiveColorScheme =
-    resolvedPreferences.colorScheme === "system"
+    preferences.colorScheme === "system"
       ? systemScheme
-      : resolvedPreferences.colorScheme;
+      : preferences.colorScheme;
 
   useEffect(() => {
     const root = document.documentElement;
     root.dataset.colorScheme = effectiveColorScheme;
-    root.dataset.themeId = resolvedPreferences.themeId;
+    root.dataset.themeId = preferences.themeId;
     root.classList.toggle("dark", effectiveColorScheme === "dark");
     root.classList.toggle("light", effectiveColorScheme === "light");
-  }, [effectiveColorScheme, resolvedPreferences.themeId]);
+  }, [effectiveColorScheme, preferences.themeId]);
 
   const value = useMemo<BackgroundContextType>(
     () => ({
       variant,
-      colorScheme: resolvedPreferences.colorScheme,
+      colorScheme: preferences.colorScheme,
       effectiveColorScheme,
-      themeId: resolvedPreferences.themeId,
-      backgroundAnimationEnabled: resolvedPreferences.backgroundAnimationEnabled,
+      themeId: preferences.themeId,
+      backgroundAnimationEnabled: preferences.backgroundAnimationEnabled,
       themes: BACKGROUND_THEMES,
       setVariant,
       flashInvalid,
       setColorScheme: (scheme) =>
-        persistPreferences({ ...resolvedPreferences, colorScheme: scheme }),
+        persistPreferences({ ...preferences, colorScheme: scheme }),
       setThemeId: (themeId) =>
         persistPreferences({
-          ...resolvedPreferences,
+          ...preferences,
           themeId: getEnabledBackgroundTheme(themeId).id,
         }),
       setBackgroundAnimationEnabled: (enabled) =>
-        persistPreferences({ ...resolvedPreferences, backgroundAnimationEnabled: enabled }),
+        persistPreferences({ ...preferences, backgroundAnimationEnabled: enabled }),
+      replacePreferences,
     }),
-    [effectiveColorScheme, flashInvalid, persistPreferences, resolvedPreferences, variant]
+    [effectiveColorScheme, flashInvalid, persistPreferences, preferences, replacePreferences, variant]
   );
 
   return (
