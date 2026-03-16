@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
-import { attemptSaveHistory } from "./history.js";
+import { finalizeRoundResultsInternal } from "./rounds.js";
 
 type RoundDoc = Doc<"rounds">;
 type PlayerDoc = Doc<"players">;
@@ -10,10 +10,6 @@ function getVotingPlayers(players: PlayerDoc[], round: RoundDoc) {
   return players.filter(
     (player) => player.status !== "disconnected" && player._id !== round.masterId
   );
-}
-
-function getRoundImpostorIds(round: RoundDoc) {
-  return round.impostorIds ?? (round.impostorId ? [round.impostorId] : []);
 }
 
 export const submitVote = mutation({
@@ -61,9 +57,6 @@ export async function checkAndTallyVotes(ctx: MutationCtx, roundId: Id<"rounds">
   const round = await ctx.db.get(roundId);
   if (!round) return;
 
-  const room = await ctx.db.get(round.roomId);
-  if (!room) return;
-
   const players = await ctx.db
     .query("players")
     .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
@@ -78,56 +71,7 @@ export async function checkAndTallyVotes(ctx: MutationCtx, roundId: Id<"rounds">
   if (votes.length < activePlayers.length) {
     return;
   }
-
-  const voteCounts = new Map<string, number>();
-  for (const vote of votes) {
-    voteCounts.set(vote.targetId, (voteCounts.get(vote.targetId) || 0) + 1);
-  }
-
-  let maxVotes = 0;
-  let votedOutId: Id<"players"> | undefined;
-  let isTie = false;
-
-  for (const [suspectId, count] of voteCounts.entries()) {
-    if (count > maxVotes) {
-      maxVotes = count;
-      votedOutId = suspectId as Id<"players">;
-      isTie = false;
-      continue;
-    }
-
-    if (count === maxVotes) {
-      isTie = true;
-    }
-  }
-
-  const impostorIds = getRoundImpostorIds(round);
-  const impostorWon = isTie || !votedOutId || !impostorIds.includes(votedOutId);
-
-  await ctx.db.patch(roundId, {
-    status: "results",
-    votedOutId: isTie ? undefined : votedOutId,
-    impostorWon,
-  });
-
-  if (impostorWon) {
-    for (const impostorId of impostorIds) {
-      const impostor = await ctx.db.get(impostorId);
-      if (impostor) {
-        await ctx.db.patch(impostor._id, { score: impostor.score + 2 });
-      }
-    }
-  } else {
-    for (const player of activePlayers) {
-      if (!impostorIds.includes(player._id) && player._id !== round.masterId) {
-        await ctx.db.patch(player._id, { score: player.score + 1 });
-      }
-    }
-  }
-
-  if (room.currentRound === room.settings.rounds) {
-    await attemptSaveHistory(ctx, { roomId: room._id });
-  }
+  await finalizeRoundResultsInternal(ctx, roundId);
 }
 
 export async function castBotVotes(ctx: MutationCtx, roundId: Id<"rounds">) {

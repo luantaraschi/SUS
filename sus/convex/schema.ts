@@ -25,6 +25,7 @@ export default defineSchema({
       impostorHint: v.boolean(),
       isLocalMode: v.boolean(),
       customMasterId: v.optional(v.string()),
+      defaultPackKey: v.optional(v.string()),
       customPackId: v.optional(v.id("customPacks")),
       numImpostors: v.optional(v.number()),
     }),
@@ -67,6 +68,7 @@ export default defineSchema({
       v.literal("playing"),
       v.literal("answering"),
       v.literal("revealing"),
+      v.literal("discussion"),
       v.literal("voting"),
       v.literal("results")
     ),
@@ -81,6 +83,9 @@ export default defineSchema({
     impostorWon: v.optional(v.boolean()),
     votedOutId: v.optional(v.union(v.id("players"), v.null())),
     startedAt: v.optional(v.number()),
+    phaseEndsAt: v.optional(v.number()),
+    revealedAt: v.optional(v.number()),
+    resultReadyAt: v.optional(v.number()),
   })
     .index("by_room", ["roomId"])
     .index("by_room_number", ["roomId", "number"]),
@@ -154,4 +159,23 @@ export default defineSchema({
     avatarUrl: v.optional(v.string()),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  userPreferences: defineTable({
+    userId: v.id("users"),
+    colorScheme: v.union(v.literal("light"), v.literal("dark"), v.literal("system")),
+    backgroundThemeId: v.string(),
+    backgroundAnimationEnabled: v.boolean(),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
+
+  bugReports: defineTable({
+    userId: v.optional(v.id("users")),
+    sessionId: v.string(),
+    route: v.string(),
+    browserInfo: v.string(),
+    message: v.string(),
+    createdAt: v.number(),
+  })
+    .index("by_user", ["userId"])
+    .index("by_session", ["sessionId"]),
 });

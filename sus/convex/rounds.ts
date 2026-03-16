@@ -1,8 +1,21 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel.js";
-import { mutation, query, type MutationCtx, type QueryCtx } from "./_generated/server.js";
+import { internal } from "./_generated/api.js";
+import {
+  internalMutation,
+  mutation,
+  query,
+  type MutationCtx,
+  type QueryCtx,
+} from "./_generated/server.js";
 import { castBotVotes } from "./votes.js";
 import { castBotAnswers } from "./answers.js";
+import {
+  getDefaultPackCount,
+  getDefaultQuestionPack,
+  getDefaultWordPack,
+} from "./content.js";
+import { attemptSaveHistory } from "./history.js";
 
 type RoundPlayer = Doc<"players">;
 type RoomDoc = Doc<"rooms">;
@@ -38,6 +51,135 @@ function getRoundImpostorIds(round: RoundDoc) {
 
 function chooseRandomItem<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)]!;
+}
+
+async function schedulePhaseAdvance(
+  ctx: MutationCtx,
+  roundId: Id<"rounds">,
+  expectedStatus: "revealing" | "discussion" | "voting",
+  delayMs: number
+) {
+  await ctx.scheduler.runAfter(delayMs, internal.rounds.advancePhaseInternal, {
+    roundId,
+    expectedStatus,
+  });
+}
+
+async function enterDiscussion(
+  ctx: MutationCtx,
+  round: RoundDoc,
+  room: RoomDoc
+) {
+  const phaseEndsAt = Date.now() + room.settings.discussionTime * 1000;
+  await ctx.db.patch(round._id, {
+    status: "discussion",
+    phaseEndsAt,
+  });
+  await schedulePhaseAdvance(
+    ctx,
+    round._id,
+    "discussion",
+    room.settings.discussionTime * 1000
+  );
+}
+
+async function enterVoting(
+  ctx: MutationCtx,
+  round: RoundDoc,
+  room: RoomDoc
+) {
+  const phaseEndsAt = Date.now() + room.settings.votingTime * 1000;
+  await ctx.db.patch(round._id, {
+    status: "voting",
+    phaseEndsAt,
+  });
+  await castBotVotes(ctx, round._id);
+  await schedulePhaseAdvance(ctx, round._id, "voting", room.settings.votingTime * 1000);
+}
+
+export async function finalizeRoundResultsInternal(
+  ctx: MutationCtx,
+  roundId: Id<"rounds">
+) {
+  const round = await ctx.db.get(roundId);
+  if (!round || round.status === "results") {
+    return;
+  }
+
+  const room = await ctx.db.get(round.roomId);
+  if (!room) {
+    return;
+  }
+
+  const players = await ctx.db
+    .query("players")
+    .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
+    .collect();
+
+  const activePlayers = players.filter(
+    (player) => player.status !== "disconnected" && player._id !== round.masterId
+  );
+  const votes = await ctx.db
+    .query("votes")
+    .withIndex("by_round", (q) => q.eq("roundId", roundId))
+    .collect();
+
+  const voteCounts = new Map<string, number>();
+  for (const vote of votes) {
+    voteCounts.set(vote.targetId, (voteCounts.get(vote.targetId) || 0) + 1);
+  }
+
+  let maxVotes = 0;
+  let votedOutId: Id<"players"> | null = null;
+  let isTie = false;
+
+  for (const [suspectId, count] of voteCounts.entries()) {
+    if (count > maxVotes) {
+      maxVotes = count;
+      votedOutId = suspectId as Id<"players">;
+      isTie = false;
+      continue;
+    }
+
+    if (count === maxVotes) {
+      isTie = true;
+    }
+  }
+
+  const impostorIds = getRoundImpostorIds(round);
+  const resolvedVotedOutId = isTie ? null : votedOutId;
+  const impostorWon =
+    votes.length === 0 ||
+    isTie ||
+    !resolvedVotedOutId ||
+    !impostorIds.includes(resolvedVotedOutId);
+
+  await ctx.db.patch(roundId, {
+    status: "results",
+    votedOutId: resolvedVotedOutId ?? undefined,
+    impostorWon,
+    phaseEndsAt: undefined,
+    resultReadyAt: Date.now(),
+  });
+
+  if (impostorWon) {
+    for (const impostorId of impostorIds) {
+      const impostor = await ctx.db.get(impostorId);
+      if (impostor) {
+        await ctx.db.patch(impostor._id, { score: impostor.score + 2 });
+      }
+    }
+  } else {
+    for (const player of activePlayers) {
+      if (!impostorIds.includes(player._id)) {
+        await ctx.db.patch(player._id, { score: player.score + 1 });
+      }
+    }
+  }
+
+  if (room.currentRound === room.settings.rounds) {
+    await attemptSaveHistory(ctx, { roomId: room._id });
+  }
 }
 
 export async function getRoomContentReadiness(
@@ -95,18 +237,16 @@ export async function getRoomContentReadiness(
     };
   }
 
-  const defaultCount =
-    room.mode === "word"
-      ? (await ctx.db.query("wordPacks").collect()).length
-      : (await ctx.db.query("questionPacks").collect()).length;
+  const { count } = await getDefaultPackCount(
+    ctx,
+    room.mode,
+    room.settings.defaultPackKey
+  );
 
-  if (defaultCount === 0) {
+  if (count === 0) {
     return {
       ready: false,
-      message:
-        room.mode === "word"
-          ? "O banco padrao de palavras esta vazio. Rode seed:seedData antes de iniciar."
-          : "O banco padrao de perguntas esta vazio. Rode seed:seedData antes de iniciar.",
+      message: "Carregando packs padrao do sistema. Tente iniciar novamente em alguns instantes.",
       source: "default",
       availableCount: 0,
       mode: room.mode,
@@ -117,7 +257,7 @@ export async function getRoomContentReadiness(
     ready: true,
     message: null,
     source: "default",
-    availableCount: defaultCount,
+    availableCount: count,
     mode: room.mode,
   };
 }
@@ -159,19 +299,27 @@ async function resolveRoundContent(
   }
 
   if (room.mode === "word") {
-    const pack = chooseRandomItem(await ctx.db.query("wordPacks").collect());
+    const pack = getDefaultWordPack(room.settings.defaultPackKey);
+    const rows = (await ctx.db.query("wordPacks").collect()).filter(
+      (entry) => entry.category === pack.title
+    );
+    const row = chooseRandomItem(rows);
     return {
-      content: pack.word,
-      impostorContent: room.settings.impostorHint ? pack.hint : null,
-      category: pack.category,
+      content: row.word,
+      impostorContent: room.settings.impostorHint ? row.hint : null,
+      category: pack.title,
     };
   }
 
-  const pack = chooseRandomItem(await ctx.db.query("questionPacks").collect());
+  const pack = getDefaultQuestionPack(room.settings.defaultPackKey);
+  const rows = (await ctx.db.query("questionPacks").collect()).filter(
+    (entry) => entry.category === pack.title
+  );
+  const row = chooseRandomItem(rows);
   return {
-    content: pack.question,
-    impostorContent: pack.impostorQuestion,
-    category: pack.category,
+    content: row.question,
+    impostorContent: row.impostorQuestion,
+    category: pack.title,
   };
 }
 
@@ -221,6 +369,12 @@ export async function distributeRolesInternal(
 
   const roundContent = await resolveRoundContent(ctx, room);
 
+  await ctx.db.patch(roundId, {
+    phaseEndsAt: undefined,
+    revealedAt: undefined,
+    resultReadyAt: undefined,
+  });
+
   if (room.mode === "word") {
     await ctx.db.patch(roundId, {
       word: roundContent.content,
@@ -233,10 +387,14 @@ export async function distributeRolesInternal(
       questionImpostor: roundContent.impostorContent ?? undefined,
       category: roundContent.category,
     });
+  } else {
+    await ctx.db.patch(roundId, {
+      category: roundContent.category,
+    });
   }
 
   for (const player of activePlayers) {
-    const basePatch = player.isBot ? { status: "ready" as const } : {};
+    const basePatch = player.isBot ? { status: "ready" as const } : { status: "connected" as const };
 
     if (player._id === masterId) {
       await ctx.db.patch(player._id, {
@@ -297,6 +455,7 @@ export const getRoundResult = query({
       impostorIds: getRoundImpostorIds(round),
       votedOutId: round.votedOutId,
       impostorWon: round.impostorWon,
+      resultReadyAt: round.resultReadyAt ?? null,
     };
   },
 });
@@ -330,19 +489,26 @@ export const confirmSeen = mutation({
       return;
     }
 
-    await ctx.db.patch(args.roundId, {
-      status: round.mode === "question" ? "answering" : "voting",
-    });
-
-    if (round.mode === "question") {
-      await castBotAnswers(ctx, args.roundId);
-    } else {
-      await castBotVotes(ctx, args.roundId);
+    const room = await ctx.db.get(round.roomId);
+    if (!room) {
+      throw new Error("Sala nao encontrada.");
     }
 
     for (const currentPlayer of activePlayers) {
       await ctx.db.patch(currentPlayer._id, { status: "connected" });
     }
+
+    if (round.mode === "question") {
+      await ctx.db.patch(args.roundId, {
+        status: "answering",
+        phaseEndsAt: undefined,
+      });
+      await castBotAnswers(ctx, args.roundId);
+      return;
+    }
+
+    const updatedRound = (await ctx.db.get(args.roundId))!;
+    await enterDiscussion(ctx, updatedRound, room);
   },
 });
 
@@ -422,12 +588,15 @@ export const setMasterQuestions = mutation({
       return;
     }
 
-    await ctx.db.patch(args.roundId, { status: "answering" });
-    await castBotAnswers(ctx, args.roundId);
-
     for (const player of activePlayers) {
       await ctx.db.patch(player._id, { status: "connected" });
     }
+
+    await ctx.db.patch(args.roundId, {
+      status: "answering",
+      phaseEndsAt: undefined,
+    });
+    await castBotAnswers(ctx, args.roundId);
   },
 });
 
@@ -439,9 +608,6 @@ export const advanceToVoting = mutation({
   handler: async (ctx, args) => {
     const round = await ctx.db.get(args.roundId);
     if (!round) throw new Error("Rodada nao encontrada.");
-    if (round.status !== "revealing") {
-      throw new Error("A rodada nao esta na fase de revelacao.");
-    }
 
     const room = await ctx.db.get(round.roomId);
     if (!room) throw new Error("Sala nao encontrada.");
@@ -449,7 +615,70 @@ export const advanceToVoting = mutation({
       throw new Error("Apenas o host pode avancar a fase.");
     }
 
-    await ctx.db.patch(args.roundId, { status: "voting" });
-    await castBotVotes(ctx, args.roundId);
+    if (round.status === "revealing") {
+      await enterDiscussion(ctx, round, room);
+      return;
+    }
+
+    if (round.status === "discussion") {
+      await enterVoting(ctx, round, room);
+      return;
+    }
+
+    throw new Error("A rodada nao esta em uma fase avancavel manualmente.");
+  },
+});
+
+export const recomputeResults = mutation({
+  args: {
+    roundId: v.id("rounds"),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (!round) {
+      throw new Error("Rodada nao encontrada.");
+    }
+
+    const room = await ctx.db.get(round.roomId);
+    if (!room || room.hostId !== args.sessionId) {
+      throw new Error("Apenas o host pode recomputar o resultado.");
+    }
+
+    await finalizeRoundResultsInternal(ctx, args.roundId);
+  },
+});
+
+export const advancePhaseInternal = internalMutation({
+  args: {
+    roundId: v.id("rounds"),
+    expectedStatus: v.union(
+      v.literal("revealing"),
+      v.literal("discussion"),
+      v.literal("voting")
+    ),
+  },
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (!round || round.status !== args.expectedStatus) {
+      return;
+    }
+
+    const room = await ctx.db.get(round.roomId);
+    if (!room) {
+      return;
+    }
+
+    if (args.expectedStatus === "revealing") {
+      await enterDiscussion(ctx, round, room);
+      return;
+    }
+
+    if (args.expectedStatus === "discussion") {
+      await enterVoting(ctx, round, room);
+      return;
+    }
+
+    await finalizeRoundResultsInternal(ctx, args.roundId);
   },
 });

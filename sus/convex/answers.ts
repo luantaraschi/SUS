@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel.js";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
+import { internal } from "./_generated/api.js";
 
 type RoundDoc = Doc<"rounds">;
 type PlayerDoc = Doc<"players">;
@@ -12,7 +13,6 @@ function getAnsweringPlayers(players: PlayerDoc[], round: RoundDoc) {
 }
 
 async function maybeAdvanceAfterAnswers(ctx: MutationCtx, round: RoundDoc, roundId: Id<"rounds">) {
-  const room = await ctx.db.get(round.roomId);
   const players = await ctx.db
     .query("players")
     .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
@@ -28,8 +28,15 @@ async function maybeAdvanceAfterAnswers(ctx: MutationCtx, round: RoundDoc, round
     return;
   }
 
+  const revealedAt = Date.now();
   await ctx.db.patch(roundId, {
-    status: room?.mode === "question" ? "revealing" : "voting",
+    status: "revealing",
+    revealedAt,
+    phaseEndsAt: revealedAt + 8000,
+  });
+  await ctx.scheduler.runAfter(8000, internal.rounds.advancePhaseInternal, {
+    roundId,
+    expectedStatus: "revealing",
   });
 }
 

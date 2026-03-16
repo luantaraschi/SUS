@@ -10,6 +10,8 @@ import GameCircle from "@/components/game/GameCircle";
 import GameButton from "@/components/game/GameButton";
 import PlayerAvatar from "@/components/game/PlayerAvatar";
 import SignInModal from "@/components/auth/SignInModal";
+import GameSettingsButton from "@/components/game/GameSettingsButton";
+import IdentityBar from "@/components/game/IdentityBar";
 import { BubbleText } from "@/components/ui/bubble-text";
 import { Icon } from "@iconify/react";
 import { Plus } from "lucide-react";
@@ -21,17 +23,17 @@ const MAX_ROUNDS = 10;
 const MAX_IMPOSTORS = 3;
 
 const DESKTOP_POSITIONS = [
-  { top: "8%", left: "18%", transform: "translate(-50%, -50%)" },
-  { top: "8%", left: "50%", transform: "translate(-50%, -50%)" },
-  { top: "8%", left: "82%", transform: "translate(-50%, -50%)" },
-  { top: "26%", left: "-3%", transform: "translate(-50%, -50%)" },
-  { top: "50%", left: "-4%", transform: "translate(-50%, -50%)" },
-  { top: "74%", left: "-3%", transform: "translate(-50%, -50%)" },
-  { top: "26%", left: "103%", transform: "translate(-50%, -50%)" },
-  { top: "50%", left: "104%", transform: "translate(-50%, -50%)" },
-  { top: "74%", left: "103%", transform: "translate(-50%, -50%)" },
-  { top: "98%", left: "24%", transform: "translate(-50%, -15%)" },
-  { top: "98%", left: "50%", transform: "translate(-50%, -15%)" },
+  { top: "10%", left: "22%", transform: "translate(-50%, -50%)" },
+  { top: "11%", left: "50%", transform: "translate(-50%, -50%)" },
+  { top: "10%", left: "78%", transform: "translate(-50%, -50%)" },
+  { top: "31%", left: "8%", transform: "translate(-50%, -50%)" },
+  { top: "54%", left: "6%", transform: "translate(-50%, -50%)" },
+  { top: "77%", left: "10%", transform: "translate(-50%, -50%)" },
+  { top: "31%", left: "92%", transform: "translate(-50%, -50%)" },
+  { top: "54%", left: "94%", transform: "translate(-50%, -50%)" },
+  { top: "77%", left: "90%", transform: "translate(-50%, -50%)" },
+  { top: "96%", left: "28%", transform: "translate(-50%, -20%)" },
+  { top: "96%", left: "72%", transform: "translate(-50%, -20%)" },
 ];
 
 function getAvatarStatus(status: "connected" | "ready" | "disconnected") {
@@ -122,10 +124,11 @@ export default function RoomLobbyPage({
     room && sessionId ? { roomId: room._id, sessionId } : "skip"
   );
   const profile = useQuery(api.profiles.current);
-  const myPacks = useQuery(api.packs.getMyPacks, profile && room ? { mode: room.mode } : "skip");
+  const packOptions = useQuery(api.packs.getMergedPackOptions, room ? { mode: room.mode } : "skip");
   const startReadiness = useQuery(api.rooms.getStartReadiness, room ? { roomId: room._id } : "skip");
 
   const linkSession = useMutation(api.users.linkSession);
+  const ensureDefaultData = useMutation(api.content.ensureDefaultData);
   const updateSettings = useMutation(api.rooms.updateSettings);
   const leaveRoom = useMutation(api.rooms.leaveRoom);
   const startGame = useMutation(api.rooms.startGame);
@@ -151,6 +154,7 @@ export default function RoomLobbyPage({
       rounds?: number;
       numImpostors?: number;
       customMasterId?: string;
+      defaultPackKey?: string;
       customPackId?: Id<"customPacks">;
       impostorHint?: boolean;
     }) => {
@@ -159,6 +163,11 @@ export default function RoomLobbyPage({
     },
     [isHost, room, sessionId, updateSettings]
   );
+
+  useEffect(() => {
+    if (!sessionId) return;
+    void ensureDefaultData({});
+  }, [ensureDefaultData, sessionId]);
 
   const handleShare = useCallback(async () => {
     try {
@@ -248,8 +257,9 @@ export default function RoomLobbyPage({
   const startDisabled = playerCount < MIN_PLAYERS || isStartingGame || !startReadiness.ready;
 
   return (
-    <div className="relative flex w-full flex-col items-center gap-5">
-      <div className="absolute right-4 top-4 z-50">
+    <div className="relative flex min-h-[calc(100dvh-8rem)] w-full flex-col items-center gap-4 pb-16 sm:pb-20">
+      <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
+        <GameSettingsButton sessionId={sessionId} />
         {profile ? (
           <button
             onClick={() => router.push("/profile")}
@@ -269,10 +279,10 @@ export default function RoomLobbyPage({
         )}
       </div>
 
-      <BubbleText text="SUS" className="mt-8 font-display text-7xl tracking-wide drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)] sm:text-[100px]" />
+      <BubbleText text="SUS" className="mt-4 font-display text-7xl tracking-wide drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)] sm:mt-6 sm:text-[100px]" />
 
       {myPlayer && (
-        <div className="relative z-20 -mb-14 flex flex-col items-center sm:-mb-16">
+        <div className="relative z-20 -mb-10 flex flex-col items-center sm:-mb-12">
           <PlayerAvatar
             name={myPlayer.name}
             avatarSeed={myPlayer.emoji}
@@ -280,13 +290,13 @@ export default function RoomLobbyPage({
             isHost={myPlayer.isHost}
             isBot={myPlayer.isBot}
             status={getAvatarStatus(myPlayer.status)}
-            size="xl"
+            size="2xl"
             hideName
           />
         </div>
       )}
 
-      <div className="w-full max-w-[1180px] px-2 sm:px-4">
+      <div className="w-full max-w-[1100px] px-2 sm:px-4">
         <div className="flex flex-col gap-4 lg:hidden">
           <div className="flex flex-wrap items-center justify-center gap-3">
             {mobileTopPlayers.map((player) => (
@@ -298,14 +308,14 @@ export default function RoomLobbyPage({
                 isHost={player.isHost}
                 isBot={player.isBot}
                 status={getAvatarStatus(player.status)}
-                size="lobby"
+                size="orbit"
                 canRemove={isHost && player.isBot && !removingBotId}
                 onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
               />
             ))}
           </div>
 
-          <GameCircle className="min-h-[620px] max-w-[860px] px-4 pb-6 pt-16 sm:px-6 sm:pb-8 sm:pt-18">
+          <GameCircle className="min-h-[620px] max-w-[760px] px-5 pb-6 pt-14 sm:px-6 sm:pb-8 sm:pt-16">
             <div className="flex h-full min-h-[inherit] w-full flex-col">
               <LobbyPanel
                 room={room}
@@ -314,7 +324,7 @@ export default function RoomLobbyPage({
                 copied={copied}
                 playerCount={playerCount}
                 numImpostors={numImpostors}
-                myPacks={myPacks ?? []}
+                packOptions={packOptions ?? []}
                 players={players}
                 isHost={isHost}
                 actionError={actionError}
@@ -334,7 +344,23 @@ export default function RoomLobbyPage({
                   void updateSettings({ roomId: room._id, sessionId, settings: {}, questionMode });
                 }}
                 onMasterChange={(playerId) => updateRoomSettings({ customMasterId: playerId })}
-                onPackChange={(packId) => updateRoomSettings({ customPackId: packId ? (packId as Id<"customPacks">) : undefined })}
+                onPackChange={(value) => {
+                  if (!value) {
+                    updateRoomSettings({ defaultPackKey: "classico", customPackId: undefined });
+                    return;
+                  }
+                  if (value.startsWith("default:")) {
+                    updateRoomSettings({
+                      defaultPackKey: value.replace("default:", ""),
+                      customPackId: undefined,
+                    });
+                    return;
+                  }
+                  updateRoomSettings({
+                    customPackId: value.replace("custom:", "") as Id<"customPacks">,
+                    defaultPackKey: undefined,
+                  });
+                }}
                 onToggleHint={() => updateRoomSettings({ impostorHint: !room.settings.impostorHint })}
                 onAddBot={handleAddBot}
                 onStart={handleStartGame}
@@ -358,7 +384,7 @@ export default function RoomLobbyPage({
                   isHost={player.isHost}
                   isBot={player.isBot}
                   status={getAvatarStatus(player.status)}
-                  size="lobby"
+                  size="orbit"
                   canRemove={isHost && player.isBot && !removingBotId}
                   onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
                 />
@@ -367,7 +393,7 @@ export default function RoomLobbyPage({
           )}
         </div>
 
-        <div className="relative hidden min-h-[820px] items-center justify-center lg:flex">
+        <div className="relative hidden min-h-[760px] items-center justify-center lg:flex">
           {surroundingPlayers.map((player, index) => {
             const position = DESKTOP_POSITIONS[index];
             if (!position) return null;
@@ -380,7 +406,7 @@ export default function RoomLobbyPage({
                   isHost={player.isHost}
                   isBot={player.isBot}
                   status={getAvatarStatus(player.status)}
-                  size="lobby"
+                  size="orbit"
                   canRemove={isHost && player.isBot && !removingBotId}
                   onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
                 />
@@ -388,7 +414,7 @@ export default function RoomLobbyPage({
             );
           })}
 
-          <GameCircle className="min-h-[650px] max-w-[860px] px-8 pb-8 pt-18">
+          <GameCircle className="min-h-[620px] max-w-[760px] px-7 pb-8 pt-14">
             <div className="flex h-full min-h-[inherit] w-full flex-col">
               <LobbyPanel
                 room={room}
@@ -397,7 +423,7 @@ export default function RoomLobbyPage({
                 copied={copied}
                 playerCount={playerCount}
                 numImpostors={numImpostors}
-                myPacks={myPacks ?? []}
+                packOptions={packOptions ?? []}
                 players={players}
                 isHost={isHost}
                 actionError={actionError}
@@ -417,7 +443,23 @@ export default function RoomLobbyPage({
                   void updateSettings({ roomId: room._id, sessionId, settings: {}, questionMode });
                 }}
                 onMasterChange={(playerId) => updateRoomSettings({ customMasterId: playerId })}
-                onPackChange={(packId) => updateRoomSettings({ customPackId: packId ? (packId as Id<"customPacks">) : undefined })}
+                onPackChange={(value) => {
+                  if (!value) {
+                    updateRoomSettings({ defaultPackKey: "classico", customPackId: undefined });
+                    return;
+                  }
+                  if (value.startsWith("default:")) {
+                    updateRoomSettings({
+                      defaultPackKey: value.replace("default:", ""),
+                      customPackId: undefined,
+                    });
+                    return;
+                  }
+                  updateRoomSettings({
+                    customPackId: value.replace("custom:", "") as Id<"customPacks">,
+                    defaultPackKey: undefined,
+                  });
+                }}
                 onToggleHint={() => updateRoomSettings({ impostorHint: !room.settings.impostorHint })}
                 onAddBot={handleAddBot}
                 onStart={handleStartGame}
@@ -431,6 +473,16 @@ export default function RoomLobbyPage({
           </GameCircle>
         </div>
       </div>
+
+      {myPlayer && (
+        <IdentityBar
+          name={myPlayer.name}
+          avatarSeed={myPlayer.emoji}
+          imageUrl={myPlayer.avatarImageUrl}
+          statusLabel={isHost ? "Host" : "Na sala"}
+          detailLabel={`${playerCount} jogadores conectados`}
+        />
+      )}
 
       {showSignIn && (
         <SignInModal
@@ -453,7 +505,7 @@ function LobbyPanel({
   copied,
   playerCount,
   numImpostors,
-  myPacks,
+  packOptions,
   players,
   isHost,
   actionError,
@@ -473,13 +525,13 @@ function LobbyPanel({
   onStart,
   onLeave,
 }: {
-  room: { settings: { maxPlayers: number; rounds: number; impostorHint: boolean; customMasterId?: string; customPackId?: string }; mode: "word" | "question"; questionMode?: "system" | "master" };
+  room: { settings: { maxPlayers: number; rounds: number; impostorHint: boolean; customMasterId?: string; customPackId?: string; defaultPackKey?: string }; mode: "word" | "question"; questionMode?: "system" | "master" };
   code: string;
   codeHidden: boolean;
   copied: boolean;
   playerCount: number;
   numImpostors: number;
-  myPacks: Array<{ _id: Id<"customPacks">; title: string; items: Array<{ content: string; hint: string }> }>;
+  packOptions: Array<{ key: string; title: string; source: "default" | "custom"; count: number }>;
   players: Array<{ _id: Id<"players">; name: string; isHost: boolean; status: "connected" | "ready" | "disconnected" }>;
   isHost: boolean;
   actionError: string;
@@ -499,6 +551,10 @@ function LobbyPanel({
   onStart: () => void;
   onLeave: () => void;
 }) {
+  const selectedPackValue = room.settings.customPackId
+    ? `custom:${room.settings.customPackId}`
+    : `default:${room.settings.defaultPackKey || "classico"}`;
+
   return (
     <>
       <div className="flex flex-1 flex-col overflow-y-auto pb-3 pr-1 custom-scrollbar">
@@ -528,12 +584,26 @@ function LobbyPanel({
             <button type="button" onClick={() => onModeChange("question")} disabled={!isHost} className={room.mode === "question" ? "rounded-full bg-surface-primary px-7 py-2.5 text-sm font-black uppercase tracking-wider text-white transition-all sm:px-8 sm:text-base" : "px-7 py-2.5 text-sm font-black uppercase tracking-wider text-surface-primary/50 transition-all sm:px-8 sm:text-base"}>Pergunta</button>
           </div>
 
-          {myPacks.length > 0 && (
-            <div className="flex w-full max-w-[280px] flex-col items-center gap-2">
-              <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-surface-primary/70 sm:text-sm">Pacote de Cartas</span>
-              <select value={room.settings.customPackId || ""} onChange={(event) => onPackChange(event.target.value)} disabled={!isHost} className="w-full rounded-xl border border-surface-primary/20 bg-surface-primary/10 px-3 py-2 text-sm text-surface-primary outline-none focus:border-surface-primary focus:ring-1 focus:ring-surface-primary disabled:opacity-50">
-                <option value="">Padrao do Jogo</option>
-                {myPacks.map((pack) => <option key={pack._id} value={pack._id}>{pack.title} ({pack.items.length})</option>)}
+          {packOptions.length > 0 && (
+            <div className="flex w-full max-w-[320px] flex-col items-center gap-2">
+              <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-surface-primary/70 sm:text-sm">Pack da rodada</span>
+              <select value={selectedPackValue} onChange={(event) => onPackChange(event.target.value)} disabled={!isHost} className="w-full rounded-xl border border-surface-primary/20 bg-surface-primary/10 px-3 py-2 text-sm text-surface-primary outline-none focus:border-surface-primary focus:ring-1 focus:ring-surface-primary disabled:opacity-50">
+                <optgroup label="Packs do sistema">
+                  {packOptions.filter((pack) => pack.source === "default").map((pack) => (
+                    <option key={pack.key} value={`default:${pack.key}`}>
+                      {pack.title} ({pack.count})
+                    </option>
+                  ))}
+                </optgroup>
+                {packOptions.some((pack) => pack.source === "custom") && (
+                  <optgroup label="Meus packs">
+                    {packOptions.filter((pack) => pack.source === "custom").map((pack) => (
+                      <option key={pack.key} value={`custom:${pack.key}`}>
+                        {pack.title} ({pack.count})
+                      </option>
+                    ))}
+                  </optgroup>
+                )}
               </select>
             </div>
           )}

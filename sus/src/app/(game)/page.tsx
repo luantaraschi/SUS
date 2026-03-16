@@ -11,6 +11,8 @@ import GameInput from "@/components/game/GameInput";
 import PlayerAvatar from "@/components/game/PlayerAvatar";
 import HowToPlayModal from "@/components/game/HowToPlayModal";
 import SignInModal from "@/components/auth/SignInModal";
+import GameSettingsButton from "@/components/game/GameSettingsButton";
+import IdentityBar from "@/components/game/IdentityBar";
 import { BubbleText } from "@/components/ui/bubble-text";
 import { useBackground } from "@/lib/BackgroundContext";
 import { useSessionId } from "@/lib/useSessionId";
@@ -56,6 +58,7 @@ export default function HomePage() {
   const linkSession = useMutation(api.users.linkSession);
   const createRoom = useMutation(api.rooms.createRoom);
   const joinRoom = useMutation(api.rooms.joinRoom);
+  const ensureDefaultData = useMutation(api.content.ensureDefaultData);
 
   const [guestName, setGuestName] = useState("");
   const [code, setCode] = useState("");
@@ -73,6 +76,11 @@ export default function HomePage() {
     api.rooms.checkRoomExists,
     code.length === 4 ? { code: code.toUpperCase() } : "skip"
   );
+
+  useEffect(() => {
+    if (!sessionId) return;
+    void ensureDefaultData({});
+  }, [ensureDefaultData, sessionId]);
 
   useEffect(() => {
     if (code.length < 4) {
@@ -155,8 +163,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative flex w-full flex-col items-center gap-5">
-      <div className="absolute right-4 top-4 z-50">
+    <div className="relative flex min-h-[calc(100dvh-8rem)] w-full flex-col items-center justify-center gap-4 pb-16 pt-2 sm:gap-5 sm:pb-20">
+      <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
+        <GameSettingsButton sessionId={sessionId} />
         {isLoggedIn ? (
           <button
             onClick={() => router.push("/profile")}
@@ -184,10 +193,10 @@ export default function HomePage() {
 
       <BubbleText
         text="SUS"
-        className="mt-8 font-display text-6xl tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)] sm:mt-12 sm:text-7xl"
+        className="mt-4 font-display text-6xl tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)] sm:mt-8 sm:text-7xl"
       />
 
-      <div className="relative z-20 -mb-18 flex flex-col items-center sm:-mb-20">
+      <div className="relative z-20 -mb-12 flex flex-col items-center sm:-mb-14">
         <button
           onClick={() => {
             if (isLoggedIn) {
@@ -231,9 +240,9 @@ export default function HomePage() {
       </div>
 
       <div className={`flex w-full justify-center ${shakePanel ? "animate-shake" : ""}`}>
-        <GameCircle className="min-h-[520px] max-w-[720px] px-4 pb-8 pt-24 sm:min-h-[560px] sm:px-8 sm:pb-10 sm:pt-26">
+        <GameCircle className="min-h-[500px] max-w-[660px] px-5 pb-8 pt-20 sm:min-h-[540px] sm:px-8 sm:pb-10 sm:pt-24">
           <div className="flex h-full w-full flex-col items-center justify-center">
-            <div className="flex w-full max-w-[440px] flex-col items-center gap-4">
+            <div className="flex w-full max-w-[430px] flex-col items-center gap-4">
               <div className="w-full">
                 <GameInput
                   value={displayName}
@@ -367,6 +376,14 @@ export default function HomePage() {
           }}
         />
       )}
+
+      <IdentityBar
+        name={displayName}
+        avatarSeed={avatarSeed}
+        imageUrl={avatarImageUrl}
+        statusLabel={isLoggedIn ? "Conta" : "Convidado"}
+        detailLabel={isLoggedIn ? "Perfil sincronizado" : `Sessao local ${sessionId.slice(0, 8)}`}
+      />
     </div>
   );
 }

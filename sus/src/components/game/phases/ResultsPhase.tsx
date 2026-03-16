@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import PlayerAvatar from "../PlayerAvatar";
 import ShareResult from "../ShareResult";
 import { AnimatePresence, motion } from "framer-motion";
+import PhaseIndicator from "../PhaseIndicator";
 import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
 
 interface ResultsPhaseProps {
@@ -22,22 +23,37 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
   const isHost = myPlayer.isHost;
   const [showResults, setShowResults] = useState(false);
   const startNextRound = useMutation(api.rooms.startNextRound);
+  const recomputeResults = useMutation(api.rounds.recomputeResults);
 
   const votes = useQuery(api.votes.getVotes, { roundId: round._id });
   const roundResult = useQuery(api.rounds.getRoundResult, { roundId: round._id });
 
   useEffect(() => {
-    const timer = window.setTimeout(() => setShowResults(true), 2000);
+    const timer = window.setTimeout(() => setShowResults(true), 1200);
     return () => window.clearTimeout(timer);
   }, []);
 
-  const realImpostors = roundResult
-    ? players.filter((player) => roundResult.impostorIds?.includes(player._id))
-    : [];
-  const votedOut = roundResult?.votedOutId
+  useEffect(() => {
+    if (!isHost || roundResult !== null) {
+      return;
+    }
+    void recomputeResults({ roundId: round._id, sessionId });
+  }, [isHost, recomputeResults, round._id, roundResult, sessionId]);
+
+  if (roundResult === undefined || roundResult === null) {
+    return (
+      <div className="fixed inset-0 z-40 flex h-[100dvh] w-full flex-col items-center justify-center bg-black/80 px-4 pb-6 pt-12 backdrop-blur-md">
+        <div className="h-24 w-24 animate-spin rounded-full border-8 border-white/20 border-t-white" />
+        <p className="mt-6 text-2xl font-bold uppercase tracking-widest text-white">Calculando...</p>
+      </div>
+    );
+  }
+
+  const realImpostors = players.filter((player) => roundResult.impostorIds?.includes(player._id));
+  const votedOut = roundResult.votedOutId
     ? players.find((player) => player._id === roundResult.votedOutId) ?? null
     : null;
-  const groupWon = roundResult ? !roundResult.impostorWon : false;
+  const groupWon = !roundResult.impostorWon;
 
   return (
     <div className="fixed inset-0 z-40 flex h-[100dvh] w-full flex-col items-center justify-center bg-black/80 px-4 pb-6 pt-12 backdrop-blur-md">
@@ -59,19 +75,20 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
             key="results"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex w-full flex-col items-center gap-8"
+            className="flex w-full max-w-5xl flex-col items-center gap-8"
           >
+            <PhaseIndicator currentPhase="results" />
             <h1
               className={`text-center font-display text-4xl font-black uppercase tracking-tight drop-shadow-[0_0_15px_currentColor] md:text-5xl ${
                 groupWon ? "text-game-safe" : "text-game-impostor"
               }`}
             >
-              {groupWon ? "Vitoria do Grupo" : "Vitoria do Impostor"}
+              {groupWon ? "Vitoria do grupo" : "Vitoria do impostor"}
             </h1>
 
             <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-6 rounded-3xl border-2 border-white/10 bg-surface-primary p-6 shadow-2xl">
               <span className="text-sm font-bold uppercase tracking-widest text-white/60">
-                {realImpostors.length > 1 ? "Os Impostores eram:" : "O Impostor era:"}
+                {realImpostors.length > 1 ? "Os impostores eram:" : "O impostor era:"}
               </span>
               <div className="flex flex-row flex-wrap justify-center gap-6">
                 {realImpostors.map((impostor) => (
@@ -90,10 +107,20 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
 
             <div className="w-full text-center">
               <p className="mb-2 text-lg text-white/80">
-                {roundResult?.votedOutId
-                  ? `${votedOut?.name} foi votado e ${realImpostors.find((player) => player._id === votedOut?._id) ? "era" : "nao era"} o Impostor.`
-                  : "Houve um empate nos votos!"}
+                {roundResult.votedOutId
+                  ? `${votedOut?.name} foi votado e ${realImpostors.find((player) => player._id === votedOut?._id) ? "era" : "nao era"} o impostor.`
+                  : "Houve um empate nos votos."}
               </p>
+              {round.mode === "question" && round.questionMain && round.questionImpostor && (
+                <p className="mx-auto mt-3 max-w-3xl font-body text-sm text-white/65 sm:text-base">
+                  Pergunta normal: &quot;{round.questionMain}&quot; | Pergunta do impostor: &quot;{round.questionImpostor}&quot;
+                </p>
+              )}
+              {round.mode === "word" && round.word && (
+                <p className="mx-auto mt-3 max-w-3xl font-body text-sm text-white/65 sm:text-base">
+                  Palavra da rodada: &quot;{round.word}&quot;
+                </p>
+              )}
             </div>
 
             <div className="mx-auto mt-4 grid max-h-[25dvh] w-full max-w-xl grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
@@ -108,7 +135,7 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
                     className="flex flex-col items-center gap-2 rounded-lg border border-white/5 bg-surface-primary/50 p-2 sm:flex-row sm:justify-center"
                   >
                     <span className="max-w-[80px] truncate text-xs text-white/70">{voterPlayer.name}</span>
-                    <span className="hidden text-xs text-white/30 sm:block">→</span>
+                    <span className="hidden text-xs text-white/30 sm:block">-&gt;</span>
                     <span className="text-[10px] text-white/30 sm:hidden">Votou em</span>
                     <span className="max-w-[80px] truncate text-xs font-bold text-red-400">
                       {targetPlayer.name}
@@ -121,7 +148,7 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
             <div className="mx-auto mt-4 flex w-full max-w-sm flex-col gap-3">
               <ShareResult
                 title={`SUS - Sala ${room.code}`}
-                text={`O Impostor era: ${realImpostors.map((impostor) => impostor.name).join(", ")}!\n\n${groupWon ? "Vitoria do GRUPO!" : "Vitoria do IMPOSTOR!"}`}
+                text={`O impostor era: ${realImpostors.map((impostor) => impostor.name).join(", ")}!\n\n${groupWon ? "Vitoria do GRUPO!" : "Vitoria do IMPOSTOR!"}`}
                 url={typeof window !== "undefined" ? `${window.location.origin}/room/${room.code}` : ""}
               />
 
@@ -130,7 +157,7 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
                   className="w-full py-6 font-bold"
                   onClick={() => void startNextRound({ roomId: round.roomId, sessionId })}
                 >
-                  Proxima Rodada
+                  Proxima rodada
                 </Button>
               )}
             </div>

@@ -6,13 +6,17 @@ import Footer from "@/components/game/Footer";
 import { useBackground } from "@/lib/BackgroundContext";
 
 function GameLayoutInner({ children }: { children: React.ReactNode }) {
-  const { variant } = useBackground();
+  const { variant, themeId, backgroundAnimationEnabled } = useBackground();
 
   return (
     <div className="relative flex flex-col min-h-dvh">
-      <ShaderBackground variant={variant} />
+      <ShaderBackground
+        variant={variant}
+        themeId={themeId}
+        animated={backgroundAnimationEnabled}
+      />
       <ConvexStatusBanner />
-      <main className="relative z-10 flex flex-1 w-full flex-col items-center justify-center overflow-y-auto px-3 py-4 pb-16 sm:pb-24">
+      <main className="relative z-10 flex w-full flex-1 flex-col items-center justify-start px-3 py-4 pb-28 sm:px-4 sm:py-6 sm:pb-32">
         {children}
       </main>
       <Footer />

@@ -16,7 +16,7 @@ interface PlayerAvatarProps {
   canRemove?: boolean;
   onRemove?: () => void;
   className?: string;
-  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "lobby";
+  size?: "sm" | "md" | "lg" | "xl" | "2xl" | "lobby" | "orbit";
   hideName?: boolean;
 }
 
@@ -134,6 +134,15 @@ const SIZE_MAP = {
     botIcon: "h-3.5 w-3.5 sm:h-4 sm:w-4 lg:h-[1.125rem] lg:w-[1.125rem]",
     statusIndicator: "-bottom-0.5 -right-0.5 h-4 w-4 border-2 sm:h-5 sm:w-5",
     name: "text-sm sm:text-base",
+  },
+  orbit: {
+    container: "h-14 w-14 sm:h-[4rem] sm:w-[4rem] lg:h-[4.5rem] lg:w-[4.5rem]",
+    img: 90,
+    crown: "text-sm sm:text-base",
+    botBadge: "left-1 top-1 h-5 w-5 border-2 sm:h-6 sm:w-6",
+    botIcon: "h-3 w-3 sm:h-3.5 sm:w-3.5",
+    statusIndicator: "-bottom-0.5 -right-0.5 h-4 w-4 border-2",
+    name: "text-xs sm:text-sm",
   },
   lg: {
     container: "h-20 w-20",

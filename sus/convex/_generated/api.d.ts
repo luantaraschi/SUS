@@ -10,12 +10,16 @@
 
 import type * as answers from "../answers.js";
 import type * as auth from "../auth.js";
+import type * as content from "../content.js";
 import type * as debug from "../debug.js";
+import type * as defaultContent from "../defaultContent.js";
+import type * as feedback from "../feedback.js";
 import type * as history from "../history.js";
 import type * as http from "../http.js";
 import type * as lib_generateCode from "../lib/generateCode.js";
 import type * as packs from "../packs.js";
 import type * as players from "../players.js";
+import type * as preferences from "../preferences.js";
 import type * as profiles from "../profiles.js";
 import type * as rooms from "../rooms.js";
 import type * as rounds from "../rounds.js";
@@ -32,12 +36,16 @@ import type {
 declare const fullApi: ApiFromModules<{
   answers: typeof answers;
   auth: typeof auth;
+  content: typeof content;
   debug: typeof debug;
+  defaultContent: typeof defaultContent;
+  feedback: typeof feedback;
   history: typeof history;
   http: typeof http;
   "lib/generateCode": typeof lib_generateCode;
   packs: typeof packs;
   players: typeof players;
+  preferences: typeof preferences;
   profiles: typeof profiles;
   rooms: typeof rooms;
   rounds: typeof rounds;

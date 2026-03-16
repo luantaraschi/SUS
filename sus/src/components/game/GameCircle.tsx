@@ -106,7 +106,7 @@ export default function GameCircle({ children, className = "" }: GameCircleProps
       initial={{ opacity: 0, scale: 0.88, y: 16 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: 0.36, ease: [0.22, 1, 0.36, 1] }}
-      className={`relative mx-auto flex w-full max-w-[760px] flex-col overflow-hidden rounded-[44px] bg-white shadow-[0_18px_70px_rgba(0,0,0,0.28)] ${className}`}
+      className={`relative mx-auto flex w-full max-w-[720px] flex-col overflow-hidden rounded-[40px] bg-[var(--panel-surface)] text-[var(--panel-text)] shadow-[0_18px_70px_rgba(0,0,0,0.28)] ${className}`}
     >
       <SketchyPanelBorder />
       <div className="relative z-20 flex h-full w-full flex-col">{children}</div>

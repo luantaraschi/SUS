@@ -1,6 +1,26 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server.js";
+import { mutation, query, type QueryCtx } from "./_generated/server.js";
 import { auth } from "./auth.js";
+import { getDefaultPackCatalog } from "./content.js";
+
+async function buildDefaultPackOptions(
+  ctx: QueryCtx,
+  mode: "word" | "question"
+) {
+  const catalog = getDefaultPackCatalog(mode);
+  const entries =
+    mode === "word"
+      ? await ctx.db.query("wordPacks").collect()
+      : await ctx.db.query("questionPacks").collect();
+
+  return catalog.map((pack) => ({
+    key: pack.key,
+    title: pack.title,
+    icon: pack.icon,
+    source: "default" as const,
+    count: entries.filter((entry) => entry.category === pack.title).length,
+  }));
+}
 
 export const getMyPacks = query({
   args: { mode: v.optional(v.union(v.literal("word"), v.literal("question"))) },
@@ -18,6 +38,41 @@ export const getMyPacks = query({
       return packs.filter((p) => p.mode === args.mode);
     }
     return packs;
+  },
+});
+
+export const getDefaultPacks = query({
+  args: { mode: v.union(v.literal("word"), v.literal("question")) },
+  handler: async (ctx, args) => buildDefaultPackOptions(ctx, args.mode),
+});
+
+export const getMergedPackOptions = query({
+  args: { mode: v.union(v.literal("word"), v.literal("question")) },
+  handler: async (ctx, args) => {
+    const defaultPacks = await buildDefaultPackOptions(ctx, args.mode);
+    const userId = await auth.getUserId(ctx);
+    if (!userId) {
+      return defaultPacks;
+    }
+
+    const customPacks = await ctx.db
+      .query("customPacks")
+      .withIndex("by_author", (q) => q.eq("authorId", userId))
+      .order("desc")
+      .collect();
+
+    return [
+      ...defaultPacks,
+      ...customPacks
+        .filter((pack) => pack.mode === args.mode)
+        .map((pack) => ({
+          key: pack._id,
+          title: pack.title,
+          icon: "folder",
+          source: "custom" as const,
+          count: pack.items.length,
+        })),
+    ];
   },
 });
 

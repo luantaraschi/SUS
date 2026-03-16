@@ -3,6 +3,7 @@ import type { Doc, Id } from "./_generated/dataModel.js";
 import { mutation, query } from "./_generated/server.js";
 import { generateUniqueCode } from "./lib/generateCode.js";
 import { distributeRolesInternal, getRoomContentReadiness } from "./rounds.js";
+import { ensureDefaultContent, getFallbackDefaultPackKey } from "./content.js";
 
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 12;
@@ -160,6 +161,7 @@ export const createRoom = mutation({
         impostorHint: args.settings?.impostorHint ?? false,
         isLocalMode: args.settings?.isLocalMode ?? false,
         customMasterId: undefined,
+        defaultPackKey: getFallbackDefaultPackKey(args.mode),
       },
       currentRound: 0,
     });
@@ -318,6 +320,7 @@ export const updateSettings = mutation({
       impostorHint: v.optional(v.boolean()),
       isLocalMode: v.optional(v.boolean()),
       customMasterId: v.optional(v.string()),
+      defaultPackKey: v.optional(v.string()),
       customPackId: v.optional(v.id("customPacks")),
       numImpostors: v.optional(v.number()),
     }),
@@ -370,8 +373,17 @@ export const updateSettings = mutation({
     if (args.settings.customMasterId !== undefined) {
       merged.customMasterId = args.settings.customMasterId;
     }
+    if (args.settings.defaultPackKey !== undefined) {
+      merged.defaultPackKey = args.settings.defaultPackKey;
+      if (args.settings.defaultPackKey) {
+        merged.customPackId = undefined;
+      }
+    }
     if (args.settings.customPackId !== undefined) {
       merged.customPackId = args.settings.customPackId;
+      if (args.settings.customPackId) {
+        merged.defaultPackKey = undefined;
+      }
     }
     if (args.settings.numImpostors !== undefined) {
       merged.numImpostors = Math.max(
@@ -384,7 +396,11 @@ export const updateSettings = mutation({
     if (args.mode) {
       patch.mode = args.mode;
       if (args.mode !== room.mode) {
-        patch.settings = { ...patch.settings, customPackId: undefined };
+        patch.settings = {
+          ...patch.settings,
+          customPackId: undefined,
+          defaultPackKey: getFallbackDefaultPackKey(args.mode),
+        };
       }
     }
     if (args.questionMode) {
@@ -522,6 +538,8 @@ export const startGame = mutation({
     sessionId: v.string(),
   },
   handler: async (ctx, args) => {
+    await ensureDefaultContent(ctx);
+
     const room = await ctx.db.get(args.roomId);
     if (!room) throw new Error("Sala nao encontrada.");
     if (room.hostId !== args.sessionId) {
@@ -668,6 +686,8 @@ export const startNextRound = mutation({
     sessionId: v.string(),
   },
   handler: async (ctx, args) => {
+    await ensureDefaultContent(ctx);
+
     const room = await ctx.db.get(args.roomId);
     if (!room) throw new Error("Sala nao encontrada.");
     if (room.status !== "playing") throw new Error("Sala nao esta em jogo.");
