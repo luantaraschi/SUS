@@ -22,7 +22,7 @@ export default function SignInModal({ onClose, onSuccess }: SignInModalProps) {
     setError(null);
     try {
       void signIn("google", { redirectTo: "/" });
-    } catch (e) {
+    } catch {
       setError("Erro ao autenticar com o Google.");
       setIsSubmitting(false);
     }
@@ -36,8 +36,7 @@ export default function SignInModal({ onClose, onSuccess }: SignInModalProps) {
       const flow = step === "signIn" ? "signIn" : "signUp";
       await signIn("password", { email, password, flow });
       onSuccess();
-    } catch (error) {
-      console.error(error);
+    } catch {
       if (step === "signUp") {
         setError("Erro ao criar conta. Talvez o email já esteja em uso?");
       } else {

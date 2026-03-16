@@ -21,8 +21,7 @@ export default function ShareResult({ title, text, url }: ShareResultProps) {
           text,
           url,
         });
-      } catch (err) {
-        console.warn("Share failed or was cancelled", err);
+      } catch {
         fallbackCopy();
       }
     } else {
@@ -35,8 +34,8 @@ export default function ShareResult({ title, text, url }: ShareResultProps) {
       await navigator.clipboard.writeText(`${title}\n\n${text}\n\nJogue aqui: ${url}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (e) {
-      console.error("Clipboard write failed", e);
+    } catch {
+      setCopied(false);
     }
   };
 

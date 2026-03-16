@@ -1,7 +1,20 @@
 import { v } from "convex/values";
-import type { Id } from "./_generated/dataModel.js";
-import { mutation, query } from "./_generated/server.js";
+import type { Doc, Id } from "./_generated/dataModel.js";
+import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { attemptSaveHistory } from "./history.js";
+
+type RoundDoc = Doc<"rounds">;
+type PlayerDoc = Doc<"players">;
+
+function getVotingPlayers(players: PlayerDoc[], round: RoundDoc) {
+  return players.filter(
+    (player) => player.status !== "disconnected" && player._id !== round.masterId
+  );
+}
+
+function getRoundImpostorIds(round: RoundDoc) {
+  return round.impostorIds ?? (round.impostorId ? [round.impostorId] : []);
+}
 
 export const submitVote = mutation({
   args: {
@@ -12,18 +25,17 @@ export const submitVote = mutation({
   },
   handler: async (ctx, args) => {
     const round = await ctx.db.get(args.roundId);
-    if (!round) throw new Error("Rodada não encontrada");
-    if (round.status !== "voting") throw new Error("Não é hora de votar");
+    if (!round) throw new Error("Rodada nao encontrada.");
+    if (round.status !== "voting") throw new Error("Nao e hora de votar.");
 
     const voter = await ctx.db.get(args.voterId);
     if (!voter || voter.roomId !== round.roomId) {
-      throw new Error("Jogador invalido");
+      throw new Error("Jogador invalido.");
     }
     if (!voter.isBot && voter.sessionId !== args.sessionId) {
-      throw new Error("Sessao invalida");
+      throw new Error("Sessao invalida.");
     }
 
-    // Check if already voted
     const existing = await ctx.db
       .query("votes")
       .withIndex("by_round_voter", (q) =>
@@ -45,7 +57,7 @@ export const submitVote = mutation({
   },
 });
 
-export async function checkAndTallyVotes(ctx: any, roundId: Id<"rounds">) {
+export async function checkAndTallyVotes(ctx: MutationCtx, roundId: Id<"rounds">) {
   const round = await ctx.db.get(roundId);
   if (!round) return;
 
@@ -54,109 +66,105 @@ export async function checkAndTallyVotes(ctx: any, roundId: Id<"rounds">) {
 
   const players = await ctx.db
     .query("players")
-    .withIndex("by_room", (q: any) => q.eq("roomId", round.roomId))
+    .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
     .collect();
 
-  const activePlayers = players.filter((p: any) => p.status !== "disconnected" && p._id !== round.masterId);
+  const activePlayers = getVotingPlayers(players, round);
   const votes = await ctx.db
     .query("votes")
-    .withIndex("by_round", (q: any) => q.eq("roundId", roundId))
+    .withIndex("by_round", (q) => q.eq("roundId", roundId))
     .collect();
 
-  if (votes.length >= activePlayers.length) {
-    // Avançar para resultados e calcular
-    const voteCounts = new Map<string, number>();
-    for (const v of votes) {
-      voteCounts.set(v.targetId, (voteCounts.get(v.targetId) || 0) + 1);
+  if (votes.length < activePlayers.length) {
+    return;
+  }
+
+  const voteCounts = new Map<string, number>();
+  for (const vote of votes) {
+    voteCounts.set(vote.targetId, (voteCounts.get(vote.targetId) || 0) + 1);
+  }
+
+  let maxVotes = 0;
+  let votedOutId: Id<"players"> | undefined;
+  let isTie = false;
+
+  for (const [suspectId, count] of voteCounts.entries()) {
+    if (count > maxVotes) {
+      maxVotes = count;
+      votedOutId = suspectId as Id<"players">;
+      isTie = false;
+      continue;
     }
 
-    let maxVotes = 0;
-    let votedOutId: Id<"players"> | undefined;
-    let isTie = false;
+    if (count === maxVotes) {
+      isTie = true;
+    }
+  }
 
-    for (const [suspect, count] of voteCounts.entries()) {
-      if (count > maxVotes) {
-        maxVotes = count;
-        votedOutId = suspect as Id<"players">;
-        isTie = false;
-      } else if (count === maxVotes) {
-        isTie = true;
+  const impostorIds = getRoundImpostorIds(round);
+  const impostorWon = isTie || !votedOutId || !impostorIds.includes(votedOutId);
+
+  await ctx.db.patch(roundId, {
+    status: "results",
+    votedOutId: isTie ? undefined : votedOutId,
+    impostorWon,
+  });
+
+  if (impostorWon) {
+    for (const impostorId of impostorIds) {
+      const impostor = await ctx.db.get(impostorId);
+      if (impostor) {
+        await ctx.db.patch(impostor._id, { score: impostor.score + 2 });
       }
     }
-
-    const impostorIds = round.impostorIds || (round.impostorId ? [round.impostorId] : []);
-    const impostorWon = isTie || !impostorIds.includes(votedOutId);
-
-    await ctx.db.patch(roundId, {
-      status: "results",
-      votedOutId: isTie ? undefined : votedOutId,
-      impostorWon,
-    });
-
-    // Update scores
-    if (impostorWon) {
-      // Impostor gets points
-      for (const impId of impostorIds) {
-        const impostor = await ctx.db.get(impId as Id<"players">);
-        if (impostor) {
-          await ctx.db.patch(impostor._id, { score: impostor.score + 2 });
-        }
-      }
-    } else {
-      // Group gets points
-      for (const p of activePlayers) {
-        if (!impostorIds.includes(p._id) && p._id !== round.masterId) {
-          await ctx.db.patch(p._id, { score: (p.score || 0) + 1 });
-        }
+  } else {
+    for (const player of activePlayers) {
+      if (!impostorIds.includes(player._id) && player._id !== round.masterId) {
+        await ctx.db.patch(player._id, { score: player.score + 1 });
       }
     }
+  }
 
-    if (room.currentRound === room.settings.rounds) {
-      await attemptSaveHistory(ctx, { roomId: room._id });
-    }
+  if (room.currentRound === room.settings.rounds) {
+    await attemptSaveHistory(ctx, { roomId: room._id });
   }
 }
 
-export async function castBotVotes(ctx: any, roundId: Id<"rounds">) {
+export async function castBotVotes(ctx: MutationCtx, roundId: Id<"rounds">) {
   const round = await ctx.db.get(roundId);
   if (!round) return;
 
   const players = await ctx.db
     .query("players")
-    .withIndex("by_room", (q: any) => q.eq("roomId", round.roomId))
+    .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
     .collect();
 
-  const activePlayers = players.filter((p: any) => p.status !== "disconnected" && p._id !== round.masterId);
-  const bots = activePlayers.filter((p: any) => p.isBot);
-
-  if (bots.length === 0) return;
+  const activePlayers = getVotingPlayers(players, round);
+  const bots = activePlayers.filter((player) => player.isBot);
 
   for (const bot of bots) {
-    // Check if the bot already voted
     const existing = await ctx.db
       .query("votes")
-      .withIndex("by_round_voter", (q: any) =>
-        q.eq("roundId", roundId).eq("voterId", bot._id)
-      )
+      .withIndex("by_round_voter", (q) => q.eq("roundId", roundId).eq("voterId", bot._id))
       .first();
 
-    if (!existing) {
-      // Pick a random target from activePlayers (excluding self)
-      const possibleTargets = activePlayers.filter((p: any) => p._id !== bot._id);
-      if (possibleTargets.length > 0) {
-        const target = possibleTargets[Math.floor(Math.random() * possibleTargets.length)];
-        
-        await ctx.db.insert("votes", {
-          roundId: roundId,
-          voterId: bot._id,
-          targetId: target._id,
-        });
-      }
+    if (existing) {
+      continue;
     }
+
+    const possibleTargets = activePlayers.filter((player) => player._id !== bot._id);
+    if (possibleTargets.length === 0) {
+      continue;
+    }
+
+    const target = possibleTargets[Math.floor(Math.random() * possibleTargets.length)]!;
+    await ctx.db.insert("votes", {
+      roundId,
+      voterId: bot._id,
+      targetId: target._id,
+    });
   }
 
-  // After all bots vote, check if the round should end 
-  // (e.g., if there are ONLY bots or they were the last remaining to vote)
   await checkAndTallyVotes(ctx, roundId);
 }
 

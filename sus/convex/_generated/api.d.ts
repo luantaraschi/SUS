@@ -16,6 +16,7 @@ import type * as http from "../http.js";
 import type * as lib_generateCode from "../lib/generateCode.js";
 import type * as packs from "../packs.js";
 import type * as players from "../players.js";
+import type * as profiles from "../profiles.js";
 import type * as rooms from "../rooms.js";
 import type * as rounds from "../rounds.js";
 import type * as seed from "../seed.js";
@@ -37,6 +38,7 @@ declare const fullApi: ApiFromModules<{
   "lib/generateCode": typeof lib_generateCode;
   packs: typeof packs;
   players: typeof players;
+  profiles: typeof profiles;
   rooms: typeof rooms;
   rounds: typeof rounds;
   seed: typeof seed;

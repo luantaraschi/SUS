@@ -38,6 +38,7 @@ export default defineSchema({
     sessionId: v.string(),
     name: v.string(),
     emoji: v.string(),
+    avatarImageUrl: v.optional(v.string()),
     isHost: v.boolean(),
     isBot: v.optional(v.boolean()),
     status: v.union(
@@ -143,4 +144,14 @@ export default defineSchema({
     ),
     createdAt: v.number(),
   }).index("by_author", ["authorId"]),
+
+  userProfiles: defineTable({
+    userId: v.id("users"),
+    displayName: v.string(),
+    avatarMode: v.union(v.literal("generated"), v.literal("upload")),
+    avatarSeed: v.optional(v.string()),
+    avatarStorageId: v.optional(v.id("_storage")),
+    avatarUrl: v.optional(v.string()),
+    updatedAt: v.number(),
+  }).index("by_user", ["userId"]),
 });

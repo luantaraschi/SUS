@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { BubbleText } from "@/components/ui/bubble-text";
@@ -79,12 +80,12 @@ export default function PacksPage() {
       setPackTitle("");
       setItems([{ content: "", hint: "" }]);
       setErrorMsg("");
-    } catch (err: any) {
-      setErrorMsg(err.message || "Erro ao criar pacote");
+    } catch (err: unknown) {
+      setErrorMsg(err instanceof Error ? err.message : "Erro ao criar pacote");
     }
   };
 
-  const handleDelete = async (packId: any) => {
+  const handleDelete = async (packId: Id<"customPacks">) => {
     if (confirm("Tem certeza que deseja apagar este pacote?")) {
       await deletePack({ packId });
     }
@@ -117,7 +118,7 @@ export default function PacksPage() {
             </p>
           ) : (
             <div className="flex flex-col gap-3 mt-4">
-              {myPacks.map((pack: any) => (
+              {myPacks.map((pack) => (
                 <div key={pack._id} className="bg-white/10 backdrop-blur-md rounded-2xl p-4 flex justify-between items-center border border-white/20">
                   <div>
                     <h3 className="text-white font-display text-xl">{pack.title}</h3>

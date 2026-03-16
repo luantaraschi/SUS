@@ -8,7 +8,7 @@ export const getMyPacks = query({
     const userId = await auth.getUserId(ctx);
     if (!userId) return [];
 
-    let packsQuery = ctx.db
+    const packsQuery = ctx.db
       .query("customPacks")
       .withIndex("by_author", (q) => q.eq("authorId", userId));
 

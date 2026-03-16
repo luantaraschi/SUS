@@ -173,6 +173,33 @@ const DEFAULT_WORDS = [
   { category: "Vestimenta", word: "Gravata", hint: "Acessório formal de pescoço" },
 ];
 
+const DEFAULT_QUESTIONS = [
+  { category: "Comida", question: "Qual comida combina com domingo?", impostorQuestion: "Qual comida combina com sexta a noite?" },
+  { category: "Comida", question: "Qual lanche voce levaria para uma viagem?", impostorQuestion: "Qual lanche voce levaria para um cinema?" },
+  { category: "Comida", question: "Qual sobremesa tem cara de festa?", impostorQuestion: "Qual sobremesa tem cara de cafe da tarde?" },
+  { category: "Lugar", question: "Que lugar voce visitaria nas ferias?", impostorQuestion: "Que lugar voce evitaria nas ferias?" },
+  { category: "Lugar", question: "Qual lugar da cidade combina com encontro?", impostorQuestion: "Qual lugar da cidade combina com amigos?" },
+  { category: "Lugar", question: "Qual ambiente tem cara de silencio?", impostorQuestion: "Qual ambiente tem cara de bagunca?" },
+  { category: "Rotina", question: "O que voce faz logo depois de acordar?", impostorQuestion: "O que voce faz logo antes de dormir?" },
+  { category: "Rotina", question: "Qual tarefa voce sempre adia?", impostorQuestion: "Qual tarefa voce termina rapido?" },
+  { category: "Rotina", question: "Que habito deixa seu dia melhor?", impostorQuestion: "Que habito atrasa seu dia?" },
+  { category: "Viagem", question: "O que nao pode faltar na mala?", impostorQuestion: "O que costuma ficar esquecido na mala?" },
+  { category: "Viagem", question: "Qual transporte combina com aventura?", impostorQuestion: "Qual transporte combina com conforto?" },
+  { category: "Viagem", question: "Que souvenir voce traria de viagem?", impostorQuestion: "Que souvenir voce jamais compraria?" },
+  { category: "Filmes", question: "Que tipo de filme voce veria duas vezes?", impostorQuestion: "Que tipo de filme voce abandona na metade?" },
+  { category: "Filmes", question: "Qual personagem seria um bom amigo?", impostorQuestion: "Qual personagem seria um pessimo chefe?" },
+  { category: "Filmes", question: "Que cena merece aplauso no cinema?", impostorQuestion: "Que cena merece um spoiler?" },
+  { category: "Pessoas", question: "Que qualidade faz alguem confiavel?", impostorQuestion: "Que qualidade faz alguem inesquecivel?" },
+  { category: "Pessoas", question: "Quem seria bom em liderar um grupo?", impostorQuestion: "Quem seria bom em animar um grupo?" },
+  { category: "Pessoas", question: "Que atitude estraga uma amizade?", impostorQuestion: "Que atitude fortalece uma amizade?" },
+  { category: "Objetos", question: "Qual objeto voce empresta sem medo?", impostorQuestion: "Qual objeto voce nunca empresta?" },
+  { category: "Objetos", question: "Que objeto tem cara de escritorio?", impostorQuestion: "Que objeto tem cara de cozinha?" },
+  { category: "Objetos", question: "Qual objeto salva um dia caotico?", impostorQuestion: "Qual objeto atrapalha um dia caotico?" },
+  { category: "Escola", question: "Qual materia rende boa conversa?", impostorQuestion: "Qual materia rende sono?" },
+  { category: "Escola", question: "Que professor seria inesquecivel?", impostorQuestion: "Que professor seria temido?" },
+  { category: "Escola", question: "Que momento combina com recreio?", impostorQuestion: "Que momento combina com prova?" },
+];
+
 export const seedData = mutation({
   handler: async (ctx) => {
     // Apaga registros antigos se existirem, para sempre substituir
@@ -180,17 +207,32 @@ export const seedData = mutation({
     for (const w of existingWords) {
       await ctx.db.delete(w._id);
     }
-    
-    let count = 0;
+
+    const existingQuestions = await ctx.db.query("questionPacks").collect();
+    for (const question of existingQuestions) {
+      await ctx.db.delete(question._id);
+    }
+
+    let wordCount = 0;
     for (const { word, hint, category } of DEFAULT_WORDS) {
       await ctx.db.insert("wordPacks", {
         word,
         hint,
         category,
       });
-      count++;
+      wordCount++;
     }
-    
-    return `Inserido ${count} palavras no banco!`;
+
+    let questionCount = 0;
+    for (const { category, question, impostorQuestion } of DEFAULT_QUESTIONS) {
+      await ctx.db.insert("questionPacks", {
+        category,
+        question,
+        impostorQuestion,
+      });
+      questionCount++;
+    }
+
+    return `Inseridos ${wordCount} palavras e ${questionCount} pares de perguntas no banco!`;
   },
 });

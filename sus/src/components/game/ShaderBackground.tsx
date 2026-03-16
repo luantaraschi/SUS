@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useSyncExternalStore } from "react";
 import { ShaderGradientCanvas, ShaderGradient } from "@shadergradient/react";
 
 type BackgroundVariant = "default" | "valid" | "invalid";
@@ -33,8 +33,11 @@ const gradientConfigs: Record<
 export default function ShaderBackground({
   variant = "default",
 }: ShaderBackgroundProps) {
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  const mounted = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false
+  );
 
   if (!mounted) return null;
 

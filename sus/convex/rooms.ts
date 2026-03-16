@@ -1,15 +1,25 @@
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel.js";
 import { mutation, query } from "./_generated/server.js";
-import { Id } from "./_generated/dataModel.js";
-import { generateUniqueCode } from "./lib/generateCode";
-import { distributeRolesInternal } from "./rounds.js";
+import { generateUniqueCode } from "./lib/generateCode.js";
+import { distributeRolesInternal, getRoomContentReadiness } from "./rounds.js";
 
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 12;
 
 const EMOJI_POOL = [
-  "😱", "🤡", "👻", "🎭", "🤖", "👽", "🐙", "🦊",
-  "🐸", "🦄", "🌶️", "🍄",
+  "😱",
+  "🤡",
+  "👻",
+  "🎭",
+  "🤖",
+  "👽",
+  "🐙",
+  "🦊",
+  "🐸",
+  "🦄",
+  "🌶️",
+  "🍄",
 ];
 
 const BOT_PRESETS = [
@@ -27,6 +37,9 @@ const BOT_PRESETS = [
   { name: "Rex", avatarSeed: "bot-rex" },
 ];
 
+type PlayerDoc = Doc<"players">;
+type RoomDoc = Doc<"rooms">;
+
 function getRandomItem<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)]!;
 }
@@ -35,18 +48,25 @@ function createBotSessionId(roomId: string): string {
   return `bot:${roomId}:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`;
 }
 
-function getBotProfile(
-  players: Array<{
-    name: string;
-    isBot?: boolean;
-    status: "connected" | "ready" | "disconnected";
-  }>
-) {
+function getActivePlayers(players: PlayerDoc[]) {
+  return players.filter((player) => player.status !== "disconnected");
+}
+
+function getDefaultPlayerName(name: string) {
+  return name || `Anonimo${Math.floor(Math.random() * 999)}`;
+}
+
+function getDefaultAvatarSeed(seed: string) {
+  return seed || getRandomItem(EMOJI_POOL);
+}
+
+function getBotProfile(players: Pick<PlayerDoc, "name" | "isBot" | "status">[]) {
   const activeNames = new Set(
     players
       .filter((player) => player.status !== "disconnected")
       .map((player) => player.name.toLowerCase())
   );
+
   const availablePresets = BOT_PRESETS.filter(
     (preset) => !activeNames.has(preset.name.toLowerCase())
   );
@@ -62,10 +82,54 @@ function getBotProfile(
   };
 }
 
+function pickImpostorIds(activePlayers: PlayerDoc[], requestedCount: number) {
+  const impostorIds: Id<"players">[] = [];
+  const availableIndices = Array.from({ length: activePlayers.length }, (_, index) => index);
+  const maxImpostors = Math.max(1, Math.min(requestedCount, activePlayers.length - 1));
+
+  for (let index = 0; index < maxImpostors; index += 1) {
+    const randomListIndex = Math.floor(Math.random() * availableIndices.length);
+    const pickedPlayerIndex = availableIndices.splice(randomListIndex, 1)[0];
+    impostorIds.push(activePlayers[pickedPlayerIndex]!._id);
+  }
+
+  return impostorIds;
+}
+
+function resolveMasterId(room: RoomDoc, activePlayers: PlayerDoc[], impostorIds: Id<"players">[]) {
+  if (room.mode !== "question" || (room.questionMode ?? "system") !== "master") {
+    return null;
+  }
+
+  const hostPlayer = activePlayers.find((player) => player.isHost) ?? null;
+  const specifiedMaster =
+    activePlayers.find((player) => player._id === room.settings.customMasterId) ?? null;
+
+  let candidateMaster = specifiedMaster ?? hostPlayer;
+  if (!candidateMaster) {
+    return null;
+  }
+
+  if (impostorIds.includes(candidateMaster._id)) {
+    const fallbackCandidates = activePlayers.filter(
+      (player) => !impostorIds.includes(player._id)
+    );
+    candidateMaster =
+      fallbackCandidates.length > 0 ? getRandomItem(fallbackCandidates) : null;
+  }
+
+  if (!candidateMaster || impostorIds.includes(candidateMaster._id)) {
+    return null;
+  }
+
+  return candidateMaster._id;
+}
+
 export const createRoom = mutation({
   args: {
     hostName: v.string(),
     hostEmoji: v.string(),
+    hostAvatarImageUrl: v.optional(v.string()),
     mode: v.union(v.literal("word"), v.literal("question")),
     settings: v.optional(
       v.object({
@@ -95,7 +159,7 @@ export const createRoom = mutation({
         votingTime: args.settings?.votingTime ?? 60,
         impostorHint: args.settings?.impostorHint ?? false,
         isLocalMode: args.settings?.isLocalMode ?? false,
-        customMasterId: undefined, // Defaults to the host later
+        customMasterId: undefined,
       },
       currentRound: 0,
     });
@@ -103,8 +167,9 @@ export const createRoom = mutation({
     const playerId = await ctx.db.insert("players", {
       roomId,
       sessionId: args.sessionId,
-      name: args.hostName || `Anonimo${Math.floor(Math.random() * 999)}`,
-      emoji: args.hostEmoji || getRandomItem(EMOJI_POOL),
+      name: getDefaultPlayerName(args.hostName),
+      emoji: getDefaultAvatarSeed(args.hostEmoji),
+      avatarImageUrl: args.hostAvatarImageUrl,
       isHost: true,
       isBot: false,
       status: "connected",
@@ -121,6 +186,7 @@ export const joinRoom = mutation({
     code: v.string(),
     playerName: v.string(),
     playerEmoji: v.string(),
+    playerAvatarImageUrl: v.optional(v.string()),
     sessionId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -155,12 +221,12 @@ export const joinRoom = mutation({
       .query("players")
       .withIndex("by_room", (q) => q.eq("roomId", room._id))
       .collect();
-    const activePlayers = players.filter((player) => player.status !== "disconnected");
+    const activePlayers = getActivePlayers(players);
     const replacementBot =
       activePlayers.length >= room.settings.maxPlayers
         ? activePlayers
             .filter((player) => player.isBot)
-            .sort((a, b) => b.joinedAt - a.joinedAt)[0] ?? null
+            .sort((left, right) => right.joinedAt - left.joinedAt)[0] ?? null
         : null;
 
     if (activePlayers.length >= room.settings.maxPlayers && !replacementBot) {
@@ -170,8 +236,7 @@ export const joinRoom = mutation({
     const normalizedName = args.playerName.toLowerCase();
     const nameExists = activePlayers.some(
       (player) =>
-        player._id !== replacementBot?._id &&
-        player.name.toLowerCase() === normalizedName
+        player._id !== replacementBot?._id && player.name.toLowerCase() === normalizedName
     );
 
     if (nameExists) {
@@ -185,8 +250,9 @@ export const joinRoom = mutation({
     const playerId = await ctx.db.insert("players", {
       roomId: room._id,
       sessionId: args.sessionId,
-      name: args.playerName || `Anonimo${Math.floor(Math.random() * 999)}`,
-      emoji: args.playerEmoji || getRandomItem(EMOJI_POOL),
+      name: getDefaultPlayerName(args.playerName),
+      emoji: getDefaultAvatarSeed(args.playerEmoji),
+      avatarImageUrl: args.playerAvatarImageUrl,
       isHost: false,
       isBot: false,
       status: "connected",
@@ -232,7 +298,7 @@ export const leaveRoom = mutation({
       );
       const hostCandidates =
         connectedHumans.length > 0 ? connectedHumans : remainingHumans;
-      const nextHost = hostCandidates.sort((a, b) => a.joinedAt - b.joinedAt)[0];
+      const nextHost = hostCandidates.sort((left, right) => left.joinedAt - right.joinedAt)[0]!;
 
       await ctx.db.patch(nextHost._id, { isHost: true });
       await ctx.db.patch(room._id, { hostId: nextHost.sessionId });
@@ -275,15 +341,16 @@ export const updateSettings = mutation({
         .query("players")
         .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
         .collect();
-      const activeCount = players.filter(
-        (player) => player.status !== "disconnected"
-      ).length;
+      const activeCount = getActivePlayers(players).length;
       const minimumMaxPlayers = Math.max(MIN_PLAYERS, activeCount);
 
       merged.maxPlayers = Math.max(
         minimumMaxPlayers,
         Math.min(MAX_PLAYERS, args.settings.maxPlayers)
       );
+      if (merged.numImpostors !== undefined) {
+        merged.numImpostors = Math.max(1, Math.min(3, merged.maxPlayers - 2, merged.numImpostors));
+      }
     }
     if (args.settings.rounds !== undefined) {
       merged.rounds = Math.max(1, Math.min(10, args.settings.rounds));
@@ -307,12 +374,18 @@ export const updateSettings = mutation({
       merged.customPackId = args.settings.customPackId;
     }
     if (args.settings.numImpostors !== undefined) {
-      merged.numImpostors = args.settings.numImpostors;
+      merged.numImpostors = Math.max(
+        1,
+        Math.min(3, merged.maxPlayers - 2, args.settings.numImpostors)
+      );
     }
 
-    const patch: Record<string, unknown> = { settings: merged };
+    const patch: Partial<RoomDoc> & { settings: RoomDoc["settings"] } = { settings: merged };
     if (args.mode) {
       patch.mode = args.mode;
+      if (args.mode !== room.mode) {
+        patch.settings = { ...patch.settings, customPackId: undefined };
+      }
     }
     if (args.questionMode) {
       patch.questionMode = args.questionMode;
@@ -362,7 +435,7 @@ export const addBot = mutation({
       .query("players")
       .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
       .collect();
-    const activePlayers = players.filter((player) => player.status !== "disconnected");
+    const activePlayers = getActivePlayers(players);
 
     if (activePlayers.length >= room.settings.maxPlayers) {
       throw new Error("A sala ja atingiu o limite de jogadores.");
@@ -425,6 +498,24 @@ export const checkRoomExists = query({
   },
 });
 
+export const getStartReadiness = query({
+  args: { roomId: v.id("rooms") },
+  handler: async (ctx, args) => {
+    const room = await ctx.db.get(args.roomId);
+    if (!room) {
+      return {
+        ready: false,
+        message: "Sala nao encontrada.",
+        source: null,
+        availableCount: 0,
+        mode: "word" as const,
+      };
+    }
+
+    return await getRoomContentReadiness(ctx, room);
+  },
+});
+
 export const startGame = mutation({
   args: {
     roomId: v.id("rooms"),
@@ -432,12 +523,17 @@ export const startGame = mutation({
   },
   handler: async (ctx, args) => {
     const room = await ctx.db.get(args.roomId);
-    if (!room) throw new Error("Sala não encontrada.");
+    if (!room) throw new Error("Sala nao encontrada.");
     if (room.hostId !== args.sessionId) {
       throw new Error("Apenas o host pode iniciar a partida.");
     }
     if (room.status !== "lobby") {
-      throw new Error("A sala já está em jogo.");
+      throw new Error("A sala ja esta em jogo.");
+    }
+
+    const readiness = await getRoomContentReadiness(ctx, room);
+    if (!readiness.ready) {
+      throw new Error(readiness.message ?? "A sala nao esta pronta para iniciar.");
     }
 
     const players = await ctx.db
@@ -445,62 +541,32 @@ export const startGame = mutation({
       .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
       .collect();
 
-    const activePlayers = players.filter((p) => p.status !== "disconnected");
+    const activePlayers = getActivePlayers(players);
     if (activePlayers.length < MIN_PLAYERS) {
       throw new Error(
-        `É necessário pelo menos ${MIN_PLAYERS} jogadores para iniciar a partida.`
+        `E necessario pelo menos ${MIN_PLAYERS} jogadores para iniciar a partida.`
       );
     }
 
-    const numImpostorsToPick = room.settings.numImpostors || 1;
-    const impostorIds: Id<"players">[] = [];
-    const availableIndices = Array.from({ length: activePlayers.length }, (_, i) => i);
-    // At least 1 player must not be the impostor
-    const maxImpostors = Math.max(1, Math.min(numImpostorsToPick, activePlayers.length - 1));
-    for (let i = 0; i < maxImpostors; i++) {
-       const randomIndex = Math.floor(Math.random() * availableIndices.length);
-       const pickedIndex = availableIndices[randomIndex];
-       impostorIds.push(activePlayers[pickedIndex]._id);
-       availableIndices.splice(randomIndex, 1);
-    }
-    const impostorId = impostorIds[0] as Id<"players">;
-
-    let masterId = null;
-    if (room.mode === "question" && room.questionMode === "master") {
-      const hostPlayer = activePlayers.find(p => p.isHost);
-      const specifiedMaster = activePlayers.find(p => p._id === room.settings.customMasterId);
-      
-      let candidateMaster = specifiedMaster || hostPlayer;
-      
-      // If the chosen master happens to be an impostor, fallback to someone else (who is not the impostor) to prevent conflicts
-      if (candidateMaster && impostorIds.includes(candidateMaster._id)) {
-        const fallbackCandidates = activePlayers.filter((p) => !impostorIds.includes(p._id));
-        if (fallbackCandidates.length > 0) {
-           candidateMaster = fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)];
-        }
-      }
-
-      if (candidateMaster && !impostorIds.includes(candidateMaster._id)) {
-        masterId = candidateMaster._id;
-      }
-    }
+    const impostorIds = pickImpostorIds(activePlayers, room.settings.numImpostors || 1);
+    const masterId = resolveMasterId(room, activePlayers, impostorIds);
 
     const roundId = await ctx.db.insert("rounds", {
       roomId: args.roomId,
       number: 1,
       mode: room.mode,
       status: "distributing",
-      impostorId,
+      impostorId: impostorIds[0],
       impostorIds,
       masterId,
     });
+
+    await distributeRolesInternal(ctx, args.roomId, roundId, activePlayers, impostorIds, masterId);
 
     await ctx.db.patch(args.roomId, {
       status: "playing",
       currentRound: 1,
     });
-
-    await distributeRolesInternal(ctx, args.roomId, roundId, activePlayers, impostorIds, masterId);
 
     return { roundId };
   },
@@ -512,7 +578,7 @@ export const getRoomByCode = query({
     const code = args.code.toUpperCase().trim();
     if (code.length < 4) return null;
 
-    return ctx.db
+    return await ctx.db
       .query("rooms")
       .withIndex("by_code", (q) => q.eq("code", code))
       .first();
@@ -527,21 +593,21 @@ export const getPlayers = query({
       .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
       .collect();
 
-    // Retorna apenas campos seguros — nunca expor role ou secretContent
     return players
-      .sort((a, b) => a.joinedAt - b.joinedAt)
-      .map((p) => ({
-        _id: p._id,
-        _creationTime: p._creationTime,
-        roomId: p.roomId,
-        sessionId: p.sessionId,
-        name: p.name,
-        emoji: p.emoji,
-        isHost: p.isHost,
-        isBot: p.isBot,
-        status: p.status,
-        score: p.score,
-        joinedAt: p.joinedAt,
+      .sort((left, right) => left.joinedAt - right.joinedAt)
+      .map((player) => ({
+        _id: player._id,
+        _creationTime: player._creationTime,
+        roomId: player.roomId,
+        sessionId: player.sessionId,
+        name: player.name,
+        emoji: player.emoji,
+        avatarImageUrl: player.avatarImageUrl ?? null,
+        isHost: player.isHost,
+        isBot: player.isBot,
+        status: player.status,
+        score: player.score,
+        joinedAt: player.joinedAt,
       }));
   },
 });
@@ -552,7 +618,7 @@ export const getMyPlayer = query({
     sessionId: v.string(),
   },
   handler: async (ctx, args) => {
-    return ctx.db
+    return await ctx.db
       .query("players")
       .withIndex("by_room_session", (q) =>
         q.eq("roomId", args.roomId).eq("sessionId", args.sessionId)
@@ -590,7 +656,7 @@ export const getRoomState = query({
 
     return {
       room,
-      players: players.sort((a, b) => a.joinedAt - b.joinedAt),
+      players: players.sort((left, right) => left.joinedAt - right.joinedAt),
       currentRound,
     };
   },
@@ -603,24 +669,26 @@ export const startNextRound = mutation({
   },
   handler: async (ctx, args) => {
     const room = await ctx.db.get(args.roomId);
-    if (!room) throw new Error("Sala não encontrada.");
-    if (room.status !== "playing") throw new Error("Sala não está em jogo.");
+    if (!room) throw new Error("Sala nao encontrada.");
+    if (room.status !== "playing") throw new Error("Sala nao esta em jogo.");
 
-    // Verify caller is the master or host
     const caller = await ctx.db
       .query("players")
       .withIndex("by_room_session", (q) =>
         q.eq("roomId", args.roomId).eq("sessionId", args.sessionId)
       )
       .first();
-    if (!caller) throw new Error("Jogador não encontrado.");
+    if (!caller) throw new Error("Jogador nao encontrado.");
 
     const nextNumber = room.currentRound + 1;
-
     if (nextNumber > room.settings.rounds) {
-      // Game over
       await ctx.db.patch(args.roomId, { status: "finished" });
       return { finished: true };
+    }
+
+    const readiness = await getRoomContentReadiness(ctx, room);
+    if (!readiness.ready) {
+      throw new Error(readiness.message ?? "A sala nao esta pronta para a proxima rodada.");
     }
 
     const players = await ctx.db
@@ -628,60 +696,30 @@ export const startNextRound = mutation({
       .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
       .collect();
 
-    const activePlayers = players.filter((p) => p.status !== "disconnected");
+    const activePlayers = getActivePlayers(players);
 
-    // Reset player roles
-    for (const p of activePlayers) {
-      await ctx.db.patch(p._id, { role: undefined, secretContent: undefined });
+    for (const player of activePlayers) {
+      await ctx.db.patch(player._id, { role: undefined, secretContent: undefined });
     }
 
-    const numImpostorsToPick = room.settings.numImpostors || 1;
-    const impostorIds: Id<"players">[] = [];
-    const availableIndices = Array.from({ length: activePlayers.length }, (_, i) => i);
-    const maxImpostors = Math.max(1, Math.min(numImpostorsToPick, activePlayers.length - 1));
-    for (let i = 0; i < maxImpostors; i++) {
-       const randomIndex = Math.floor(Math.random() * availableIndices.length);
-       const pickedIndex = availableIndices[randomIndex];
-       impostorIds.push(activePlayers[pickedIndex]._id);
-       availableIndices.splice(randomIndex, 1);
-    }
-    const impostorId = impostorIds[0] as Id<"players">;
-
-    let masterId = null;
-    if (room.mode === "question" && room.questionMode === "master") {
-      const hostPlayer = activePlayers.find(p => p.isHost);
-      const specifiedMaster = activePlayers.find(p => p._id === room.settings.customMasterId);
-      
-      let candidateMaster = specifiedMaster || hostPlayer;
-      
-      // If the chosen master happens to be the impostor, fallback to someone else
-      if (candidateMaster && impostorIds.includes(candidateMaster._id)) {
-        const fallbackCandidates = activePlayers.filter((p) => !impostorIds.includes(p._id));
-        if (fallbackCandidates.length > 0) {
-           candidateMaster = fallbackCandidates[Math.floor(Math.random() * fallbackCandidates.length)];
-        }
-      }
-
-      if (candidateMaster && !impostorIds.includes(candidateMaster._id)) {
-        masterId = candidateMaster._id;
-      }
-    }
+    const impostorIds = pickImpostorIds(activePlayers, room.settings.numImpostors || 1);
+    const masterId = resolveMasterId(room, activePlayers, impostorIds);
 
     const roundId = await ctx.db.insert("rounds", {
       roomId: args.roomId,
       number: nextNumber,
       mode: room.mode,
       status: "distributing",
-      impostorId,
+      impostorId: impostorIds[0],
       impostorIds,
       masterId,
     });
 
+    await distributeRolesInternal(ctx, args.roomId, roundId, activePlayers, impostorIds, masterId);
+
     await ctx.db.patch(args.roomId, {
       currentRound: nextNumber,
     });
-
-    await distributeRolesInternal(ctx, args.roomId, roundId, activePlayers, impostorIds, masterId);
 
     return { finished: false };
   },
