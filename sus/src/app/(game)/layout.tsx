@@ -19,10 +19,14 @@ function GameLayoutInner({ children }: { children: React.ReactNode }) {
         animated={backgroundAnimationEnabled}
       />
       <ConvexStatusBanner />
-      <main className={`relative z-10 flex w-full flex-1 flex-col items-center justify-start px-3 py-3 sm:px-4 sm:py-4 ${usesFixedShell ? "overflow-hidden" : ""}`}>
+      <main
+        className={`relative z-10 flex w-full flex-1 flex-col items-center justify-start px-3 py-3 sm:px-4 sm:py-4 ${
+          usesFixedShell ? "overflow-hidden pb-[88px]" : ""
+        }`}
+      >
         {children}
       </main>
-      {!usesFixedShell && <Footer />}
+      <Footer fixed={usesFixedShell} />
     </div>
   );
 }

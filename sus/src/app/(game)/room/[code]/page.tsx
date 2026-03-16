@@ -252,8 +252,9 @@ export default function RoomLobbyPage({
   const startDisabled = playerCount < MIN_PLAYERS || isStartingGame || !startReadiness.ready;
 
   return (
-    <div className="relative flex min-h-0 w-full flex-1 flex-col items-center gap-3 py-2 sm:gap-4">
-      <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col items-center overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-end px-4 pt-3 sm:px-6 sm:pt-4">
+        <div className="pointer-events-auto flex items-center gap-2">
         <GameSettingsButton sessionId={sessionId} />
         {profile ? (
           <button
@@ -272,27 +273,29 @@ export default function RoomLobbyPage({
             <span className="hidden font-display text-sm tracking-widest sm:inline">Criar Conta</span>
           </button>
         )}
+        </div>
       </div>
 
-      <BubbleText text="SUS" className="mt-2 font-display text-[clamp(3.8rem,7vw,6.25rem)] tracking-wide drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)] sm:mt-3" />
+      <div className="flex w-full min-h-0 flex-1 flex-col items-center px-2 pt-4 sm:px-4 sm:pt-6">
+        <BubbleText text="SUS" className="font-display text-[clamp(3.4rem,6vw,5.8rem)] tracking-wide drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]" />
 
-      {myPlayer && (
-        <div className="relative z-20 -mb-7 flex flex-col items-center sm:-mb-9">
-          <PlayerAvatar
-            name={myPlayer.name}
-            avatarSeed={myPlayer.emoji}
-            imageUrl={myPlayer.avatarImageUrl}
-            isHost={myPlayer.isHost}
-            isBot={myPlayer.isBot}
-            status={getAvatarStatus(myPlayer.status)}
-            size="2xl"
-            hideName
-          />
-        </div>
-      )}
+        {myPlayer && (
+          <div className="relative z-20 -mb-7 mt-2 flex flex-col items-center sm:-mb-9">
+            <PlayerAvatar
+              name={myPlayer.name}
+              avatarSeed={myPlayer.emoji}
+              imageUrl={myPlayer.avatarImageUrl}
+              isHost={myPlayer.isHost}
+              isBot={myPlayer.isBot}
+              status={getAvatarStatus(myPlayer.status)}
+              size="2xl"
+              hideName
+            />
+          </div>
+        )}
 
-      <div className="w-full max-w-[1080px] px-2 sm:px-4">
-        <div className="flex flex-col gap-4 lg:hidden">
+        <div className="min-h-0 w-full max-w-[1080px] flex-1 px-2 pb-3 sm:px-4">
+          <div className="flex h-full min-h-0 flex-col gap-4 lg:hidden">
           <div className="flex flex-wrap items-center justify-center gap-3">
             {mobileTopPlayers.map((player) => (
               <PlayerAvatar
@@ -310,8 +313,8 @@ export default function RoomLobbyPage({
             ))}
           </div>
 
-          <GameCircle className="min-h-[clamp(30rem,62vh,36rem)] max-w-[740px] px-4 pb-5 pt-12 sm:px-6 sm:pb-7 sm:pt-14">
-            <div className="flex h-full min-h-[inherit] w-full flex-col">
+          <GameCircle className="flex h-full min-h-0 max-h-[100%] max-w-[740px] px-4 pb-4 pt-12 sm:px-6 sm:pb-5 sm:pt-14">
+            <div className="custom-scrollbar flex h-full min-h-0 w-full flex-col overflow-y-auto">
               <LobbyPanel
                 room={room}
                 code={code}
@@ -388,7 +391,7 @@ export default function RoomLobbyPage({
           )}
         </div>
 
-        <div className="relative hidden min-h-[680px] items-center justify-center lg:flex">
+        <div className="relative hidden h-full min-h-0 items-center justify-center lg:flex">
           {surroundingPlayers.map((player, index) => {
             const position = DESKTOP_POSITIONS[index];
             if (!position) return null;
@@ -409,8 +412,8 @@ export default function RoomLobbyPage({
             );
           })}
 
-          <GameCircle className="min-h-[clamp(31rem,64vh,37rem)] max-w-[740px] px-6 pb-7 pt-12">
-            <div className="flex h-full min-h-[inherit] w-full flex-col">
+          <GameCircle className="flex h-full min-h-0 max-h-[min(760px,100%)] max-w-[740px] px-6 pb-5 pt-12">
+            <div className="custom-scrollbar flex h-full min-h-0 w-full flex-col overflow-y-auto">
               <LobbyPanel
                 room={room}
                 code={code}
@@ -469,15 +472,18 @@ export default function RoomLobbyPage({
         </div>
       </div>
 
-      {myPlayer && (
-        <IdentityBar
-          name={myPlayer.name}
-          avatarSeed={myPlayer.emoji}
-          imageUrl={myPlayer.avatarImageUrl}
-          statusLabel={isHost ? "Host" : "Na sala"}
-          detailLabel={`${playerCount} jogadores conectados`}
-        />
-      )}
+        {myPlayer && (
+          <div className="w-full max-w-[740px] px-2 pb-2 sm:px-4">
+            <IdentityBar
+              name={myPlayer.name}
+              avatarSeed={myPlayer.emoji}
+              imageUrl={myPlayer.avatarImageUrl}
+              statusLabel={isHost ? "Host" : "Na sala"}
+              detailLabel={`${playerCount} jogadores conectados`}
+            />
+          </div>
+        )}
+      </div>
 
       {showSignIn && (
         <SignInModal

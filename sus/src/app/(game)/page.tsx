@@ -157,8 +157,9 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-3 py-2 sm:gap-4">
-      <div className="absolute right-4 top-4 z-50 flex items-center gap-2">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col items-center overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-end px-4 pt-3 sm:px-6 sm:pt-4">
+        <div className="pointer-events-auto flex items-center gap-2">
         <GameSettingsButton sessionId={sessionId} />
         {isLoggedIn ? (
           <button
@@ -183,60 +184,62 @@ export default function HomePage() {
             <span className="hidden font-display text-sm tracking-widest sm:inline">Criar Conta</span>
           </button>
         )}
+        </div>
       </div>
 
-      <BubbleText
-        text="SUS"
-        className="mt-2 font-display text-[clamp(3.8rem,7vw,6.25rem)] tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)] sm:mt-4"
-      />
+      <div className="flex w-full flex-1 min-h-0 flex-col items-center px-2 pt-4 sm:px-4 sm:pt-6">
+        <BubbleText
+          text="SUS"
+          className="font-display text-[clamp(3.4rem,6vw,5.8rem)] tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)]"
+        />
 
-      <div className="relative z-20 -mb-8 flex flex-col items-center sm:-mb-10">
-        <button
-          onClick={() => {
-            if (isLoggedIn) {
-              router.push("/profile");
-            } else {
-              setIsAvatarModalOpen(true);
-            }
-          }}
-          className="relative transition-transform hover:scale-105 active:scale-95 focus:outline-none"
-          style={{
-            transition: "transform 0.4s ease",
-            transform: spinning ? "rotate(360deg)" : "rotate(0deg)",
-          }}
-        >
-          <PlayerAvatar
-            name={displayName}
-            avatarSeed={avatarSeed}
-            imageUrl={avatarImageUrl}
-            isHost
-            size="2xl"
-            hideName
-          />
-        </button>
-
-        {isLoggedIn ? (
+        <div className="relative z-20 -mb-8 mt-2 flex flex-col items-center sm:-mb-10">
           <button
-            onClick={() => router.push("/profile")}
-            className="mt-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-condensed uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm transition-colors hover:bg-white/20"
+            onClick={() => {
+              if (isLoggedIn) {
+                router.push("/profile");
+              } else {
+                setIsAvatarModalOpen(true);
+              }
+            }}
+            className="relative transition-transform hover:scale-105 active:scale-95 focus:outline-none"
+            style={{
+              transition: "transform 0.4s ease",
+              transform: spinning ? "rotate(360deg)" : "rotate(0deg)",
+            }}
           >
-            Editar no perfil
+            <PlayerAvatar
+              name={displayName}
+              avatarSeed={avatarSeed}
+              imageUrl={avatarImageUrl}
+              isHost
+              size="2xl"
+              hideName
+            />
           </button>
-        ) : (
-          <button
-            onClick={handleShuffleAvatar}
-            className="absolute -right-1 bottom-2 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-[#1e1b6e] text-white shadow-xl transition-all hover:scale-110 active:scale-95 sm:bottom-4 sm:right-0 sm:h-16 sm:w-16 sm:border-[5px]"
-            title="Trocar Avatar"
-          >
-            <Icon icon="solar:refresh-bold" width={28} height={28} className="sm:h-8 sm:w-8" />
-          </button>
-        )}
-      </div>
 
-      <div className={`flex w-full justify-center ${shakePanel ? "animate-shake" : ""}`}>
-        <GameCircle className="min-h-[clamp(25rem,58vh,32rem)] max-w-[680px] px-5 pb-6 pt-16 sm:px-7 sm:pb-8 sm:pt-[4.5rem]">
-          <div className="flex h-full w-full flex-col items-center justify-center">
-            <div className="flex w-full max-w-[420px] flex-col items-center gap-3.5">
+          {isLoggedIn ? (
+            <button
+              onClick={() => router.push("/profile")}
+              className="mt-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-condensed uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm transition-colors hover:bg-white/20"
+            >
+              Editar no perfil
+            </button>
+          ) : (
+            <button
+              onClick={handleShuffleAvatar}
+              className="absolute -right-1 bottom-2 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-[#1e1b6e] text-white shadow-xl transition-all hover:scale-110 active:scale-95 sm:bottom-4 sm:right-0 sm:h-16 sm:w-16 sm:border-[5px]"
+              title="Trocar Avatar"
+            >
+              <Icon icon="solar:refresh-bold" width={28} height={28} className="sm:h-8 sm:w-8" />
+            </button>
+          )}
+        </div>
+
+        <div className={`flex min-h-0 w-full flex-1 items-center justify-center pb-3 ${shakePanel ? "animate-shake" : ""}`}>
+          <GameCircle className="flex h-full max-h-[min(720px,100%)] min-h-0 max-w-[680px] px-5 pb-4 pt-16 sm:px-7 sm:pb-5 sm:pt-[4.5rem]">
+            <div className="custom-scrollbar flex h-full min-h-0 w-full flex-col items-center overflow-y-auto">
+              <div className="flex w-full max-w-[420px] flex-col items-center gap-3.5 py-1">
               <div className="w-full">
                 <GameInput
                   value={displayName}
@@ -304,8 +307,9 @@ export default function HomePage() {
                 </GameButton>
               </div>
             </div>
-          </div>
-        </GameCircle>
+            </div>
+          </GameCircle>
+        </div>
       </div>
 
       {isAvatarModalOpen && !isLoggedIn && (
@@ -371,13 +375,15 @@ export default function HomePage() {
         />
       )}
 
-      <IdentityBar
-        name={displayName}
-        avatarSeed={avatarSeed}
-        imageUrl={avatarImageUrl}
-        statusLabel={isLoggedIn ? "Conta" : "Convidado"}
-        detailLabel={isLoggedIn ? "Perfil sincronizado" : `Sessao local ${sessionId.slice(0, 8)}`}
-      />
+      <div className="w-full max-w-[680px] px-2 pb-2 sm:px-4">
+        <IdentityBar
+          name={displayName}
+          avatarSeed={avatarSeed}
+          imageUrl={avatarImageUrl}
+          statusLabel={isLoggedIn ? "Conta" : "Convidado"}
+          detailLabel={isLoggedIn ? "Perfil sincronizado" : `Sessao local ${sessionId.slice(0, 8)}`}
+        />
+      </div>
     </div>
   );
 }

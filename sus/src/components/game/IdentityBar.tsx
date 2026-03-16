@@ -18,7 +18,7 @@ export default function IdentityBar({
   detailLabel,
 }: IdentityBarProps) {
   return (
-    <div className="relative z-20 mt-4 w-[min(92vw,520px)] self-center rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] px-3 py-2 shadow-[0_16px_34px_rgba(0,0,0,0.18)] lg:sticky lg:bottom-4">
+    <div className="relative z-20 mt-3 w-[min(92vw,520px)] self-center rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] px-3 py-2 shadow-[0_16px_34px_rgba(0,0,0,0.18)]">
       <div className="flex items-center gap-3">
         <PlayerAvatar
           name={name}

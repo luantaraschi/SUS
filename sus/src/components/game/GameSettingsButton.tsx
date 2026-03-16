@@ -6,7 +6,6 @@ import { Icon } from "@iconify/react";
 import { useConvex, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useBackground } from "@/lib/BackgroundContext";
-import { THEME_ICON_MAP } from "@/lib/themeIcons";
 
 interface GameSettingsButtonProps {
   sessionId: string;
@@ -21,9 +20,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
     colorScheme,
     themeId,
     backgroundAnimationEnabled,
-    themes,
     setColorScheme,
-    setThemeId,
     setBackgroundAnimationEnabled,
     replacePreferences,
   } = useBackground();
@@ -39,10 +36,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
     loading: false,
   });
 
-  const enabledThemeId = useMemo(
-    () => themes.find((theme) => theme.id === themeId)?.id ?? "classico",
-    [themeId, themes]
-  );
+  const enabledThemeId = useMemo(() => themeId ?? "classico", [themeId]);
 
   useEffect(() => {
     if (!open || remotePreferencesState !== "idle") {
@@ -132,15 +126,6 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
     void persistRemotePreferences({
       colorScheme: scheme,
       themeId: enabledThemeId,
-      backgroundAnimationEnabled,
-    });
-  };
-
-  const handleThemeChange = (nextThemeId: string) => {
-    setThemeId(nextThemeId);
-    void persistRemotePreferences({
-      colorScheme,
-      themeId: nextThemeId,
       backgroundAnimationEnabled,
     });
   };
@@ -264,48 +249,12 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                 </section>
 
                 <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4">
-                  <div>
-                    <h3 className="font-display text-2xl">Temas do background</h3>
-                    <p className="mt-1 font-body text-sm text-[var(--panel-soft-text)]">
-                      O tema classico esta ativo. Os proximos entram assim que os fundos forem adicionados.
-                    </p>
-                  </div>
-                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                    {themes.map((theme) => {
-                      const active = enabledThemeId === theme.id;
-                      return (
-                        <button
-                          key={theme.id}
-                          type="button"
-                          onClick={() => theme.enabled && handleThemeChange(theme.id)}
-                          disabled={!theme.enabled}
-                          className={`flex items-center justify-between rounded-[18px] border px-4 py-3 text-left transition-colors ${
-                            active
-                              ? "border-surface-primary bg-surface-primary text-white"
-                              : theme.enabled
-                                ? "border-[var(--control-border)] bg-[var(--control-surface)] text-[var(--control-text)]"
-                                : "border-[var(--control-border)] bg-[var(--control-surface-muted)] text-[var(--control-soft-text)]"
-                          }`}
-                        >
-                          <span className="flex items-center gap-3">
-                            <Icon icon={THEME_ICON_MAP[theme.icon] ?? "solar:star-bold"} width={18} height={18} />
-                            <span className="font-body text-base">{theme.title}</span>
-                          </span>
-                          {!theme.enabled && (
-                            <span className="font-condensed text-[10px] uppercase tracking-[0.2em]">
-                              Em breve
-                            </span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </section>
-
-                <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4">
                   <h3 className="font-display text-2xl">Acessibilidade visual</h3>
                   <p className="mt-2 font-body text-sm text-[var(--panel-soft-text)]">
-                    O app respeita seu tema claro ou escuro e permite desligar a animacao do fundo em sessoes longas.
+                    O app respeita seu tema claro ou escuro e usa o fundo visual atual da interface. Os temas da sala continuam sendo escolhidos dentro do lobby.
+                  </p>
+                  <p className="mt-2 font-body text-sm text-[var(--panel-soft-text)]">
+                    Fundo visual atual: <span className="font-display text-[var(--panel-text)]">{enabledThemeId === "classico" ? "Classico" : enabledThemeId}</span>
                   </p>
                 </section>
               </div>
