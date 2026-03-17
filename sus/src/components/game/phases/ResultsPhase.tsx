@@ -78,7 +78,7 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
             key="loading"
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 1.2, opacity: 0 }}
+            exit={{ scale: 1.2, opacity: 0, transition: { duration: 0.3 } }}
             transition={{ duration: 0.5, repeatType: "reverse", repeat: Infinity }}
             className="flex flex-col items-center gap-4"
           >
