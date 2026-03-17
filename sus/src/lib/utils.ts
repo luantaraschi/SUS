@@ -16,5 +16,5 @@ export function getCenteredOddGridItemClass(
     return "";
   }
 
-  return `${breakpoint}:col-span-2 ${breakpoint}:w-full ${breakpoint}:max-w-[calc(50%-0.5rem)] ${breakpoint}:justify-self-center`;
+  return `${breakpoint}:col-span-2 ${breakpoint}:w-full ${breakpoint}:max-w-[calc(50%_-_0.5rem)] ${breakpoint}:justify-self-center`;
 }
