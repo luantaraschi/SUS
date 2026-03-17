@@ -11,6 +11,9 @@ import { VotingPhase } from "@/components/game/phases/VotingPhase";
 import { ResultsPhase } from "@/components/game/phases/ResultsPhase";
 import { DiscussionPhase } from "@/components/game/phases/DiscussionPhase";
 import { SpeakingPhase } from "@/components/game/phases/SpeakingPhase";
+import { EvidencePhase } from "@/components/game/phases/EvidencePhase";
+import { HostControls } from "@/components/game/HostControls";
+import { SpectatorBanner } from "@/components/game/SpectatorBanner";
 import { useRouter } from "next/navigation";
 
 export default function PlayPage({
@@ -85,22 +88,40 @@ export default function PlayPage({
     sessionId: sessionId || "",
   };
 
+  let phaseComponent: React.ReactNode = null;
+
   switch (round.status) {
     case "distributing":
-      return <DistributingPhase {...phaseProps} />;
+      phaseComponent = <DistributingPhase {...phaseProps} />;
+      break;
     case "speaking":
-      return <SpeakingPhase {...phaseProps} />;
+      phaseComponent = <SpeakingPhase {...phaseProps} />;
+      break;
     case "answering":
-      return <AnsweringPhase {...phaseProps} />;
+      phaseComponent = <AnsweringPhase {...phaseProps} />;
+      break;
     case "revealing":
-      return <RevealingPhase {...phaseProps} />;
+      phaseComponent = <RevealingPhase {...phaseProps} />;
+      break;
     case "discussion":
-      return <DiscussionPhase {...phaseProps} />;
+      phaseComponent = <DiscussionPhase {...phaseProps} />;
+      break;
+    case "evidence":
+      phaseComponent = <EvidencePhase {...phaseProps} />;
+      break;
     case "voting":
-      return <VotingPhase {...phaseProps} />;
+      phaseComponent = <VotingPhase {...phaseProps} />;
+      break;
     case "results":
-      return <ResultsPhase {...phaseProps} />;
-    default:
-      return null;
+      phaseComponent = <ResultsPhase {...phaseProps} />;
+      break;
   }
+
+  return (
+    <>
+      {myPlayer.isHost && <HostControls room={room} sessionId={sessionId || ""} />}
+      {myPlayer.isSpectator && <SpectatorBanner />}
+      {phaseComponent}
+    </>
+  );
 }

@@ -9,19 +9,27 @@ import PlayerAvatar from "../PlayerAvatar";
 import { motion } from "framer-motion";
 import PhaseIndicator from "../PhaseIndicator";
 import Timer from "../Timer";
-import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
+import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
+
+function isMasterQuestionMode(room: { mode: string; questionMode?: string }) {
+  return room.mode === "question" && (room.questionMode ?? "system") === "master";
+}
 
 interface VotingPhaseProps {
   round: SafeRound;
   players: PublicPlayer[];
   myPlayer: Doc<"players">;
+  myRole?: RoleView;
+  room: Doc<"rooms">;
   sessionId: string;
 }
 
-export function VotingPhase({ round, players, myPlayer, sessionId }: VotingPhaseProps) {
+export function VotingPhase({ round, players, myPlayer, myRole, room, sessionId }: VotingPhaseProps) {
   const [selectedSuspect, setSelectedSuspect] = useState<Id<"players"> | null>(null);
   const submitVote = useMutation(api.votes.submitVote);
   const votes = useQuery(api.votes.getVotes, { roundId: round._id });
+  const isMasterMode = room ? isMasterQuestionMode(room) : false;
+  const answers = useQuery(api.answers.getAnswersByRound, isMasterMode ? { roundId: round._id } : "skip");
 
   const isMaster = round.masterId === myPlayer._id;
   const activePlayers = players.filter(
@@ -46,15 +54,23 @@ export function VotingPhase({ round, players, myPlayer, sessionId }: VotingPhase
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col px-4 py-8">
       <div className="text-center">
-        <PhaseIndicator currentPhase="voting" mode={round.mode} className="mb-4 justify-center" />
+        <PhaseIndicator currentPhase="voting" mode={round.mode} questionMode={room?.questionMode} className="mb-4 justify-center" />
         <h2 className="font-display text-3xl text-white">Hora de votar</h2>
         <p className="mt-2 text-white/70">Quem voce acha que e o impostor?</p>
-        <Timer endsAt={round.phaseEndsAt} className="mt-4" />
+        {!isMasterMode && <Timer endsAt={round.phaseEndsAt} className="mt-4" />}
       </div>
 
       <div className="mt-3 text-center font-condensed text-sm uppercase tracking-[0.24em] text-white/60">
         {votes?.length || 0}/{totalVoters} votos enviados
       </div>
+
+      {/* In master mode, show the question pinned at top */}
+      {isMasterMode && round.questionMain && (
+        <div className="mt-4 w-full rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-center backdrop-blur-sm">
+          <p className="font-condensed text-xs uppercase tracking-[0.2em] text-white/50">Pergunta da rodada</p>
+          <p className="mt-1 font-display text-lg text-white">{round.questionMain}</p>
+        </div>
+      )}
 
       <div className="mt-8 grid w-full flex-1 content-start grid-cols-1 gap-4 md:grid-cols-2">
         {activePlayers.map((player) => {
@@ -95,6 +111,39 @@ export function VotingPhase({ round, players, myPlayer, sessionId }: VotingPhase
           );
         })}
       </div>
+
+      {/* In master mode, show answer cards for reference */}
+      {isMasterMode && answers && answers.length > 0 && (
+        <div className="mt-6 w-full">
+          <p className="mb-3 text-center font-condensed text-xs uppercase tracking-[0.24em] text-white/50">
+            Respostas para consulta
+          </p>
+          <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
+            {answers.map((answer) => {
+              const answerPlayer = players.find((p) => p._id === answer.playerId);
+              if (!answerPlayer) return null;
+              const isMarkedByMaster =
+                myRole?.role === "master" && myRole.masterImpostorIds?.includes(answerPlayer._id);
+              return (
+                <div
+                  key={answer._id}
+                  className="rounded-2xl border border-white/10 bg-black/15 p-4 text-center"
+                >
+                  <p className="mb-1 flex items-center justify-center gap-1 font-hand text-sm text-white/60">
+                    [{answerPlayer.name}]
+                    {isMarkedByMaster && (
+                      <span className="text-xs text-game-impostor">?</span>
+                    )}
+                  </p>
+                  <p className="break-words font-body text-base text-white/90">
+                    &quot;{answer.text}&quot;
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {!isMaster && !hasVoted ? (
         <div className="mx-auto mt-6 w-full max-w-md">

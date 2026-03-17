@@ -53,6 +53,7 @@ export default defineSchema({
       v.union(v.literal("impostor"), v.literal("player"), v.literal("master"))
     ),
     secretContent: v.optional(v.union(v.string(), v.null())),
+    isSpectator: v.optional(v.boolean()),
   })
     .index("by_room", ["roomId"])
     .index("by_session", ["sessionId"])
@@ -70,6 +71,7 @@ export default defineSchema({
       v.literal("answering"),
       v.literal("revealing"),
       v.literal("discussion"),
+      v.literal("evidence"),
       v.literal("voting"),
       v.literal("results")
     ),
@@ -90,6 +92,8 @@ export default defineSchema({
     speakingOrder: v.optional(v.array(v.id("players"))),
     currentSpeakerIndex: v.optional(v.number()),
     votingRequestedBy: v.optional(v.array(v.id("players"))),
+    evidenceReadyBy: v.optional(v.array(v.id("players"))),
+    nextRoundReadyBy: v.optional(v.array(v.id("players"))),
   })
     .index("by_room", ["roomId"])
     .index("by_room_number", ["roomId", "number"]),

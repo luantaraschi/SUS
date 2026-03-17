@@ -8,8 +8,12 @@ type PlayerDoc = Doc<"players">;
 
 function getAnsweringPlayers(players: PlayerDoc[], round: RoundDoc) {
   return players.filter(
-    (player) => player.status !== "disconnected" && player._id !== round.masterId
+    (player) => player.status !== "disconnected" && !player.isSpectator && player._id !== round.masterId
   );
+}
+
+function isMasterQuestionMode(room: { mode: string; questionMode?: string }) {
+  return room.mode === "question" && (room.questionMode ?? "system") === "master";
 }
 
 async function maybeAdvanceAfterAnswers(ctx: MutationCtx, round: RoundDoc, roundId: Id<"rounds">) {
@@ -28,6 +32,20 @@ async function maybeAdvanceAfterAnswers(ctx: MutationCtx, round: RoundDoc, round
     return;
   }
 
+  const room = await ctx.db.get(round.roomId);
+
+  // Master mode: advance to evidence phase (no timer)
+  if (room && isMasterQuestionMode(room)) {
+    await ctx.db.patch(roundId, {
+      status: "evidence",
+      revealedAt: Date.now(),
+      phaseEndsAt: undefined,
+      evidenceReadyBy: [],
+    });
+    return;
+  }
+
+  // System/word mode: advance to revealing with timer
   const revealedAt = Date.now();
   await ctx.db.patch(roundId, {
     status: "revealing",
@@ -55,6 +73,9 @@ export const submitAnswer = mutation({
     const player = await ctx.db.get(args.playerId);
     if (!player || player.sessionId !== args.sessionId || player.roomId !== round.roomId) {
       throw new Error("Jogador invalido.");
+    }
+    if (player.isSpectator) {
+      throw new Error("Espectadores nao podem participar.");
     }
 
     const existing = await ctx.db
@@ -88,7 +109,7 @@ export const getAnswersByRound = query({
   },
   handler: async (ctx, args) => {
     const round = await ctx.db.get(args.roundId);
-    if (!round || !["answering", "revealing", "voting", "results"].includes(round.status)) {
+    if (!round || !["answering", "revealing", "evidence", "voting", "results"].includes(round.status)) {
       return [];
     }
 

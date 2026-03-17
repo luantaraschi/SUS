@@ -38,11 +38,15 @@ type ResolvedRoundContent = {
 };
 
 function getActivePlayers(players: RoundPlayer[]) {
-  return players.filter((player) => player.status !== "disconnected");
+  return players.filter((player) => player.status !== "disconnected" && !player.isSpectator);
 }
 
 function getQuestionMode(room: RoomDoc) {
   return room.questionMode ?? "system";
+}
+
+function isMasterQuestionMode(room: { mode: string; questionMode?: string }) {
+  return room.mode === "question" && (room.questionMode ?? "system") === "master";
 }
 
 function getRoundImpostorIds(round: RoundDoc) {
@@ -370,9 +374,26 @@ export const getMyRole = query({
 
     if (!me) return null;
 
+    const room = await ctx.db.get(round.roomId);
     const isImpostor = getRoundImpostorIds(round).includes(me._id);
     const masterImpostorIds =
       me.role === "master" ? getRoundImpostorIds(round).map((id) => id as string) : undefined;
+
+    // In master mode during distributing/answering, hide impostor identity
+    // The SUS player receives their impostor question via secretContent
+    // but thinks it's the normal question (role shown as "player", isImpostor = false)
+    if (
+      room &&
+      isMasterQuestionMode(room) &&
+      (round.status === "distributing" || round.status === "answering")
+    ) {
+      return {
+        role: me.role === "master" ? ("master" as const) : ("player" as const),
+        secretContent: me.secretContent ?? null,
+        isImpostor: false,
+        masterImpostorIds,
+      };
+    }
 
     return {
       role: me.role ?? "player",
@@ -466,10 +487,18 @@ export const getCurrentRound = query({
 
     if (!round) return null;
 
-    const { impostorId, impostorIds, ...safeRound } = round;
+    const { impostorId, impostorIds, ...safeBase } = round;
     void impostorId;
     void impostorIds;
-    return safeRound;
+
+    // In master mode, hide questionImpostor until results phase
+    if (isMasterQuestionMode(room) && round.status !== "results") {
+      const { questionImpostor: _qi, ...safeRound } = safeBase;
+      void _qi;
+      return safeRound;
+    }
+
+    return safeBase;
   },
 });
 
@@ -502,6 +531,9 @@ export const confirmSeen = mutation({
     const player = await ctx.db.get(args.playerId);
     if (!player || player.sessionId !== args.sessionId) {
       throw new Error("Jogador invalido.");
+    }
+    if (player.isSpectator) {
+      throw new Error("Espectadores nao podem participar.");
     }
 
     await ctx.db.patch(args.playerId, { status: "ready" });
@@ -605,18 +637,9 @@ export const setMasterQuestions = mutation({
       });
     }
 
-    await ctx.db.patch(master._id, { status: "ready" });
-
-    const updatedPlayers = await ctx.db
-      .query("players")
-      .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
-      .collect();
-
-    const activePlayers = getActivePlayers(updatedPlayers);
-    if (!activePlayers.every((player) => player.status === "ready")) {
-      return;
-    }
-
+    // In the new master flow, advance directly to answering
+    // Non-master players skip distributing entirely (they never see their role)
+    const activePlayers = getActivePlayers(players);
     for (const player of activePlayers) {
       await ctx.db.patch(player._id, { status: "connected" });
     }
@@ -834,5 +857,119 @@ export const getSpeakingState = query({
       currentSpeakerIndex: round.currentSpeakerIndex ?? 0,
       votingRequestedBy: round.votingRequestedBy ?? [],
     };
+  },
+});
+
+// --- Consensus-based transitions for master mode ---
+
+export const requestAdvanceToVoting = mutation({
+  args: {
+    roundId: v.id("rounds"),
+    playerId: v.id("players"),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (!round || round.status !== "evidence") {
+      throw new Error("A rodada nao esta na fase de evidencias.");
+    }
+
+    const player = await ctx.db.get(args.playerId);
+    if (!player || player.sessionId !== args.sessionId) {
+      throw new Error("Jogador invalido.");
+    }
+    if (player.isSpectator) {
+      throw new Error("Espectadores nao podem participar.");
+    }
+
+    const room = await ctx.db.get(round.roomId);
+    if (!room) throw new Error("Sala nao encontrada.");
+
+    const advanceToVotingPhase = async () => {
+      await ctx.db.patch(round._id, {
+        status: "voting",
+        phaseEndsAt: undefined,
+        evidenceReadyBy: undefined,
+      });
+      await castBotVotes(ctx, round._id);
+    };
+
+    // Host force-advances immediately
+    if (player.isHost) {
+      await advanceToVotingPhase();
+      return;
+    }
+
+    const current = round.evidenceReadyBy ?? [];
+    if (current.includes(args.playerId)) return;
+    const updated = [...current, args.playerId];
+
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
+      .collect();
+    const eligible = players.filter(
+      (p) => p.status !== "disconnected" && !p.isBot && !p.isSpectator && p._id !== round.masterId
+    );
+    const majority = Math.ceil(eligible.length / 2);
+
+    if (updated.length >= majority) {
+      await advanceToVotingPhase();
+    } else {
+      await ctx.db.patch(round._id, { evidenceReadyBy: updated });
+    }
+  },
+});
+
+export const requestNextRound = mutation({
+  args: {
+    roundId: v.id("rounds"),
+    playerId: v.id("players"),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (!round || round.status !== "results") {
+      throw new Error("A rodada nao esta na fase de resultados.");
+    }
+
+    const player = await ctx.db.get(args.playerId);
+    if (!player || player.sessionId !== args.sessionId) {
+      throw new Error("Jogador invalido.");
+    }
+    if (player.isSpectator) {
+      throw new Error("Espectadores nao podem participar.");
+    }
+
+    const room = await ctx.db.get(round.roomId);
+    if (!room) throw new Error("Sala nao encontrada.");
+
+    // Host force-advances immediately
+    if (player.isHost) {
+      return;  // Let the existing startNextRound in rooms.ts handle it
+    }
+
+    const current = round.nextRoundReadyBy ?? [];
+    if (current.includes(args.playerId)) return;
+    const updated = [...current, args.playerId];
+
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
+      .collect();
+    const eligible = players.filter(
+      (p) => p.status !== "disconnected" && !p.isBot && !p.isSpectator && p._id !== round.masterId
+    );
+    const majority = Math.ceil(eligible.length / 2);
+
+    if (updated.length >= majority) {
+      await ctx.db.patch(round._id, { nextRoundReadyBy: undefined });
+      // Trigger next round via the same logic as startNextRound
+      // Import is handled in rooms.ts, so we signal readiness via a field
+      // and let the frontend call startNextRound
+      await ctx.db.patch(round._id, { nextRoundReadyBy: updated });
+    } else {
+      await ctx.db.patch(round._id, { nextRoundReadyBy: updated });
+    }
   },
 });

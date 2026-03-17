@@ -50,7 +50,7 @@ function createBotSessionId(roomId: string): string {
 }
 
 function getActivePlayers(players: PlayerDoc[]) {
-  return players.filter((player) => player.status !== "disconnected");
+  return players.filter((player) => player.status !== "disconnected" && !player.isSpectator);
 }
 
 function getDefaultPlayerName(name: string) {
@@ -201,6 +201,37 @@ export const joinRoom = mutation({
 
     if (!room) {
       throw new Error("Sala nao encontrada. Verifique o codigo e tente novamente.");
+    }
+
+    // Allow joining mid-game as spectator
+    if (room.status === "playing") {
+      const existingPlayer = await ctx.db
+        .query("players")
+        .withIndex("by_room_session", (q) =>
+          q.eq("roomId", room._id).eq("sessionId", args.sessionId)
+        )
+        .first();
+
+      if (existingPlayer) {
+        await ctx.db.patch(existingPlayer._id, { status: "connected" });
+        return { roomId: room._id, playerId: existingPlayer._id };
+      }
+
+      const playerId = await ctx.db.insert("players", {
+        roomId: room._id,
+        sessionId: args.sessionId,
+        name: getDefaultPlayerName(args.playerName),
+        emoji: getDefaultAvatarSeed(args.playerEmoji),
+        avatarImageUrl: args.playerAvatarImageUrl,
+        isHost: false,
+        isBot: false,
+        status: "connected",
+        score: 0,
+        joinedAt: Date.now(),
+        isSpectator: true,
+      });
+
+      return { roomId: room._id, playerId };
     }
 
     if (room.status !== "lobby") {
@@ -510,7 +541,7 @@ export const checkRoomExists = query({
       .withIndex("by_code", (q) => q.eq("code", code))
       .first();
 
-    return !!room && room.status === "lobby";
+    return !!room && (room.status === "lobby" || room.status === "playing");
   },
 });
 
@@ -626,6 +657,7 @@ export const getPlayers = query({
         status: player.status,
         score: player.score,
         joinedAt: player.joinedAt,
+        isSpectator: player.isSpectator,
       }));
   },
 });
@@ -716,6 +748,13 @@ export const startNextRound = mutation({
       .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
       .collect();
 
+    // Promote spectators to active players for the new round
+    for (const player of players) {
+      if (player.isSpectator) {
+        await ctx.db.patch(player._id, { isSpectator: undefined });
+      }
+    }
+
     const activePlayers = getActivePlayers(players);
 
     for (const player of activePlayers) {
@@ -742,5 +781,152 @@ export const startNextRound = mutation({
     });
 
     return { finished: false };
+  },
+});
+
+export const restartRound = mutation({
+  args: {
+    roomId: v.id("rooms"),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const room = await ctx.db.get(args.roomId);
+    if (!room) throw new Error("Sala nao encontrada.");
+    if (room.hostId !== args.sessionId) {
+      throw new Error("Apenas o host pode recomecar a rodada.");
+    }
+    if (room.status !== "playing") {
+      throw new Error("A sala nao esta em jogo.");
+    }
+
+    const round = await ctx.db
+      .query("rounds")
+      .withIndex("by_room_number", (q) =>
+        q.eq("roomId", args.roomId).eq("number", room.currentRound)
+      )
+      .first();
+
+    if (!round) throw new Error("Rodada nao encontrada.");
+
+    // Delete all votes for current round
+    const votes = await ctx.db
+      .query("votes")
+      .withIndex("by_round", (q) => q.eq("roundId", round._id))
+      .collect();
+    for (const vote of votes) {
+      await ctx.db.delete(vote._id);
+    }
+
+    // Delete all answers for current round
+    const answers = await ctx.db
+      .query("answers")
+      .withIndex("by_round", (q) => q.eq("roundId", round._id))
+      .collect();
+    for (const answer of answers) {
+      await ctx.db.delete(answer._id);
+    }
+
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .collect();
+
+    const activePlayers = players.filter(
+      (p) => p.status !== "disconnected" && !p.isSpectator
+    );
+
+    // Re-pick impostors
+    const impostorIds = pickImpostorIds(activePlayers, room.settings.numImpostors || 1);
+    const masterId = resolveMasterId(room, activePlayers, impostorIds);
+
+    // Reset round
+    await ctx.db.patch(round._id, {
+      status: "distributing",
+      questionMain: undefined,
+      questionImpostor: undefined,
+      votedOutId: undefined,
+      impostorWon: undefined,
+      phaseEndsAt: undefined,
+      revealedAt: undefined,
+      resultReadyAt: undefined,
+      evidenceReadyBy: undefined,
+      nextRoundReadyBy: undefined,
+      votingRequestedBy: undefined,
+      speakingOrder: undefined,
+      currentSpeakerIndex: undefined,
+      impostorId: impostorIds[0],
+      impostorIds,
+      masterId,
+    });
+
+    await distributeRolesInternal(ctx, args.roomId, round._id, activePlayers, impostorIds, masterId);
+
+    // Reset all active player statuses
+    for (const player of activePlayers) {
+      await ctx.db.patch(player._id, { status: "connected" });
+    }
+  },
+});
+
+export const backToLobby = mutation({
+  args: {
+    roomId: v.id("rooms"),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const room = await ctx.db.get(args.roomId);
+    if (!room) throw new Error("Sala nao encontrada.");
+    if (room.hostId !== args.sessionId) {
+      throw new Error("Apenas o host pode voltar ao lobby.");
+    }
+
+    // Clean up current round data
+    if (room.currentRound > 0) {
+      const round = await ctx.db
+        .query("rounds")
+        .withIndex("by_room_number", (q) =>
+          q.eq("roomId", args.roomId).eq("number", room.currentRound)
+        )
+        .first();
+
+      if (round) {
+        const votes = await ctx.db
+          .query("votes")
+          .withIndex("by_round", (q) => q.eq("roundId", round._id))
+          .collect();
+        for (const vote of votes) {
+          await ctx.db.delete(vote._id);
+        }
+
+        const answers = await ctx.db
+          .query("answers")
+          .withIndex("by_round", (q) => q.eq("roundId", round._id))
+          .collect();
+        for (const answer of answers) {
+          await ctx.db.delete(answer._id);
+        }
+      }
+    }
+
+    // Reset room to lobby
+    await ctx.db.patch(args.roomId, {
+      status: "lobby",
+      currentRound: 0,
+    });
+
+    // Reset all players (including spectators)
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .collect();
+
+    for (const player of players) {
+      await ctx.db.patch(player._id, {
+        role: undefined,
+        secretContent: undefined,
+        isSpectator: undefined,
+        status: "connected",
+      });
+    }
   },
 });

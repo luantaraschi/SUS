@@ -15,6 +15,10 @@ interface AnsweringPhaseProps {
   sessionId: string;
 }
 
+function isMasterQuestionMode(room: { mode: string; questionMode?: string }) {
+  return room.mode === "question" && (room.questionMode ?? "system") === "master";
+}
+
 export function AnsweringPhase({
   round,
   myPlayer,
@@ -106,9 +110,11 @@ export function AnsweringPhase({
 
       <div className="flex w-full flex-col items-center rounded-3xl border-b-4 border-surface-primary/20 bg-white p-6 text-center shadow-2xl">
         <h3 className="mb-4 text-center font-display text-xl font-black text-gray-800">
-          {room.mode === "question" && myPlayer.role === "impostor"
-            ? round.questionImpostor
-            : round.questionMain}
+          {isMasterQuestionMode(room)
+            ? myRole?.secretContent
+            : (room.mode === "question" && myPlayer.role === "impostor"
+              ? round.questionImpostor
+              : round.questionMain)}
         </h3>
 
         <textarea
@@ -119,7 +125,7 @@ export function AnsweringPhase({
         />
 
         <Button onClick={handleSubmit} disabled={!answer.trim()} className="h-14 w-full text-lg">
-          Enviar resposta
+          {isMasterQuestionMode(room) ? "Pronto" : "Enviar resposta"}
         </Button>
       </div>
     </div>

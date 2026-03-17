@@ -9,8 +9,12 @@ type PlayerDoc = Doc<"players">;
 
 function getVotingPlayers(players: PlayerDoc[], round: RoundDoc) {
   return players.filter(
-    (player) => player.status !== "disconnected" && player._id !== round.masterId
+    (player) => player.status !== "disconnected" && !player.isSpectator && player._id !== round.masterId
   );
+}
+
+function isMasterQuestionMode(room: { mode: string; questionMode?: string }) {
+  return room.mode === "question" && (room.questionMode ?? "system") === "master";
 }
 
 export const submitVote = mutation({
@@ -31,6 +35,9 @@ export const submitVote = mutation({
     }
     if (!voter.isBot && voter.sessionId !== args.sessionId) {
       throw new Error("Sessao invalida.");
+    }
+    if (voter.isSpectator) {
+      throw new Error("Espectadores nao podem participar.");
     }
 
     const existing = await ctx.db
@@ -71,6 +78,13 @@ export async function checkAndTallyVotes(ctx: MutationCtx, roundId: Id<"rounds">
 
   if (votes.length >= activePlayers.length) {
     await finalizeRoundResultsInternal(ctx, roundId);
+    return;
+  }
+
+  const room = await ctx.db.get(round.roomId);
+
+  // Master mode: no early detection, require 100% of votes
+  if (room && isMasterQuestionMode(room)) {
     return;
   }
 

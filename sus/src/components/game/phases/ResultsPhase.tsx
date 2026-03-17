@@ -20,12 +20,19 @@ interface ResultsPhaseProps {
   room: Doc<"rooms">;
 }
 
+function isMasterQuestionMode(room: { mode: string; questionMode?: string }) {
+  return room.mode === "question" && (room.questionMode ?? "system") === "master";
+}
+
 export function ResultsPhase({ round, players, myPlayer, sessionId, room }: ResultsPhaseProps) {
   const router = useRouter();
   const isHost = myPlayer.isHost;
+  const isSpectator = myPlayer.isSpectator;
+  const isMasterMode = isMasterQuestionMode(room);
   const [showResults, setShowResults] = useState(false);
   const [showRetry, setShowRetry] = useState(false);
   const startNextRound = useMutation(api.rooms.startNextRound);
+  const requestNextRound = useMutation(api.rounds.requestNextRound);
   const recomputeResults = useMutation(api.rounds.recomputeResults);
 
   const votes = useQuery(api.votes.getVotes, { roundId: round._id });
@@ -92,7 +99,7 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
             animate={{ opacity: 1, y: 0 }}
             className="flex w-full max-w-5xl flex-col items-center gap-8"
           >
-            <PhaseIndicator currentPhase="results" mode={round.mode} />
+            <PhaseIndicator currentPhase="results" mode={round.mode} questionMode={room.questionMode} />
             <h1
               className={`text-center font-display text-4xl font-black uppercase tracking-tight drop-shadow-[0_0_15px_currentColor] md:text-5xl ${
                 groupWon ? "text-game-safe" : "text-game-impostor"
@@ -126,7 +133,19 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
                   ? `${votedOut?.name} foi votado e ${realImpostors.find((player) => player._id === votedOut?._id) ? "era" : "nao era"} o impostor.`
                   : "Houve um empate nos votos."}
               </p>
-              {round.mode === "question" && round.questionMain && round.questionImpostor && (
+              {isMasterMode && round.questionMain && (
+                <div className="mx-auto mt-4 max-w-xl rounded-2xl border border-game-safe/30 bg-game-safe/10 p-4">
+                  <p className="font-condensed text-xs uppercase tracking-wider text-game-safe/70">Pergunta Normal</p>
+                  <p className="mt-1 font-body text-base text-white">&quot;{round.questionMain}&quot;</p>
+                </div>
+              )}
+              {isMasterMode && round.questionImpostor && (
+                <div className="mx-auto mt-3 max-w-xl rounded-2xl border border-game-impostor/30 bg-game-impostor/10 p-4">
+                  <p className="font-condensed text-xs uppercase tracking-wider text-game-impostor/70">Pergunta do SUS</p>
+                  <p className="mt-1 font-body text-base text-white">&quot;{round.questionImpostor}&quot;</p>
+                </div>
+              )}
+              {!isMasterMode && round.mode === "question" && round.questionMain && round.questionImpostor && (
                 <p className="mx-auto mt-3 max-w-3xl font-body text-sm text-white/65 sm:text-base">
                   Pergunta normal: &quot;{round.questionMain}&quot; | Pergunta do impostor: &quot;{round.questionImpostor}&quot;
                 </p>
@@ -167,14 +186,35 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
                 url={typeof window !== "undefined" ? `${window.location.origin}/room/${room.code}` : ""}
               />
 
-              {isHost && (
+              {isMasterMode && !isSpectator ? (
+                <>
+                  {isHost ? (
+                    <Button
+                      className="w-full py-6 font-bold"
+                      onClick={() => void startNextRound({ roomId: round.roomId, sessionId })}
+                    >
+                      Proxima rodada (Host)
+                    </Button>
+                  ) : (
+                    <Button
+                      className="w-full py-6 font-bold"
+                      disabled={round.nextRoundReadyBy?.includes(myPlayer._id) ?? false}
+                      onClick={() => void requestNextRound({ roundId: round._id, playerId: myPlayer._id, sessionId })}
+                    >
+                      {round.nextRoundReadyBy?.includes(myPlayer._id)
+                        ? `Aguardando... (${round.nextRoundReadyBy?.length ?? 0} votos)`
+                        : `Proxima rodada (${round.nextRoundReadyBy?.length ?? 0} votos)`}
+                    </Button>
+                  )}
+                </>
+              ) : !isSpectator && isHost ? (
                 <Button
                   className="w-full py-6 font-bold"
                   onClick={() => void startNextRound({ roomId: round.roomId, sessionId })}
                 >
                   Proxima rodada
                 </Button>
-              )}
+              ) : null}
 
               <button
                 onClick={() => router.push(`/room/${room.code}`)}
@@ -184,7 +224,7 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
               </button>
             </div>
 
-            {!isHost && <p className="mt-8 text-center font-medium text-white/60">Aguardando o host...</p>}
+            {!isMasterMode && !isHost && <p className="mt-8 text-center font-medium text-white/60">Aguardando o host...</p>}
           </motion.div>
         )}
       </AnimatePresence>

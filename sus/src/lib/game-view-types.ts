@@ -10,6 +10,7 @@ export type PublicPlayer = {
   avatarImageUrl: string | null;
   isHost: boolean;
   isBot?: boolean;
+  isSpectator?: boolean;
   status: "connected" | "ready" | "disconnected";
   score: number;
   joinedAt: number;

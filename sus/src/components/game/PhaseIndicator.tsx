@@ -1,10 +1,11 @@
 "use client";
 
-type PhaseStep = "distributing" | "speaking" | "answering" | "revealing" | "discussion" | "voting" | "results";
+type PhaseStep = "distributing" | "speaking" | "answering" | "revealing" | "discussion" | "evidence" | "voting" | "results";
 
 interface PhaseIndicatorProps {
   currentPhase: PhaseStep;
   mode?: "word" | "question";
+  questionMode?: "system" | "master";
   className?: string;
 }
 
@@ -15,11 +16,19 @@ const WORD_PHASES: PhaseStep[] = [
   "results",
 ];
 
-const QUESTION_PHASES: PhaseStep[] = [
+const QUESTION_SYSTEM_PHASES: PhaseStep[] = [
   "distributing",
   "answering",
   "revealing",
   "discussion",
+  "voting",
+  "results",
+];
+
+const QUESTION_MASTER_PHASES: PhaseStep[] = [
+  "distributing",
+  "answering",
+  "evidence",
   "voting",
   "results",
 ];
@@ -30,6 +39,7 @@ const PHASE_LABELS: Record<PhaseStep, string> = {
   answering: "Resposta",
   revealing: "Revelacao",
   discussion: "Discussao",
+  evidence: "Evidencias",
   voting: "Votacao",
   results: "Resultado",
 };
@@ -37,9 +47,15 @@ const PHASE_LABELS: Record<PhaseStep, string> = {
 export default function PhaseIndicator({
   currentPhase,
   mode = "question",
+  questionMode,
   className = "",
 }: PhaseIndicatorProps) {
-  const phases = mode === "word" ? WORD_PHASES : QUESTION_PHASES;
+  const phases =
+    mode === "word"
+      ? WORD_PHASES
+      : questionMode === "master"
+        ? QUESTION_MASTER_PHASES
+        : QUESTION_SYSTEM_PHASES;
   const currentIndex = phases.indexOf(currentPhase);
 
   return (
