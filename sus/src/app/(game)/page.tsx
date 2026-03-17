@@ -157,158 +157,160 @@ export default function HomePage() {
   }
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col items-center overflow-hidden">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-end px-4 pt-3 sm:px-6 sm:pt-4">
         <div className="pointer-events-auto flex items-center gap-2">
-        <GameSettingsButton sessionId={sessionId} />
-        {isLoggedIn ? (
-          <button
-            onClick={() => router.push("/profile")}
-            className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
-          >
-            <PlayerAvatar
-              name={profile.displayName}
-              avatarSeed={profile.avatarSeed}
-              imageUrl={profile.avatarUrl}
-              size="sm"
-              hideName
-            />
-            <span className="hidden font-display text-sm tracking-widest sm:inline">Perfil</span>
-          </button>
-        ) : (
-          <button
-            onClick={() => setShowSignIn(true)}
-            className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
-          >
-            <Icon icon="solar:user-circle-bold" width={24} height={24} />
-            <span className="hidden font-display text-sm tracking-widest sm:inline">Criar Conta</span>
-          </button>
-        )}
-        </div>
-      </div>
-
-      <div className="flex w-full flex-1 min-h-0 flex-col items-center px-2 pt-4 sm:px-4 sm:pt-6">
-        <BubbleText
-          text="SUS"
-          className="font-display text-[clamp(3.4rem,6vw,5.8rem)] tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)]"
-        />
-
-        <div className="relative z-20 -mb-8 mt-2 flex flex-col items-center sm:-mb-10">
-          <button
-            onClick={() => {
-              if (isLoggedIn) {
-                router.push("/profile");
-              } else {
-                setIsAvatarModalOpen(true);
-              }
-            }}
-            className="relative transition-transform hover:scale-105 active:scale-95 focus:outline-none"
-            style={{
-              transition: "transform 0.4s ease",
-              transform: spinning ? "rotate(360deg)" : "rotate(0deg)",
-            }}
-          >
-            <PlayerAvatar
-              name={displayName}
-              avatarSeed={avatarSeed}
-              imageUrl={avatarImageUrl}
-              isHost
-              size="2xl"
-              hideName
-            />
-          </button>
-
+          <GameSettingsButton sessionId={sessionId} />
           {isLoggedIn ? (
             <button
               onClick={() => router.push("/profile")}
-              className="mt-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-condensed uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm transition-colors hover:bg-white/20"
+              className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
             >
-              Editar no perfil
+              <PlayerAvatar
+                name={profile.displayName}
+                avatarSeed={profile.avatarSeed}
+                imageUrl={profile.avatarUrl}
+                size="sm"
+                hideName
+              />
+              <span className="hidden font-display text-sm tracking-widest sm:inline">Perfil</span>
             </button>
           ) : (
             <button
-              onClick={handleShuffleAvatar}
-              className="absolute -right-1 bottom-2 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-[#1e1b6e] text-white shadow-xl transition-all hover:scale-110 active:scale-95 sm:bottom-4 sm:right-0 sm:h-16 sm:w-16 sm:border-[5px]"
-              title="Trocar Avatar"
+              onClick={() => setShowSignIn(true)}
+              className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
             >
-              <Icon icon="solar:refresh-bold" width={28} height={28} className="sm:h-8 sm:w-8" />
+              <Icon icon="solar:user-circle-bold" width={24} height={24} />
+              <span className="hidden font-display text-sm tracking-widest sm:inline">Criar Conta</span>
             </button>
           )}
         </div>
+      </div>
 
-        <div className={`flex min-h-0 w-full flex-1 items-center justify-center pb-3 ${shakePanel ? "animate-shake" : ""}`}>
-          <GameCircle className="flex h-full max-h-[min(720px,100%)] min-h-0 max-w-[680px] px-5 pb-4 pt-16 sm:px-7 sm:pb-5 sm:pt-[4.5rem]">
-            <div className="custom-scrollbar flex h-full min-h-0 w-full flex-col items-center overflow-y-auto">
-              <div className="flex w-full max-w-[420px] flex-col items-center gap-3.5 py-1">
-              <div className="w-full">
-                <GameInput
-                  value={isLoggedIn ? displayName : guestName}
-                  onChange={isLoggedIn ? () => undefined : setGuestName}
-                  placeholder={`Anonimo${anonNumber}`}
-                  variant="text"
-                  maxLength={20}
-                  readOnly={isLoggedIn}
-                />
-                {isLoggedIn && (
-                  <p className="mt-2 text-center font-body text-xs text-[var(--panel-soft-text)]">
-                    O nome e a foto usados nas salas vem do seu perfil.
-                  </p>
-                )}
-              </div>
+      <div className="flex w-full min-h-0 flex-1 flex-col px-2 pt-4 sm:px-4 sm:pt-6">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-4">
+          <div className={`flex w-full flex-col items-center justify-center -mt-12 sm:-mt-16 ${shakePanel ? "animate-shake" : ""}`}>
+            <BubbleText
+              text="SUS"
+              className="font-display text-[clamp(3.4rem,6vw,5.8rem)] tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)]"
+            />
 
-              <GameInput
-                value={code}
-                onChange={(value) => setCode(value.toUpperCase())}
-                placeholder="Codigo"
-                variant="code"
-                maxLength={4}
-                state={error ? "error" : code.length === 4 && roomExists === true ? "focus" : "default"}
-              />
-
-              {error && (
-                <p className="text-center font-body text-sm text-game-impostor">{error}</p>
-              )}
-
-              <div className="my-1.5 h-px w-full bg-[var(--control-border)]" />
-
-              <div className="flex w-full flex-col gap-3">
-                <GameButton
-                  variant="outline"
-                  size="lg"
-                  icon={<Icon icon="solar:login-2-bold" width={20} height={20} />}
-                  disabled={code.length !== 4 || loading}
-                  onClick={handleJoin}
-                  className={
-                    code.length !== 4 || loading
-                      ? "!bg-[var(--control-disabled-bg)] !text-[var(--control-disabled-text)] !border-[var(--control-disabled-border)] !shadow-none !opacity-100 hover:!shadow-none"
-                      : "!bg-[#1e1b6e] !text-white !border-[#1e1b6e] !shadow-[0_4px_0_rgba(0,0,0,0.3)] hover:!brightness-110 !opacity-100"
+            <div className="relative z-20 -mb-8 mt-2 flex flex-col items-center sm:-mb-10">
+              <button
+                onClick={() => {
+                  if (isLoggedIn) {
+                    router.push("/profile");
+                  } else {
+                    setIsAvatarModalOpen(true);
                   }
-                >
-                  Entrar
-                </GameButton>
+                }}
+                className="relative transition-transform hover:scale-105 active:scale-95 focus:outline-none"
+                style={{
+                  transition: "transform 0.4s ease",
+                  transform: spinning ? "rotate(360deg)" : "rotate(0deg)",
+                }}
+              >
+                <PlayerAvatar
+                  name={displayName}
+                  avatarSeed={avatarSeed}
+                  imageUrl={avatarImageUrl}
+                  isHost
+                  size="2xl"
+                  hideName
+                />
+              </button>
 
-                <GameButton
-                  variant="filled"
-                  size="lg"
-                  icon={<Icon icon="solar:add-circle-bold" width={20} height={20} />}
-                  disabled={loading}
-                  onClick={handleCreate}
+              {isLoggedIn ? (
+                <button
+                  onClick={() => router.push("/profile")}
+                  className="mt-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-condensed uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm transition-colors hover:bg-white/20"
                 >
-                  Criar Sala
-                </GameButton>
+                  Editar no perfil
+                </button>
+              ) : (
+                <button
+                  onClick={handleShuffleAvatar}
+                  className="absolute -right-1 bottom-2 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-[#1e1b6e] text-white shadow-xl transition-all hover:scale-110 active:scale-95 sm:bottom-4 sm:right-0 sm:h-16 sm:w-16 sm:border-[5px]"
+                  title="Trocar Avatar"
+                >
+                  <Icon icon="solar:refresh-bold" width={28} height={28} className="sm:h-8 sm:w-8" />
+                </button>
+              )}
+            </div>
 
-                <GameButton
-                  variant="outline"
-                  size="lg"
-                  icon={<Icon icon="solar:book-2-bold" width={20} height={20} />}
-                  onClick={() => setShowHowToPlay(true)}
-                >
-                  Como Jogar
-                </GameButton>
+            <GameCircle className="mt-2 flex w-full max-w-[680px] px-5 pb-4 pt-16 sm:px-7 sm:pb-5 sm:pt-[4.5rem]">
+              <div className="flex w-full flex-col items-center">
+                <div className="flex w-full max-w-[420px] flex-col items-center gap-3.5 py-1">
+                  <div className="w-full">
+                    <GameInput
+                      value={isLoggedIn ? displayName : guestName}
+                      onChange={isLoggedIn ? () => undefined : setGuestName}
+                      placeholder={`Anonimo${anonNumber}`}
+                      variant="text"
+                      maxLength={20}
+                      readOnly={isLoggedIn}
+                    />
+                    {isLoggedIn && (
+                      <p className="mt-2 text-center font-body text-xs text-[var(--panel-soft-text)]">
+                        O nome e a foto usados nas salas vem do seu perfil.
+                      </p>
+                    )}
+                  </div>
+
+                  <GameInput
+                    value={code}
+                    onChange={(value) => setCode(value.toUpperCase())}
+                    placeholder="Codigo"
+                    variant="code"
+                    maxLength={4}
+                    state={error ? "error" : code.length === 4 && roomExists === true ? "focus" : "default"}
+                  />
+
+                  {error && (
+                    <p className="text-center font-body text-sm text-game-impostor">{error}</p>
+                  )}
+
+                  <div className="my-1.5 h-px w-full bg-[var(--control-border)]" />
+
+                  <div className="flex w-full flex-col gap-3">
+                    <GameButton
+                      variant="outline"
+                      size="lg"
+                      icon={<Icon icon="solar:login-2-bold" width={20} height={20} />}
+                      disabled={code.length !== 4 || loading}
+                      onClick={handleJoin}
+                      className={
+                        code.length !== 4 || loading
+                          ? "!bg-[var(--control-disabled-bg)] !text-[var(--control-disabled-text)] !border-[var(--control-disabled-border)] !shadow-none !opacity-100 hover:!shadow-none"
+                          : "!bg-[#1e1b6e] !text-white !border-[#1e1b6e] !shadow-[0_4px_0_rgba(0,0,0,0.3)] hover:!brightness-110 !opacity-100"
+                      }
+                    >
+                      Entrar
+                    </GameButton>
+
+                    <GameButton
+                      variant="filled"
+                      size="lg"
+                      icon={<Icon icon="solar:add-circle-bold" width={20} height={20} />}
+                      disabled={loading}
+                      onClick={handleCreate}
+                    >
+                      Criar Sala
+                    </GameButton>
+
+                    <GameButton
+                      variant="outline"
+                      size="lg"
+                      icon={<Icon icon="solar:book-2-bold" width={20} height={20} />}
+                      onClick={() => setShowHowToPlay(true)}
+                    >
+                      Como Jogar
+                    </GameButton>
+                  </div>
+                </div>
               </div>
-            </div>
-            </div>
-          </GameCircle>
+            </GameCircle>
+          </div>
         </div>
       </div>
 

@@ -16,6 +16,7 @@ import {
   getDefaultWordPack,
 } from "./content.js";
 import { attemptSaveHistory } from "./history.js";
+import { clearLobbyMessagesForRoom } from "./lobbyMessages.js";
 
 type RoundPlayer = Doc<"players">;
 type RoomDoc = Doc<"rooms">;
@@ -636,6 +637,8 @@ export const setMasterQuestions = mutation({
         role: finalImpostorIds.includes(player._id) ? "impostor" : "player",
       });
     }
+
+    await clearLobbyMessagesForRoom(ctx, round.roomId);
 
     // In the new master flow, advance directly to answering
     // Non-master players skip distributing entirely (they never see their role)

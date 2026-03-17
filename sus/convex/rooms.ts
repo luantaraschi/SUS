@@ -6,6 +6,7 @@ import { distributeRolesInternal, getRoomContentReadiness } from "./rounds.js";
 import { ensureDefaultContent, getFallbackDefaultPackKey } from "./content.js";
 import { attemptSaveHistory } from "./history.js";
 import { auth } from "./auth.js";
+import { clearLobbyMessagesForRoom } from "./lobbyMessages.js";
 
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 12;
@@ -604,6 +605,8 @@ export const startGame = mutation({
       );
     }
 
+    await clearLobbyMessagesForRoom(ctx, args.roomId);
+
     const impostorIds = pickImpostorIds(activePlayers, room.settings.numImpostors || 1);
     const masterId = resolveMasterId(room, activePlayers, impostorIds);
 
@@ -756,6 +759,8 @@ export const startNextRound = mutation({
       .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
       .collect();
 
+    await clearLobbyMessagesForRoom(ctx, args.roomId);
+
     // Promote spectators to active players for the new round
     for (const player of players) {
       if (player.isSpectator) {
@@ -839,6 +844,8 @@ export const restartRound = mutation({
       .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
       .collect();
 
+    await clearLobbyMessagesForRoom(ctx, args.roomId);
+
     const activePlayers = players.filter(
       (p) => p.status !== "disconnected" && !p.isSpectator
     );
@@ -887,6 +894,8 @@ export const backToLobby = mutation({
     if (room.hostId !== args.sessionId) {
       throw new Error("Apenas o host pode voltar ao lobby.");
     }
+
+    await clearLobbyMessagesForRoom(ctx, args.roomId);
 
     // Clean up current round data
     if (room.currentRound > 0) {

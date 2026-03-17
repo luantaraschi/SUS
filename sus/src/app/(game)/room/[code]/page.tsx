@@ -241,239 +241,241 @@ export default function RoomLobbyPage({
   const startDisabled = playerCount < MIN_PLAYERS || isStartingGame || !startReadiness.ready;
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col items-center overflow-hidden">
+    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
       <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-end px-4 pt-3 sm:px-6 sm:pt-4">
         <div className="pointer-events-auto flex items-center gap-2">
-        <GameSettingsButton sessionId={sessionId} />
-        {profile ? (
-          <button
-            onClick={() => router.push("/profile")}
-            className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
-          >
-            <PlayerAvatar name={profile.displayName} avatarSeed={profile.avatarSeed} imageUrl={profile.avatarUrl} size="sm" hideName />
-            <span className="hidden font-display text-sm tracking-widest sm:inline">Perfil</span>
-          </button>
-        ) : (
-          <button
-            onClick={() => setShowSignIn(true)}
-            className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
-          >
-            <Icon icon="solar:user-circle-bold" width={24} height={24} />
-            <span className="hidden font-display text-sm tracking-widest sm:inline">Criar Conta</span>
-          </button>
-        )}
-        </div>
-      </div>
-
-      <div className="flex w-full min-h-0 flex-1 flex-col items-center px-2 pt-4 sm:px-4 sm:pt-6">
-        <BubbleText text="SUS" className="font-display text-[clamp(3.4rem,6vw,5.8rem)] tracking-wide drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]" />
-
-        {myPlayer && (
-          <div className="relative z-20 -mb-7 mt-2 flex flex-col items-center sm:-mb-9">
-            <PlayerAvatar
-              name={myPlayer.name}
-              avatarSeed={myPlayer.emoji}
-              imageUrl={myPlayer.avatarImageUrl}
-              isHost={myPlayer.isHost}
-              isBot={myPlayer.isBot}
-              status={getAvatarStatus(myPlayer.status)}
-              size="2xl"
-              hideName
-            />
-          </div>
-        )}
-
-        <div className="min-h-0 w-full max-w-[1080px] flex-1 overflow-hidden px-2 pb-3 sm:px-4">
-          <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden lg:hidden">
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            {mobileTopPlayers.map((player) => (
-              <PlayerAvatar
-                key={player._id}
-                name={player.name}
-                avatarSeed={player.emoji}
-                imageUrl={player.avatarImageUrl}
-                isHost={player.isHost}
-                isBot={player.isBot}
-                status={getAvatarStatus(player.status)}
-                size="orbit"
-                canRemove={isHost && player.isBot && !removingBotId}
-                onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
-              />
-            ))}
-          </div>
-
-          <GameCircle className="flex h-full min-h-0 max-h-[100%] max-w-[740px] px-4 pb-4 pt-12 sm:px-6 sm:pb-5 sm:pt-14">
-            <div className="custom-scrollbar flex h-full min-h-0 w-full flex-col overflow-y-auto">
-              <LobbyPanel
-                room={room}
-                code={code}
-                codeHidden={codeHidden}
-                copied={copied}
-                playerCount={playerCount}
-                numImpostors={numImpostors}
-                packOptions={packOptions ?? []}
-                players={players}
-                isHost={isHost}
-                actionError={actionError}
-                startDisabled={startDisabled}
-                startReadinessMessage={startReadiness.message}
-                onToggleCodeHidden={() => setCodeHidden((current) => !current)}
-                onShare={handleShare}
-                onChangeMaxPlayers={(delta) => updateRoomSettings({ maxPlayers: Math.max(Math.max(MIN_PLAYERS, playerCount), Math.min(MAX_PLAYERS, room.settings.maxPlayers + delta)) })}
-                onChangeRounds={(delta) => updateRoomSettings({ rounds: Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, room.settings.rounds + delta)) })}
-                onChangeImpostors={(delta) => updateRoomSettings({ numImpostors: Math.max(1, Math.min(MAX_IMPOSTORS, numImpostors + delta)) })}
-                onModeChange={(mode) => {
-                  if (!isHost || room.mode === mode || !sessionId) return;
-                  void updateSettings({ roomId: room._id, sessionId, settings: {}, mode, ...(mode === "question" ? { questionMode: "system" as const } : {}) });
-                }}
-                onQuestionModeChange={(questionMode) => {
-                  if (!isHost || room.questionMode === questionMode || !sessionId) return;
-                  void updateSettings({ roomId: room._id, sessionId, settings: {}, questionMode });
-                }}
-                onMasterChange={(playerId) => updateRoomSettings({ customMasterId: playerId })}
-                onPackChange={(value) => {
-                  if (!value) {
-                    updateRoomSettings({ defaultPackKey: "classico", customPackId: undefined });
-                    return;
-                  }
-                  if (value.startsWith("default:")) {
-                    updateRoomSettings({
-                      defaultPackKey: value.replace("default:", ""),
-                      customPackId: undefined,
-                    });
-                    return;
-                  }
-                  updateRoomSettings({
-                    customPackId: value.replace("custom:", "") as Id<"customPacks">,
-                    defaultPackKey: undefined,
-                  });
-                }}
-                onToggleHint={() => updateRoomSettings({ impostorHint: !room.settings.impostorHint })}
-                onAddBot={handleAddBot}
-                onStart={handleStartGame}
-                onLeave={async () => {
-                  if (!myPlayer || !sessionId) return;
-                  await leaveRoom({ playerId: myPlayer._id, sessionId });
-                  router.push("/");
-                }}
-              />
-            </div>
-          </GameCircle>
-
-          {mobileBottomPlayers.length > 0 && (
-            <div className="flex flex-wrap items-center justify-center gap-3">
-              {mobileBottomPlayers.map((player) => (
-                <PlayerAvatar
-                  key={player._id}
-                  name={player.name}
-                  avatarSeed={player.emoji}
-                  imageUrl={player.avatarImageUrl}
-                  isHost={player.isHost}
-                  isBot={player.isBot}
-                  status={getAvatarStatus(player.status)}
-                  size="orbit"
-                  canRemove={isHost && player.isBot && !removingBotId}
-                  onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
-                />
-              ))}
-            </div>
+          <GameSettingsButton sessionId={sessionId} />
+          {profile ? (
+            <button
+              onClick={() => router.push("/profile")}
+              className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
+            >
+              <PlayerAvatar name={profile.displayName} avatarSeed={profile.avatarSeed} imageUrl={profile.avatarUrl} size="sm" hideName />
+              <span className="hidden font-display text-sm tracking-widest sm:inline">Perfil</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setShowSignIn(true)}
+              className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
+            >
+              <Icon icon="solar:user-circle-bold" width={24} height={24} />
+              <span className="hidden font-display text-sm tracking-widest sm:inline">Criar Conta</span>
+            </button>
           )}
         </div>
+      </div>
 
-        <div className="hidden h-full min-h-0 items-center justify-center gap-4 lg:flex">
-          <div className="flex w-20 flex-col items-center gap-3">
-            {leftPlayers.map((player) => (
+      <div className="flex w-full min-h-0 flex-1 flex-col px-2 pt-4 sm:px-4 sm:pt-6">
+        <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-4">
+          <BubbleText text="SUS" className="font-display text-[clamp(3.4rem,6vw,5.8rem)] tracking-wide drop-shadow-[0_4px_8px_rgba(0,0,0,0.3)]" />
+
+          {myPlayer && (
+            <div className="relative z-20 -mb-7 mt-2 flex flex-col items-center sm:-mb-9">
               <PlayerAvatar
-                key={player._id}
-                name={player.name}
-                avatarSeed={player.emoji}
-                imageUrl={player.avatarImageUrl}
-                isHost={player.isHost}
-                isBot={player.isBot}
-                status={getAvatarStatus(player.status)}
-                size="orbit"
-                canRemove={isHost && player.isBot && !removingBotId}
-                onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
-              />
-            ))}
-          </div>
-
-          <GameCircle className="flex h-full min-h-0 max-h-[min(760px,100%)] max-w-[740px] flex-1 px-6 pb-5 pt-12">
-            <div className="custom-scrollbar flex h-full min-h-0 w-full flex-col overflow-y-auto">
-              <LobbyPanel
-                room={room}
-                code={code}
-                codeHidden={codeHidden}
-                copied={copied}
-                playerCount={playerCount}
-                numImpostors={numImpostors}
-                packOptions={packOptions ?? []}
-                players={players}
-                isHost={isHost}
-                actionError={actionError}
-                startDisabled={startDisabled}
-                startReadinessMessage={startReadiness.message}
-                onToggleCodeHidden={() => setCodeHidden((current) => !current)}
-                onShare={handleShare}
-                onChangeMaxPlayers={(delta) => updateRoomSettings({ maxPlayers: Math.max(Math.max(MIN_PLAYERS, playerCount), Math.min(MAX_PLAYERS, room.settings.maxPlayers + delta)) })}
-                onChangeRounds={(delta) => updateRoomSettings({ rounds: Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, room.settings.rounds + delta)) })}
-                onChangeImpostors={(delta) => updateRoomSettings({ numImpostors: Math.max(1, Math.min(Math.min(MAX_IMPOSTORS, room.settings.maxPlayers - 2), numImpostors + delta)) })}
-                onModeChange={(mode) => {
-                  if (!isHost || room.mode === mode || !sessionId) return;
-                  void updateSettings({ roomId: room._id, sessionId, settings: {}, mode, ...(mode === "question" ? { questionMode: "system" as const } : {}) });
-                }}
-                onQuestionModeChange={(questionMode) => {
-                  if (!isHost || room.questionMode === questionMode || !sessionId) return;
-                  void updateSettings({ roomId: room._id, sessionId, settings: {}, questionMode });
-                }}
-                onMasterChange={(playerId) => updateRoomSettings({ customMasterId: playerId })}
-                onPackChange={(value) => {
-                  if (!value) {
-                    updateRoomSettings({ defaultPackKey: "classico", customPackId: undefined });
-                    return;
-                  }
-                  if (value.startsWith("default:")) {
-                    updateRoomSettings({
-                      defaultPackKey: value.replace("default:", ""),
-                      customPackId: undefined,
-                    });
-                    return;
-                  }
-                  updateRoomSettings({
-                    customPackId: value.replace("custom:", "") as Id<"customPacks">,
-                    defaultPackKey: undefined,
-                  });
-                }}
-                onToggleHint={() => updateRoomSettings({ impostorHint: !room.settings.impostorHint })}
-                onAddBot={handleAddBot}
-                onStart={handleStartGame}
-                onLeave={async () => {
-                  if (!myPlayer || !sessionId) return;
-                  await leaveRoom({ playerId: myPlayer._id, sessionId });
-                  router.push("/");
-                }}
+                name={myPlayer.name}
+                avatarSeed={myPlayer.emoji}
+                imageUrl={myPlayer.avatarImageUrl}
+                isHost={myPlayer.isHost}
+                isBot={myPlayer.isBot}
+                status={getAvatarStatus(myPlayer.status)}
+                size="2xl"
+                hideName
               />
             </div>
-          </GameCircle>
+          )}
 
-          <div className="flex w-20 flex-col items-center gap-3">
-            {rightPlayers.map((player) => (
-              <PlayerAvatar
-                key={player._id}
-                name={player.name}
-                avatarSeed={player.emoji}
-                imageUrl={player.avatarImageUrl}
-                isHost={player.isHost}
-                isBot={player.isBot}
-                status={getAvatarStatus(player.status)}
-                size="orbit"
-                canRemove={isHost && player.isBot && !removingBotId}
-                onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
-              />
-            ))}
+          <div className="min-h-0 w-full max-w-[1080px] flex-1 overflow-hidden px-2 pb-2 sm:px-4">
+            <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden lg:hidden">
+              <div className="flex flex-wrap items-center justify-center gap-3">
+                {mobileTopPlayers.map((player) => (
+                  <PlayerAvatar
+                    key={player._id}
+                    name={player.name}
+                    avatarSeed={player.emoji}
+                    imageUrl={player.avatarImageUrl}
+                    isHost={player.isHost}
+                    isBot={player.isBot}
+                    status={getAvatarStatus(player.status)}
+                    size="orbit"
+                    canRemove={isHost && player.isBot && !removingBotId}
+                    onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
+                  />
+                ))}
+              </div>
+
+              <GameCircle className="flex h-full min-h-0 max-h-[min(76dvh,100%)] max-w-[740px] px-4 pb-4 pt-12 sm:px-6 sm:pb-5 sm:pt-14">
+                <div className="flex h-full min-h-0 w-full flex-col">
+                  <LobbyPanel
+                    room={room}
+                    code={code}
+                    codeHidden={codeHidden}
+                    copied={copied}
+                    playerCount={playerCount}
+                    numImpostors={numImpostors}
+                    packOptions={packOptions ?? []}
+                    players={players}
+                    isHost={isHost}
+                    actionError={actionError}
+                    startDisabled={startDisabled}
+                    startReadinessMessage={startReadiness.message}
+                    onToggleCodeHidden={() => setCodeHidden((current) => !current)}
+                    onShare={handleShare}
+                    onChangeMaxPlayers={(delta) => updateRoomSettings({ maxPlayers: Math.max(Math.max(MIN_PLAYERS, playerCount), Math.min(MAX_PLAYERS, room.settings.maxPlayers + delta)) })}
+                    onChangeRounds={(delta) => updateRoomSettings({ rounds: Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, room.settings.rounds + delta)) })}
+                    onChangeImpostors={(delta) => updateRoomSettings({ numImpostors: Math.max(1, Math.min(MAX_IMPOSTORS, numImpostors + delta)) })}
+                    onModeChange={(mode) => {
+                      if (!isHost || room.mode === mode || !sessionId) return;
+                      void updateSettings({ roomId: room._id, sessionId, settings: {}, mode, ...(mode === "question" ? { questionMode: "system" as const } : {}) });
+                    }}
+                    onQuestionModeChange={(questionMode) => {
+                      if (!isHost || room.questionMode === questionMode || !sessionId) return;
+                      void updateSettings({ roomId: room._id, sessionId, settings: {}, questionMode });
+                    }}
+                    onMasterChange={(playerId) => updateRoomSettings({ customMasterId: playerId })}
+                    onPackChange={(value) => {
+                      if (!value) {
+                        updateRoomSettings({ defaultPackKey: "classico", customPackId: undefined });
+                        return;
+                      }
+                      if (value.startsWith("default:")) {
+                        updateRoomSettings({
+                          defaultPackKey: value.replace("default:", ""),
+                          customPackId: undefined,
+                        });
+                        return;
+                      }
+                      updateRoomSettings({
+                        customPackId: value.replace("custom:", "") as Id<"customPacks">,
+                        defaultPackKey: undefined,
+                      });
+                    }}
+                    onToggleHint={() => updateRoomSettings({ impostorHint: !room.settings.impostorHint })}
+                    onAddBot={handleAddBot}
+                    onStart={handleStartGame}
+                    onLeave={async () => {
+                      if (!myPlayer || !sessionId) return;
+                      await leaveRoom({ playerId: myPlayer._id, sessionId });
+                      router.push("/");
+                    }}
+                  />
+                </div>
+              </GameCircle>
+
+              {mobileBottomPlayers.length > 0 && (
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  {mobileBottomPlayers.map((player) => (
+                    <PlayerAvatar
+                      key={player._id}
+                      name={player.name}
+                      avatarSeed={player.emoji}
+                      imageUrl={player.avatarImageUrl}
+                      isHost={player.isHost}
+                      isBot={player.isBot}
+                      status={getAvatarStatus(player.status)}
+                      size="orbit"
+                      canRemove={isHost && player.isBot && !removingBotId}
+                      onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="hidden h-full min-h-0 items-center justify-center gap-4 lg:flex">
+              <div className="flex w-20 flex-col items-center gap-3">
+                {leftPlayers.map((player) => (
+                  <PlayerAvatar
+                    key={player._id}
+                    name={player.name}
+                    avatarSeed={player.emoji}
+                    imageUrl={player.avatarImageUrl}
+                    isHost={player.isHost}
+                    isBot={player.isBot}
+                    status={getAvatarStatus(player.status)}
+                    size="orbit"
+                    canRemove={isHost && player.isBot && !removingBotId}
+                    onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
+                  />
+                ))}
+              </div>
+
+              <GameCircle className="flex h-full min-h-0 max-h-[min(78dvh,100%)] max-w-[740px] flex-1 px-6 pb-5 pt-12">
+                <div className="flex h-full min-h-0 w-full flex-col">
+                  <LobbyPanel
+                    room={room}
+                    code={code}
+                    codeHidden={codeHidden}
+                    copied={copied}
+                    playerCount={playerCount}
+                    numImpostors={numImpostors}
+                    packOptions={packOptions ?? []}
+                    players={players}
+                    isHost={isHost}
+                    actionError={actionError}
+                    startDisabled={startDisabled}
+                    startReadinessMessage={startReadiness.message}
+                    onToggleCodeHidden={() => setCodeHidden((current) => !current)}
+                    onShare={handleShare}
+                    onChangeMaxPlayers={(delta) => updateRoomSettings({ maxPlayers: Math.max(Math.max(MIN_PLAYERS, playerCount), Math.min(MAX_PLAYERS, room.settings.maxPlayers + delta)) })}
+                    onChangeRounds={(delta) => updateRoomSettings({ rounds: Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, room.settings.rounds + delta)) })}
+                    onChangeImpostors={(delta) => updateRoomSettings({ numImpostors: Math.max(1, Math.min(Math.min(MAX_IMPOSTORS, room.settings.maxPlayers - 2), numImpostors + delta)) })}
+                    onModeChange={(mode) => {
+                      if (!isHost || room.mode === mode || !sessionId) return;
+                      void updateSettings({ roomId: room._id, sessionId, settings: {}, mode, ...(mode === "question" ? { questionMode: "system" as const } : {}) });
+                    }}
+                    onQuestionModeChange={(questionMode) => {
+                      if (!isHost || room.questionMode === questionMode || !sessionId) return;
+                      void updateSettings({ roomId: room._id, sessionId, settings: {}, questionMode });
+                    }}
+                    onMasterChange={(playerId) => updateRoomSettings({ customMasterId: playerId })}
+                    onPackChange={(value) => {
+                      if (!value) {
+                        updateRoomSettings({ defaultPackKey: "classico", customPackId: undefined });
+                        return;
+                      }
+                      if (value.startsWith("default:")) {
+                        updateRoomSettings({
+                          defaultPackKey: value.replace("default:", ""),
+                          customPackId: undefined,
+                        });
+                        return;
+                      }
+                      updateRoomSettings({
+                        customPackId: value.replace("custom:", "") as Id<"customPacks">,
+                        defaultPackKey: undefined,
+                      });
+                    }}
+                    onToggleHint={() => updateRoomSettings({ impostorHint: !room.settings.impostorHint })}
+                    onAddBot={handleAddBot}
+                    onStart={handleStartGame}
+                    onLeave={async () => {
+                      if (!myPlayer || !sessionId) return;
+                      await leaveRoom({ playerId: myPlayer._id, sessionId });
+                      router.push("/");
+                    }}
+                  />
+                </div>
+              </GameCircle>
+
+              <div className="flex w-20 flex-col items-center gap-3">
+                {rightPlayers.map((player) => (
+                  <PlayerAvatar
+                    key={player._id}
+                    name={player.name}
+                    avatarSeed={player.emoji}
+                    imageUrl={player.avatarImageUrl}
+                    isHost={player.isHost}
+                    isBot={player.isBot}
+                    status={getAvatarStatus(player.status)}
+                    size="orbit"
+                    canRemove={isHost && player.isBot && !removingBotId}
+                    onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
       </div>
 
@@ -555,8 +557,9 @@ function LobbyPanel({
   );
 
   return (
-    <>
-      <div className="flex flex-1 flex-col pb-2">
+    <div className="flex h-full min-h-0 flex-col">
+      <div className="custom-scrollbar flex-1 min-h-0 overflow-y-auto pr-1">
+        <div className="flex min-h-full flex-col pb-2">
         <div className="flex flex-col items-center gap-5">
           <div className="flex flex-col items-center gap-2">
             <span className="font-condensed text-sm uppercase tracking-[0.28em] text-[var(--panel-soft-text)]">Codigo da Sala</span>
@@ -693,6 +696,7 @@ function LobbyPanel({
           </div>
         </div>
       </div>
+      </div>
 
       <div className="mt-auto flex w-full flex-col gap-2 border-t border-[var(--control-border)] pt-4">
         {actionError && <p className="text-center font-body text-xs text-game-impostor sm:text-sm">{actionError}</p>}
@@ -703,6 +707,6 @@ function LobbyPanel({
         )}
         <GameButton variant="outline" size="lg" icon={<Icon icon="solar:arrow-left-bold" width={20} height={20} />} onClick={onLeave}>Voltar</GameButton>
       </div>
-    </>
+    </div>
   );
 }

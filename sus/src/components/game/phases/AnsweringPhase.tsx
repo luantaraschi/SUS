@@ -4,6 +4,7 @@ import type { Doc } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import PlayerAvatar from "../PlayerAvatar";
+import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
 
 interface AnsweringPhaseProps {
@@ -113,7 +114,11 @@ export function AnsweringPhase({
               const isPlayerTyping =
                 !answered && typingPlayerIds?.includes(player._id);
               return (
-                <div key={player._id} className="relative flex flex-col items-center text-center">
+                <ReactionAnchor
+                  key={player._id}
+                  playerId={String(player._id)}
+                  className="flex flex-col items-center text-center"
+                >
                   <div
                     className={`relative flex h-16 w-16 items-center justify-center rounded-2xl border bg-surface-primary/10 ${
                       answered ? "border-game-safe/50" : "border-surface-primary/20"
@@ -148,7 +153,7 @@ export function AnsweringPhase({
                       </span>
                     )}
                   </p>
-                </div>
+                </ReactionAnchor>
               );
             })}
         </div>
@@ -158,14 +163,17 @@ export function AnsweringPhase({
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col items-center p-4">
-      <div className="mb-6 flex flex-col items-center">
+      <ReactionAnchor
+        playerId={String(myPlayer._id)}
+        className="mb-6 flex flex-col items-center"
+      >
         <PlayerAvatar
           name={myPlayer.name}
           avatarSeed={myPlayer.emoji}
           imageUrl={myPlayer.avatarImageUrl}
           size="md"
         />
-      </div>
+      </ReactionAnchor>
 
       <div className="flex w-full flex-col items-center rounded-3xl border-b-4 border-surface-primary/20 bg-white p-6 text-center shadow-2xl">
         <h3 className="mb-4 text-center font-display text-xl font-black text-gray-800">

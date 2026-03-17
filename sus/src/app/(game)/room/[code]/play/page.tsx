@@ -15,6 +15,7 @@ import { EvidencePhase } from "@/components/game/phases/EvidencePhase";
 import { HostControls } from "@/components/game/HostControls";
 import { SpectatorBanner } from "@/components/game/SpectatorBanner";
 import FloatingChat from "@/components/game/FloatingChat";
+import { ReactionProvider } from "@/components/game/reactions/ReactionProvider";
 import { useRouter } from "next/navigation";
 
 export default function PlayPage({
@@ -119,7 +120,7 @@ export default function PlayPage({
   }
 
   return (
-    <>
+    <ReactionProvider roomId={room._id}>
       {myPlayer.isHost && <HostControls room={room} sessionId={sessionId || ""} />}
       {myPlayer.isSpectator && <SpectatorBanner />}
       {phaseComponent}
@@ -128,6 +129,6 @@ export default function PlayPage({
         playerId={myPlayer._id}
         sessionId={sessionId || ""}
       />
-    </>
+    </ReactionProvider>
   );
 }

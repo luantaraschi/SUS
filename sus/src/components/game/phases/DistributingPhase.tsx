@@ -4,6 +4,8 @@ import type { Doc, Id } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import PlayerAvatar from "../PlayerAvatar";
+import PostItBoard from "../PostItBoard";
+import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
 
 interface DistributingPhaseProps {
@@ -29,6 +31,10 @@ export function DistributingPhase({
   const [selectedImpostor, setSelectedImpostor] = useState("random");
   const confirmSeen = useMutation(api.rounds.confirmSeen);
   const setMasterQuestions = useMutation(api.rounds.setMasterQuestions);
+  const showMasterBoardBackground =
+    room.mode === "question" &&
+    myRole?.role === "master" &&
+    round.questionMain == null;
 
   if (myPlayer.status === "ready" || (myRole?.role === "master" && round.questionMain != null)) {
     return (
@@ -39,7 +45,11 @@ export function DistributingPhase({
             {players.filter((player) => player.status !== "disconnected").map((player) => {
               const isReady = player.status === "ready";
               return (
-                <div key={player._id} className="relative flex flex-col items-center text-center">
+                <ReactionAnchor
+                  key={player._id}
+                  playerId={String(player._id)}
+                  className="flex flex-col items-center text-center"
+                >
                   <div
                     className={`relative flex items-center justify-center rounded-2xl border bg-surface-primary/10 p-2 ${
                       isReady ? "border-game-safe/50" : "border-surface-primary/20 animate-pulse"
@@ -65,7 +75,7 @@ export function DistributingPhase({
                   <p className="mt-2 w-14 truncate font-condensed text-[11px] uppercase tracking-wider text-white/70">
                     {player.name}
                   </p>
-                </div>
+                </ReactionAnchor>
               );
             })}
           </div>
@@ -76,10 +86,15 @@ export function DistributingPhase({
 
   if (room.mode === "question" && myRole?.role !== "master" && !round.questionMain) {
     return (
-      <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 p-4 text-center backdrop-blur-sm">
-        <div className="w-full max-w-sm rounded-3xl border border-surface-primary/20 bg-surface-primary/10 p-8">
-          <h2 className="mb-4 font-display text-2xl text-white">O Mestre esta criando a pergunta...</h2>
-          <div className="mx-auto mt-6 h-12 w-12 animate-spin rounded-full border-4 border-game-safe border-t-transparent" />
+      <div className="fixed inset-0 z-40 overflow-hidden bg-black/72 text-center backdrop-blur-sm">
+        <PostItBoard roomId={round.roomId} sessionId={sessionId} />
+        <div className="pointer-events-none absolute inset-x-0 top-6 z-10 flex justify-center px-4">
+          <div className="w-full max-w-lg rounded-[28px] border border-white/10 bg-black/45 px-6 py-4 shadow-[0_18px_50px_rgba(0,0,0,0.32)] backdrop-blur-md">
+            <h2 className="font-display text-2xl text-white">O Mestre esta criando a pergunta...</h2>
+            <p className="mt-2 font-body text-sm text-white/75">
+              Enquanto isso, deixe um recado anonimo no mural.
+            </p>
+          </div>
         </div>
       </div>
     );
@@ -118,8 +133,16 @@ export function DistributingPhase({
   };
 
   return (
-    <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/80 p-4 text-center backdrop-blur-sm">
-      <div className={`w-full max-w-sm rounded-3xl border-2 bg-surface-primary p-8 shadow-2xl ${borderColor}`}>
+    <div className="fixed inset-0 z-40 flex items-center justify-center overflow-hidden bg-black/80 p-4 text-center backdrop-blur-sm">
+      {showMasterBoardBackground && (
+        <PostItBoard
+          roomId={round.roomId}
+          sessionId={sessionId}
+          variant="background"
+          allowComposer={false}
+        />
+      )}
+      <div className={`relative z-10 w-full max-w-sm rounded-3xl border-2 bg-surface-primary p-8 shadow-2xl ${borderColor}`}>
         <div className="mb-6 text-xl font-black uppercase tracking-wider text-white">{roleText}</div>
 
         {myRole?.role === "impostor" ? (

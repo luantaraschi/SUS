@@ -12,7 +12,11 @@ function GameLayoutInner({ children }: { children: React.ReactNode }) {
   const usesFixedShell = pathname === "/" || /^\/room\/[^/]+$/.test(pathname);
 
   return (
-    <div className="relative flex flex-col min-h-dvh">
+    <div
+      className={`relative flex min-h-0 flex-col ${
+        usesFixedShell ? "h-dvh overflow-hidden" : "min-h-dvh"
+      }`}
+    >
       <ShaderBackground
         variant={variant}
         themeId={themeId}
@@ -21,7 +25,7 @@ function GameLayoutInner({ children }: { children: React.ReactNode }) {
       <ConvexStatusBanner />
       <main
         className={`relative z-10 flex w-full flex-1 flex-col items-center justify-start px-3 py-3 sm:px-4 sm:py-4 ${
-          usesFixedShell ? "overflow-hidden pb-[88px]" : ""
+          usesFixedShell ? "min-h-0 overflow-hidden pb-[88px]" : ""
         }`}
       >
         {children}

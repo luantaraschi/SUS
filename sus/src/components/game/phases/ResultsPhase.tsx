@@ -12,6 +12,7 @@ import PhaseIndicator from "../PhaseIndicator";
 import { useRouter } from "next/navigation";
 import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
 import { useSound } from "@/lib/useSound";
+import { ReactionAnchor } from "../reactions/ReactionAnchor";
 
 interface ResultsPhaseProps {
   round: SafeRound;
@@ -124,7 +125,11 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
               </span>
               <div className="flex flex-row flex-wrap justify-center gap-6">
                 {realImpostors.map((impostor) => (
-                  <div key={impostor._id} className="flex flex-col items-center gap-3">
+                  <ReactionAnchor
+                    key={impostor._id}
+                    playerId={String(impostor._id)}
+                    className="flex flex-col items-center gap-3"
+                  >
                     <PlayerAvatar
                       name={impostor.name}
                       avatarSeed={impostor.emoji}
@@ -132,7 +137,7 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
                       size="xl"
                     />
                     <span className="text-xl font-bold text-white">{impostor.name}</span>
-                  </div>
+                  </ReactionAnchor>
                 ))}
               </div>
             </div>

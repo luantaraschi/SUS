@@ -9,6 +9,7 @@ import PlayerAvatar from "../PlayerAvatar";
 import { motion } from "framer-motion";
 import PhaseIndicator from "../PhaseIndicator";
 import Timer from "../Timer";
+import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
 
 function isMasterQuestionMode(room: { mode: string; questionMode?: string }) {
@@ -78,36 +79,37 @@ export function VotingPhase({ round, players, myPlayer, myRole, room, sessionId 
           const isMe = myPlayer._id === player._id;
 
           return (
-            <motion.button
-              key={player._id}
-              whileHover={{ scale: hasVoted || isMe || isMaster ? 1 : 1.015 }}
-              whileTap={{ scale: hasVoted || isMe || isMaster ? 1 : 0.985 }}
-              onClick={() => !hasVoted && !isMe && !isMaster && setSelectedSuspect(player._id)}
-              disabled={hasVoted || isMe || isMaster}
-              className={`relative rounded-[28px] border p-4 text-left transition-colors ${
-                isSelected
-                  ? "border-game-impostor bg-game-impostor/20"
-                  : "border-white/10 bg-black/15 hover:bg-white/10"
-              } ${(hasVoted || isMe || isMaster) ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
-            >
-              <div className="flex items-center gap-4">
-                <PlayerAvatar
-                  name={player.name}
-                  avatarSeed={player.emoji}
-                  imageUrl={player.avatarImageUrl}
-                  size="md"
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-display text-2xl text-white">{player.name}</p>
-                  <p className="font-condensed text-xs uppercase tracking-[0.24em] text-white/60">
-                    {isMe ? "Voce" : votedPlayerIds.has(player._id) ? "Ja votou" : "Aguardando"}
-                  </p>
+            <ReactionAnchor key={player._id} playerId={String(player._id)}>
+              <motion.button
+                whileHover={{ scale: hasVoted || isMe || isMaster ? 1 : 1.015 }}
+                whileTap={{ scale: hasVoted || isMe || isMaster ? 1 : 0.985 }}
+                onClick={() => !hasVoted && !isMe && !isMaster && setSelectedSuspect(player._id)}
+                disabled={hasVoted || isMe || isMaster}
+                className={`relative w-full rounded-[28px] border p-4 text-left transition-colors ${
+                  isSelected
+                    ? "border-game-impostor bg-game-impostor/20"
+                    : "border-white/10 bg-black/15 hover:bg-white/10"
+                } ${(hasVoted || isMe || isMaster) ? "cursor-not-allowed opacity-60" : "cursor-pointer"}`}
+              >
+                <div className="flex items-center gap-4">
+                  <PlayerAvatar
+                    name={player.name}
+                    avatarSeed={player.emoji}
+                    imageUrl={player.avatarImageUrl}
+                    size="md"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-2xl text-white">{player.name}</p>
+                    <p className="font-condensed text-xs uppercase tracking-[0.24em] text-white/60">
+                      {isMe ? "Voce" : votedPlayerIds.has(player._id) ? "Ja votou" : "Aguardando"}
+                    </p>
+                  </div>
+                  {votedPlayerIds.has(player._id) && (
+                    <span className="h-3 w-3 rounded-full bg-game-safe" />
+                  )}
                 </div>
-                {votedPlayerIds.has(player._id) && (
-                  <span className="h-3 w-3 rounded-full bg-game-safe" />
-                )}
-              </div>
-            </motion.button>
+              </motion.button>
+            </ReactionAnchor>
           );
         })}
       </div>

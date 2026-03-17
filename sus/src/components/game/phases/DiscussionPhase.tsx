@@ -2,6 +2,7 @@ import type { Doc } from "../../../../convex/_generated/dataModel";
 import PlayerAvatar from "../PlayerAvatar";
 import PhaseIndicator from "../PhaseIndicator";
 import Timer from "../Timer";
+import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
 
 interface DiscussionPhaseProps {
@@ -37,24 +38,25 @@ export function DiscussionPhase({
 
       <div className="mt-8 grid w-full max-w-5xl grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
         {visiblePlayers.map((player) => (
-          <div
-            key={player._id}
-            className={`rounded-[24px] border px-4 py-5 text-center backdrop-blur-sm ${
-              player._id === myPlayer._id
-                ? "border-game-safe/40 bg-white/16"
-                : "border-white/10 bg-black/15"
-            }`}
-          >
-            <PlayerAvatar
-              name={player.name}
-              avatarSeed={player.emoji}
-              imageUrl={player.avatarImageUrl}
-              isHost={player.isHost}
-              isBot={player.isBot}
-              status={getAvatarStatus(player.status)}
-              size="md"
-            />
-          </div>
+          <ReactionAnchor key={player._id} playerId={String(player._id)}>
+            <div
+              className={`rounded-[24px] border px-4 py-5 text-center backdrop-blur-sm ${
+                player._id === myPlayer._id
+                  ? "border-game-safe/40 bg-white/16"
+                  : "border-white/10 bg-black/15"
+              }`}
+            >
+              <PlayerAvatar
+                name={player.name}
+                avatarSeed={player.emoji}
+                imageUrl={player.avatarImageUrl}
+                isHost={player.isHost}
+                isBot={player.isBot}
+                status={getAvatarStatus(player.status)}
+                size="md"
+              />
+            </div>
+          </ReactionAnchor>
         ))}
       </div>
     </div>

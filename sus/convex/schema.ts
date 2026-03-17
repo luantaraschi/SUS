@@ -196,6 +196,23 @@ export default defineSchema({
     sentAt: v.number(),
   }).index("by_room", ["roomId"]),
 
+  lobby_messages: defineTable({
+    roomId: v.id("rooms"),
+    text: v.string(),
+    x: v.number(),
+    y: v.number(),
+    rotation: v.number(),
+    color: v.union(
+      v.literal("butter"),
+      v.literal("mint"),
+      v.literal("sky"),
+      v.literal("peach")
+    ),
+    createdAt: v.number(),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_room_createdAt", ["roomId", "createdAt"]),
+
   bugReports: defineTable({
     userId: v.optional(v.id("users")),
     sessionId: v.string(),

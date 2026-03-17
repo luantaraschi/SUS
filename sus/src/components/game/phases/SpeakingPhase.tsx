@@ -6,6 +6,7 @@ import { api } from "../../../../convex/_generated/api";
 import PlayerAvatar from "../PlayerAvatar";
 import PhaseIndicator from "../PhaseIndicator";
 import { motion } from "framer-motion";
+import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
 
 interface SpeakingPhaseProps {
@@ -112,50 +113,51 @@ export function SpeakingPhase({
           const isMe = player._id === myPlayer._id;
 
           return (
-            <motion.div
-              key={player._id}
-              animate={
-                isCurrent
-                  ? {
-                      boxShadow: [
-                        "0 0 0px rgba(0,184,235,0)",
-                        "0 0 20px rgba(0,184,235,0.5)",
-                        "0 0 0px rgba(0,184,235,0)",
-                      ],
-                    }
-                  : {}
-              }
-              transition={
-                isCurrent
-                  ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
-                  : {}
-              }
-              className={`flex flex-col items-center rounded-[24px] border px-4 py-4 text-center backdrop-blur-sm transition-all ${
-                isCurrent
-                  ? "border-game-info/60 bg-game-info/15 scale-105"
-                  : isMe
-                    ? "border-game-safe/30 bg-white/10 opacity-80"
-                    : "border-white/10 bg-black/15 opacity-50"
-              }`}
-            >
-              <PlayerAvatar
-                name={player.name}
-                avatarSeed={player.emoji}
-                imageUrl={player.avatarImageUrl}
-                isHost={player.isHost}
-                isBot={player.isBot}
-                size="md"
-                hideName
-              />
-              <p className="mt-2 max-w-[100px] truncate font-display text-sm text-white">
-                {player.name}
-              </p>
-              {isCurrent && (
-                <span className="mt-1 font-condensed text-[10px] uppercase tracking-widest text-game-info">
-                  Falando
-                </span>
-              )}
-            </motion.div>
+            <ReactionAnchor key={player._id} playerId={String(player._id)}>
+              <motion.div
+                animate={
+                  isCurrent
+                    ? {
+                        boxShadow: [
+                          "0 0 0px rgba(0,184,235,0)",
+                          "0 0 20px rgba(0,184,235,0.5)",
+                          "0 0 0px rgba(0,184,235,0)",
+                        ],
+                      }
+                    : {}
+                }
+                transition={
+                  isCurrent
+                    ? { duration: 1.5, repeat: Infinity, ease: "easeInOut" }
+                    : {}
+                }
+                className={`flex flex-col items-center rounded-[24px] border px-4 py-4 text-center backdrop-blur-sm transition-all ${
+                  isCurrent
+                    ? "border-game-info/60 bg-game-info/15 scale-105"
+                    : isMe
+                      ? "border-game-safe/30 bg-white/10 opacity-80"
+                      : "border-white/10 bg-black/15 opacity-50"
+                }`}
+              >
+                <PlayerAvatar
+                  name={player.name}
+                  avatarSeed={player.emoji}
+                  imageUrl={player.avatarImageUrl}
+                  isHost={player.isHost}
+                  isBot={player.isBot}
+                  size="md"
+                  hideName
+                />
+                <p className="mt-2 max-w-[100px] truncate font-display text-sm text-white">
+                  {player.name}
+                </p>
+                {isCurrent && (
+                  <span className="mt-1 font-condensed text-[10px] uppercase tracking-widest text-game-info">
+                    Falando
+                  </span>
+                )}
+              </motion.div>
+            </ReactionAnchor>
           );
         })}
       </div>

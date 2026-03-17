@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import PlayerAvatar from "../PlayerAvatar";
 import PhaseIndicator from "../PhaseIndicator";
 import { motion, AnimatePresence } from "framer-motion";
+import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
 
 interface EvidencePhaseProps {
@@ -98,34 +99,35 @@ export function EvidencePhase({
             myRole?.role === "master" && myRole.masterImpostorIds?.includes(player._id);
 
           return (
-            <motion.div
-              key={answer._id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.08, duration: 0.4 }}
-              className="rounded-[28px] border border-white/10 bg-[var(--panel-surface)] p-5 text-center text-[var(--panel-text)] shadow-lg"
-            >
-              <div className="mb-3 flex flex-col items-center">
-                <PlayerAvatar
-                  name={player.name}
-                  avatarSeed={player.emoji}
-                  imageUrl={player.avatarImageUrl}
-                  size="sm"
-                  hideName
-                />
-                <span className="mt-1.5 flex items-center gap-1 font-hand text-sm text-[var(--panel-soft-text)]">
-                  [{player.name}]
-                  {isMarkedByMaster && (
-                    <span className="ml-1 text-xs font-bold uppercase text-game-impostor" title="Impostor">
-                      ?
-                    </span>
-                  )}
-                </span>
-              </div>
-              <p className="w-full break-words font-body text-xl font-medium">
-                &quot;{answer.text}&quot;
-              </p>
-            </motion.div>
+            <ReactionAnchor key={answer._id} playerId={String(player._id)}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.08, duration: 0.4 }}
+                className="rounded-[28px] border border-white/10 bg-[var(--panel-surface)] p-5 text-center text-[var(--panel-text)] shadow-lg"
+              >
+                <div className="mb-3 flex flex-col items-center">
+                  <PlayerAvatar
+                    name={player.name}
+                    avatarSeed={player.emoji}
+                    imageUrl={player.avatarImageUrl}
+                    size="sm"
+                    hideName
+                  />
+                  <span className="mt-1.5 flex items-center gap-1 font-hand text-sm text-[var(--panel-soft-text)]">
+                    [{player.name}]
+                    {isMarkedByMaster && (
+                      <span className="ml-1 text-xs font-bold uppercase text-game-impostor" title="Impostor">
+                        ?
+                      </span>
+                    )}
+                  </span>
+                </div>
+                <p className="w-full break-words font-body text-xl font-medium">
+                  &quot;{answer.text}&quot;
+                </p>
+              </motion.div>
+            </ReactionAnchor>
           );
         })}
       </div>

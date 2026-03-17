@@ -41,6 +41,6 @@ export const getRecentMessages = query({
       .query("chatMessages")
       .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
       .order("desc")
-      .take(20);
+      .take(40);
   },
 });
