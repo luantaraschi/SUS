@@ -66,26 +66,30 @@ export default defineSchema({
       v.literal("waiting"),
       v.literal("distributing"),
       v.literal("playing"),
+      v.literal("speaking"),
       v.literal("answering"),
       v.literal("revealing"),
       v.literal("discussion"),
       v.literal("voting"),
       v.literal("results")
     ),
-    word: v.optional(v.string()), // Apenas modo "word"
-    hint: v.optional(v.string()), // Dica do impostor em modo word, opcional  
+    word: v.optional(v.string()),
+    hint: v.optional(v.string()),
     category: v.optional(v.union(v.string(), v.null())),
-    questionMain: v.optional(v.string()), // Modo question
-    questionImpostor: v.optional(v.string()), // Pergunta que faz sentido diferente
-    impostorId: v.optional(v.id("players")), // DEPRECATED: use impostorIds
-    impostorIds: v.optional(v.array(v.id("players"))), // Support multiple impostors
-    masterId: v.optional(v.union(v.id("players"), v.null())), // Master id para modo master
+    questionMain: v.optional(v.string()),
+    questionImpostor: v.optional(v.string()),
+    impostorId: v.optional(v.id("players")),
+    impostorIds: v.optional(v.array(v.id("players"))),
+    masterId: v.optional(v.union(v.id("players"), v.null())),
     impostorWon: v.optional(v.boolean()),
     votedOutId: v.optional(v.union(v.id("players"), v.null())),
     startedAt: v.optional(v.number()),
     phaseEndsAt: v.optional(v.number()),
     revealedAt: v.optional(v.number()),
     resultReadyAt: v.optional(v.number()),
+    speakingOrder: v.optional(v.array(v.id("players"))),
+    currentSpeakerIndex: v.optional(v.number()),
+    votingRequestedBy: v.optional(v.array(v.id("players"))),
   })
     .index("by_room", ["roomId"])
     .index("by_room_number", ["roomId", "number"]),

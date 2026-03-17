@@ -46,7 +46,7 @@ export function VotingPhase({ round, players, myPlayer, sessionId }: VotingPhase
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col px-4 py-8">
       <div className="text-center">
-        <PhaseIndicator currentPhase="voting" className="mb-4 justify-center" />
+        <PhaseIndicator currentPhase="voting" mode={round.mode} className="mb-4 justify-center" />
         <h2 className="font-display text-3xl text-white">Hora de votar</h2>
         <p className="mt-2 text-white/70">Quem voce acha que e o impostor?</p>
         <Timer endsAt={round.phaseEndsAt} className="mt-4" />

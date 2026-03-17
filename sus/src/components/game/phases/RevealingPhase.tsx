@@ -41,7 +41,7 @@ export function RevealingPhase({
   if (!showAnswers) {
     return (
       <div className="flex h-[100dvh] flex-col items-center justify-center px-4">
-        <PhaseIndicator currentPhase="revealing" className="mb-8" />
+        <PhaseIndicator currentPhase="revealing" mode={round.mode} className="mb-8" />
         <h2 className="mb-4 font-display text-xl text-white/70">Revelando respostas em...</h2>
         <div className="font-display text-8xl font-black text-white">{countdownRemaining}</div>
       </div>
@@ -50,7 +50,7 @@ export function RevealingPhase({
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col items-center px-4 py-8">
-      <PhaseIndicator currentPhase="revealing" className="mb-6" />
+      <PhaseIndicator currentPhase="revealing" mode={round.mode} className="mb-6" />
       <div className="w-full rounded-[32px] border border-white/10 bg-black/20 px-5 py-4 text-center backdrop-blur-md">
         <h2 className="font-display text-3xl text-white">Respostas reveladas</h2>
         <p className="mt-2 font-body text-white/75">

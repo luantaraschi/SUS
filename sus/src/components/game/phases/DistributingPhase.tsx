@@ -87,7 +87,7 @@ export function DistributingPhase({
 
   const roleText =
     myRole?.role === "impostor"
-      ? "VOCE E O IMPOSTOR"
+      ? (room.mode === "word" ? "VOCE E O SUS!" : "VOCE E O IMPOSTOR")
       : myRole?.role === "master"
         ? "VOCE E O MESTRE desta rodada"
         : "VOCE E UM JOGADOR";
@@ -125,13 +125,15 @@ export function DistributingPhase({
         {myRole?.role === "impostor" ? (
           !myRole.secretContent ? (
             <p className="mb-6 font-body text-white/70">
-              Ninguem te deu uma palavra.
-              <br />
-              Observe, improvise e nao se entregue.
+              {room.mode === "word"
+                ? "Voce nao sabe a palavra. Observe, improvise e nao se entregue."
+                : "Ninguem te deu uma palavra. Observe, improvise e nao se entregue."}
             </p>
           ) : (
             <div>
-              <p className="mb-2 font-body text-white/70">Palavra de dica:</p>
+              <p className="mb-2 font-body text-white/70">
+                {room.mode === "word" ? "Dica de contexto:" : "Palavra de dica:"}
+              </p>
               <div
                 className={`mb-6 rounded-xl border-2 border-yellow-400 px-6 py-4 font-display text-2xl font-black text-game-impostor transition-all duration-300 ${
                   isRevealing ? "blur-none" : "blur-md select-none"
@@ -153,6 +155,11 @@ export function DistributingPhase({
             >
               {myRole.secretContent}
             </div>
+            {room.mode === "word" && (
+              <p className="mb-4 text-center font-body text-sm text-white/50">
+                Pense em uma palavra relacionada. Nao seja obvio.
+              </p>
+            )}
           </div>
         ) : (
           <div className="mb-6 text-left">
@@ -220,7 +227,7 @@ export function DistributingPhase({
           </Button>
         ) : (
           <Button onClick={handleConfirm} className="w-full">
-            ✓ Entendi
+            {room.mode === "word" ? "Ja decorei" : "✓ Entendi"}
           </Button>
         )}
       </div>

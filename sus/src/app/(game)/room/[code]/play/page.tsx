@@ -10,6 +10,7 @@ import { RevealingPhase } from "@/components/game/phases/RevealingPhase";
 import { VotingPhase } from "@/components/game/phases/VotingPhase";
 import { ResultsPhase } from "@/components/game/phases/ResultsPhase";
 import { DiscussionPhase } from "@/components/game/phases/DiscussionPhase";
+import { SpeakingPhase } from "@/components/game/phases/SpeakingPhase";
 import { useRouter } from "next/navigation";
 
 export default function PlayPage({
@@ -87,6 +88,8 @@ export default function PlayPage({
   switch (round.status) {
     case "distributing":
       return <DistributingPhase {...phaseProps} />;
+    case "speaking":
+      return <SpeakingPhase {...phaseProps} />;
     case "answering":
       return <AnsweringPhase {...phaseProps} />;
     case "revealing":

@@ -375,7 +375,7 @@ export default function HomePage() {
         />
       )}
 
-      <div className="fixed inset-x-0 bottom-[52px] z-40 flex justify-center px-2 pb-2 sm:px-4">
+      <div className="z-40 flex shrink-0 justify-center px-2 pb-2 sm:px-4">
         <IdentityBar
           name={displayName}
           avatarSeed={avatarSeed}

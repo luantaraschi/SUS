@@ -1,13 +1,21 @@
 "use client";
 
-type PhaseStep = "distributing" | "answering" | "revealing" | "discussion" | "voting" | "results";
+type PhaseStep = "distributing" | "speaking" | "answering" | "revealing" | "discussion" | "voting" | "results";
 
 interface PhaseIndicatorProps {
   currentPhase: PhaseStep;
+  mode?: "word" | "question";
   className?: string;
 }
 
-const PHASES: PhaseStep[] = [
+const WORD_PHASES: PhaseStep[] = [
+  "distributing",
+  "speaking",
+  "voting",
+  "results",
+];
+
+const QUESTION_PHASES: PhaseStep[] = [
   "distributing",
   "answering",
   "revealing",
@@ -18,6 +26,7 @@ const PHASES: PhaseStep[] = [
 
 const PHASE_LABELS: Record<PhaseStep, string> = {
   distributing: "Segredo",
+  speaking: "Rodada",
   answering: "Resposta",
   revealing: "Revelacao",
   discussion: "Discussao",
@@ -27,13 +36,15 @@ const PHASE_LABELS: Record<PhaseStep, string> = {
 
 export default function PhaseIndicator({
   currentPhase,
+  mode = "question",
   className = "",
 }: PhaseIndicatorProps) {
-  const currentIndex = PHASES.indexOf(currentPhase);
+  const phases = mode === "word" ? WORD_PHASES : QUESTION_PHASES;
+  const currentIndex = phases.indexOf(currentPhase);
 
   return (
     <div className={`flex flex-wrap items-center justify-center gap-2 ${className}`}>
-      {PHASES.map((phase, index) => {
+      {phases.map((phase, index) => {
         const isActive = phase === currentPhase;
         const isPast = index < currentIndex;
 
@@ -51,7 +62,7 @@ export default function PhaseIndicator({
               {isPast ? "OK " : ""}
               {PHASE_LABELS[phase]}
             </div>
-            {phase !== PHASES[PHASES.length - 1] && (
+            {phase !== phases[phases.length - 1] && (
               <div className={`h-0.5 w-4 ${isPast ? "bg-game-safe/50" : "bg-white/15"}`} />
             )}
           </div>

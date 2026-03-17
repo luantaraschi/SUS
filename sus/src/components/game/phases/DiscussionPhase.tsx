@@ -23,7 +23,7 @@ export function DiscussionPhase({
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col items-center justify-center px-4 py-10">
-      <PhaseIndicator currentPhase="discussion" className="mb-6 justify-center" />
+      <PhaseIndicator currentPhase="discussion" mode={round.mode} className="mb-6 justify-center" />
 
       <div className="w-full rounded-[36px] border border-white/10 bg-black/25 p-6 text-center shadow-[0_24px_70px_rgba(0,0,0,0.3)] backdrop-blur-md sm:p-8">
         <p className="font-condensed text-sm uppercase tracking-[0.3em] text-white/60">

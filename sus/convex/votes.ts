@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel.js";
+import { internal } from "./_generated/api.js";
 import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { finalizeRoundResultsInternal } from "./rounds.js";
 
@@ -68,10 +69,37 @@ export async function checkAndTallyVotes(ctx: MutationCtx, roundId: Id<"rounds">
     .withIndex("by_round", (q) => q.eq("roundId", roundId))
     .collect();
 
-  if (votes.length < activePlayers.length) {
+  if (votes.length >= activePlayers.length) {
+    await finalizeRoundResultsInternal(ctx, roundId);
     return;
   }
-  await finalizeRoundResultsInternal(ctx, roundId);
+
+  // Early result detection: check if outcome is mathematically decided
+  const voteCounts = new Map<string, number>();
+  for (const vote of votes) {
+    voteCounts.set(vote.targetId, (voteCounts.get(vote.targetId) || 0) + 1);
+  }
+
+  const remaining = activePlayers.length - votes.length;
+  let maxVotes = 0;
+  let secondMax = 0;
+  for (const count of voteCounts.values()) {
+    if (count > maxVotes) {
+      secondMax = maxVotes;
+      maxVotes = count;
+    } else if (count > secondMax) {
+      secondMax = count;
+    }
+  }
+
+  // Leader can't be overtaken even if all remaining votes go to second place
+  if (maxVotes > secondMax + remaining && maxVotes > 0) {
+    await ctx.db.patch(roundId, { phaseEndsAt: Date.now() + 3000 });
+    await ctx.scheduler.runAfter(3000, internal.rounds.advancePhaseInternal, {
+      roundId,
+      expectedStatus: "voting" as const,
+    });
+  }
 }
 
 export async function castBotVotes(ctx: MutationCtx, roundId: Id<"rounds">) {

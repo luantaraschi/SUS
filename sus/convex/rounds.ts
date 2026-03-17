@@ -65,6 +65,35 @@ async function schedulePhaseAdvance(
   });
 }
 
+async function enterSpeaking(
+  ctx: MutationCtx,
+  round: RoundDoc,
+  _room: RoomDoc,
+  activePlayers: RoundPlayer[]
+) {
+  const order = activePlayers.map((p) => p._id);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [order[i]!, order[j]!] = [order[j]!, order[i]!];
+  }
+
+  await ctx.db.patch(round._id, {
+    status: "speaking",
+    speakingOrder: order,
+    currentSpeakerIndex: 0,
+    votingRequestedBy: [],
+    phaseEndsAt: undefined,
+  });
+
+  const firstSpeaker = await ctx.db.get(order[0]!);
+  if (firstSpeaker?.isBot) {
+    await ctx.scheduler.runAfter(2500, internal.rounds.botAutoPass, {
+      roundId: round._id,
+      expectedIndex: 0,
+    });
+  }
+}
+
 async function enterDiscussion(
   ctx: MutationCtx,
   round: RoundDoc,
@@ -508,7 +537,7 @@ export const confirmSeen = mutation({
     }
 
     const updatedRound = (await ctx.db.get(args.roundId))!;
-    await enterDiscussion(ctx, updatedRound, room);
+    await enterSpeaking(ctx, updatedRound, room, activePlayers);
   },
 });
 
@@ -615,6 +644,11 @@ export const advanceToVoting = mutation({
       throw new Error("Apenas o host pode avancar a fase.");
     }
 
+    if (round.status === "speaking") {
+      await enterVoting(ctx, round, room);
+      return;
+    }
+
     if (round.status === "revealing") {
       await enterDiscussion(ctx, round, room);
       return;
@@ -638,11 +672,6 @@ export const recomputeResults = mutation({
     const round = await ctx.db.get(args.roundId);
     if (!round) {
       throw new Error("Rodada nao encontrada.");
-    }
-
-    const room = await ctx.db.get(round.roomId);
-    if (!room || room.hostId !== args.sessionId) {
-      throw new Error("Apenas o host pode recomputar o resultado.");
     }
 
     await finalizeRoundResultsInternal(ctx, args.roundId);
@@ -680,5 +709,130 @@ export const advancePhaseInternal = internalMutation({
     }
 
     await finalizeRoundResultsInternal(ctx, args.roundId);
+  },
+});
+
+export const botAutoPass = internalMutation({
+  args: {
+    roundId: v.id("rounds"),
+    expectedIndex: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (
+      !round ||
+      round.status !== "speaking" ||
+      round.currentSpeakerIndex !== args.expectedIndex
+    ) {
+      return;
+    }
+
+    const order = round.speakingOrder!;
+    const nextIndex = (args.expectedIndex + 1) % order.length;
+    await ctx.db.patch(round._id, { currentSpeakerIndex: nextIndex });
+
+    const nextPlayer = await ctx.db.get(order[nextIndex]!);
+    if (nextPlayer?.isBot) {
+      await ctx.scheduler.runAfter(2500, internal.rounds.botAutoPass, {
+        roundId: round._id,
+        expectedIndex: nextIndex,
+      });
+    }
+  },
+});
+
+export const passTurn = mutation({
+  args: {
+    roundId: v.id("rounds"),
+    playerId: v.id("players"),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (!round || round.status !== "speaking") {
+      throw new Error("Nao e a fase de fala.");
+    }
+
+    const player = await ctx.db.get(args.playerId);
+    if (!player || player.sessionId !== args.sessionId) {
+      throw new Error("Jogador invalido.");
+    }
+
+    const order = round.speakingOrder!;
+    if (order[round.currentSpeakerIndex!] !== args.playerId) {
+      throw new Error("Nao e sua vez.");
+    }
+
+    const nextIndex = (round.currentSpeakerIndex! + 1) % order.length;
+    await ctx.db.patch(round._id, { currentSpeakerIndex: nextIndex });
+
+    const nextPlayer = await ctx.db.get(order[nextIndex]!);
+    if (nextPlayer?.isBot) {
+      await ctx.scheduler.runAfter(2500, internal.rounds.botAutoPass, {
+        roundId: round._id,
+        expectedIndex: nextIndex,
+      });
+    }
+  },
+});
+
+export const requestVoting = mutation({
+  args: {
+    roundId: v.id("rounds"),
+    playerId: v.id("players"),
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (!round || round.status !== "speaking") {
+      throw new Error("Nao e a fase de fala.");
+    }
+
+    const room = await ctx.db.get(round.roomId);
+    if (!room) throw new Error("Sala nao encontrada.");
+
+    const player = await ctx.db.get(args.playerId);
+    if (!player || player.sessionId !== args.sessionId) {
+      throw new Error("Jogador invalido.");
+    }
+
+    if (player.isHost) {
+      const updatedRound = (await ctx.db.get(round._id))!;
+      await enterVoting(ctx, updatedRound, room);
+      return;
+    }
+
+    const current = round.votingRequestedBy ?? [];
+    if (current.includes(args.playerId)) return;
+    const updated = [...current, args.playerId];
+
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_room", (q) => q.eq("roomId", round.roomId))
+      .collect();
+    const humanActive = players.filter(
+      (p) => p.status !== "disconnected" && !p.isBot
+    );
+    const majority = Math.ceil(humanActive.length / 2);
+
+    if (updated.length >= majority) {
+      const updatedRound = (await ctx.db.get(round._id))!;
+      await enterVoting(ctx, updatedRound, room);
+    } else {
+      await ctx.db.patch(round._id, { votingRequestedBy: updated });
+    }
+  },
+});
+
+export const getSpeakingState = query({
+  args: { roundId: v.id("rounds") },
+  handler: async (ctx, args) => {
+    const round = await ctx.db.get(args.roundId);
+    if (!round || round.status !== "speaking") return null;
+    return {
+      speakingOrder: round.speakingOrder ?? [],
+      currentSpeakerIndex: round.currentSpeakerIndex ?? 0,
+      votingRequestedBy: round.votingRequestedBy ?? [],
+    };
   },
 });
