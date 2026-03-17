@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { Language, translations, TranslationKey } from './locales';
+import React, { createContext, useContext, useSyncExternalStore, ReactNode } from "react";
+import { Language, translations, TranslationKey } from "./locales";
 
 interface I18nContextType {
   language: Language;
@@ -11,48 +11,59 @@ interface I18nContextType {
 
 const I18nContext = createContext<I18nContextType | undefined>(undefined);
 
-export function I18nProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>('pt'); // Default until mounted
-  const [mounted, setMounted] = useState(false);
+const LANGUAGE_STORAGE_KEY = "sus_lang";
+const LANGUAGE_CHANGE_EVENT = "sus-language-change";
 
-  useEffect(() => {
-    // Client-side detection
-    const savedLang = localStorage.getItem('sus_lang') as Language;
-    let initialLang: Language = 'pt';
-    
-    if (savedLang && (savedLang === 'en' || savedLang === 'pt')) {
-      initialLang = savedLang;
-    } else {
-      const browserLang = navigator.language.toLowerCase();
-      // If starts with pt (like pt-BR), use PT, else EN
-      if (!browserLang.startsWith('pt')) {
-        initialLang = 'en';
-      }
+function getBrowserLanguage(): Language {
+  if (typeof window === "undefined") {
+    return "pt";
+  }
+
+  const savedLang = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
+  if (savedLang === "en" || savedLang === "pt") {
+    return savedLang;
+  }
+
+  return window.navigator.language.toLowerCase().startsWith("pt") ? "pt" : "en";
+}
+
+function subscribe(callback: () => void) {
+  if (typeof window === "undefined") {
+    return () => undefined;
+  }
+
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key === LANGUAGE_STORAGE_KEY) {
+      callback();
     }
-    
-    setTimeout(() => {
-        if (initialLang !== 'pt') {
-            setLanguageState(initialLang);
-        }
-        setMounted(true);
-    }, 0);
-  }, []);
+  };
+
+  window.addEventListener("storage", handleStorage);
+  window.addEventListener(LANGUAGE_CHANGE_EVENT, callback);
+
+  return () => {
+    window.removeEventListener("storage", handleStorage);
+    window.removeEventListener(LANGUAGE_CHANGE_EVENT, callback);
+  };
+}
+
+export function I18nProvider({ children }: { children: ReactNode }) {
+  const language = useSyncExternalStore<Language>(
+    subscribe,
+    getBrowserLanguage,
+    () => "pt"
+  );
 
   const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('sus_lang', lang);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LANGUAGE_STORAGE_KEY, lang);
+      window.dispatchEvent(new Event(LANGUAGE_CHANGE_EVENT));
     }
   };
 
   const t = (key: TranslationKey): string => {
     return translations[language][key] || key;
   };
-
-  // Avoid hydration mismatch by not rendering translating content until mounted
-  if (!mounted) {
-    return <div style={{ visibility: 'hidden' }}>{children}</div>; // Or a standard loader
-  }
 
   return (
     <I18nContext.Provider value={{ language, setLanguage, t }}>
@@ -64,7 +75,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 export function useI18n() {
   const context = useContext(I18nContext);
   if (context === undefined) {
-    throw new Error('useI18n must be used within an I18nProvider');
+    throw new Error("useI18n must be used within an I18nProvider");
   }
   return context;
 }
