@@ -1,5 +1,7 @@
 # SUS — O Jogo do Impostor
 
+🌍 **Jogue agora:** [https://sus-wine.vercel.app/](https://sus-wine.vercel.app/)
+
 Jogo multiplayer em tempo real onde jogadores entram numa sala, recebem informações secretas e tentam descobrir quem é o impostor através de blefe, discussão e votação.
 
 ## Tech Stack
