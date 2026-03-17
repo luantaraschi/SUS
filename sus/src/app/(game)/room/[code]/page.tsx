@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useMemo, useState } from "react";
+import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import type { Id } from "../../../../../convex/_generated/dataModel";
@@ -11,6 +11,7 @@ import GameButton from "@/components/game/GameButton";
 import PlayerAvatar from "@/components/game/PlayerAvatar";
 import SignInModal from "@/components/auth/SignInModal";
 import GameSettingsButton from "@/components/game/GameSettingsButton";
+import ThemePickerDialog from "@/components/game/ThemePickerDialog";
 import { BubbleText } from "@/components/ui/bubble-text";
 import { THEME_ICON_MAP } from "@/lib/themeIcons";
 import { Icon } from "@iconify/react";
@@ -546,15 +547,18 @@ function LobbyPanel({
   onStart: () => void;
   onLeave: () => void;
 }) {
-  const [themesExpanded, setThemesExpanded] = useState(false);
+  const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false);
+  const themeTriggerRef = useRef<HTMLButtonElement | null>(null);
   const selectedPackValue = room.settings.customPackId
     ? `custom:${room.settings.customPackId}`
     : `default:${room.settings.defaultPackKey || "classico"}`;
-  const systemPackOptions = packOptions.filter((pack) => pack.source === "default");
-  const customPackOptions = packOptions.filter((pack) => pack.source === "custom");
   const selectedPack = packOptions.find(
     (pack) => (pack.source === "default" ? `default:${pack.key}` : `custom:${pack.key}`) === selectedPackValue
   );
+  const handlePackSelection = (value: string) => {
+    onPackChange(value);
+    setIsThemeDialogOpen(false);
+  };
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -589,66 +593,33 @@ function LobbyPanel({
           {packOptions.length > 0 && !(room.mode === "question" && room.questionMode === "master") && (
             <div className="flex w-full max-w-[560px] flex-col items-center gap-3">
               <button
+                ref={themeTriggerRef}
                 type="button"
-                onClick={() => setThemesExpanded((prev) => !prev)}
+                onClick={() => setIsThemeDialogOpen(true)}
                 className="flex w-full items-center justify-between rounded-[18px] border border-[var(--control-border)] bg-[var(--control-surface)] px-4 py-3 transition-colors hover:bg-[var(--panel-muted)]"
               >
                 <span className="flex items-center gap-3">
                   <Icon icon={THEME_ICON_MAP[selectedPack?.icon ?? "star"] ?? "solar:star-bold"} width={18} height={18} className="text-[var(--control-text)]" />
-                  <span className="font-body text-base text-[var(--control-text)]">{selectedPack?.title ?? "Classico"}</span>
+                  <span className="font-body text-base text-[var(--control-text)]">{selectedPack?.title ?? "Clássico"}</span>
                 </span>
                 <span className="flex items-center gap-2">
-                  <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)]">Temas</span>
-                  <Icon icon={themesExpanded ? "solar:alt-arrow-up-bold" : "solar:alt-arrow-down-bold"} width={16} height={16} className="text-[var(--panel-soft-text)]" />
+                  <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)]">Tema Atual</span>
+                  <Icon icon="solar:alt-arrow-down-bold" width={16} height={16} className="text-[var(--panel-soft-text)]" />
                 </span>
               </button>
-
-              {themesExpanded && (
-                <div className="flex w-full flex-col gap-3">
-                  <div className="grid w-full gap-3 sm:grid-cols-2">
-                    {systemPackOptions.map((pack) => {
-                      const isSelected = selectedPackValue === `default:${pack.key}`;
-                      return (
-                        <button
-                          key={pack.key}
-                          type="button"
-                          onClick={() => onPackChange(`default:${pack.key}`)}
-                          disabled={!isHost}
-                          className={`flex items-center justify-between rounded-[18px] border px-4 py-3 text-left transition-colors ${
-                            isSelected
-                              ? "border-surface-primary bg-surface-primary text-white"
-                              : "border-[var(--control-border)] bg-[var(--control-surface)] text-[var(--control-text)]"
-                          } ${!isHost ? "opacity-70" : "hover:border-surface-primary/60 hover:bg-[var(--panel-muted)]"}`}
-                        >
-                          <span className="flex items-center gap-3">
-                            <Icon icon={THEME_ICON_MAP[pack.icon] ?? "solar:star-bold"} width={18} height={18} />
-                            <span className="font-body text-base">{pack.title}</span>
-                          </span>
-                          <span className={`font-condensed text-[11px] uppercase tracking-[0.22em] ${isSelected ? "text-white/80" : "text-[var(--panel-soft-text)]"}`}>
-                            {pack.count}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {customPackOptions.length > 0 && (
-                    <div className="flex w-full flex-col gap-2">
-                      <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)]">
-                        Meus packs
-                      </span>
-                      <select value={selectedPackValue.startsWith("custom:") ? selectedPackValue : ""} onChange={(event) => onPackChange(event.target.value)} disabled={!isHost} className="w-full rounded-xl border border-[var(--control-border)] bg-[var(--control-surface)] px-3 py-2 text-sm text-[var(--control-text)] outline-none focus:border-surface-primary focus:ring-1 focus:ring-surface-primary disabled:opacity-50">
-                        <option value="">Usar pack do sistema</option>
-                        {customPackOptions.map((pack) => (
-                          <option key={pack.key} value={`custom:${pack.key}`}>
-                            {pack.title} ({pack.count})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
+          )}
+
+          {packOptions.length > 0 && !(room.mode === "question" && room.questionMode === "master") && (
+            <ThemePickerDialog
+              open={isThemeDialogOpen}
+              onOpenChange={setIsThemeDialogOpen}
+              selectedPackValue={selectedPackValue}
+              packOptions={packOptions}
+              isHost={isHost}
+              onSelectPack={handlePackSelection}
+              triggerRef={themeTriggerRef}
+            />
           )}
 
           {room.mode === "word" && (

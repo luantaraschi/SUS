@@ -14,6 +14,7 @@ import type * as chat from "../chat.js";
 import type * as content from "../content.js";
 import type * as debug from "../debug.js";
 import type * as defaultContent from "../defaultContent.js";
+import type * as defaultWordPacks from "../defaultWordPacks.js";
 import type * as feedback from "../feedback.js";
 import type * as history from "../history.js";
 import type * as http from "../http.js";
@@ -44,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   content: typeof content;
   debug: typeof debug;
   defaultContent: typeof defaultContent;
+  defaultWordPacks: typeof defaultWordPacks;
   feedback: typeof feedback;
   history: typeof history;
   http: typeof http;

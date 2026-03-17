@@ -4,6 +4,7 @@ import {
   DEFAULT_QUESTION_PACKS,
   DEFAULT_WORD_PACKS,
 } from "./defaultContent.js";
+import { getWordPackCategoryAliases } from "./defaultWordPacks.js";
 
 type DefaultMode = "word" | "question";
 type ContentCtx = MutationCtx | QueryCtx;
@@ -32,22 +33,52 @@ export function getDefaultPackCatalog(mode: DefaultMode) {
 
 export async function ensureDefaultContent(ctx: MutationCtx) {
   const existingWords = await ctx.db.query("wordPacks").collect();
-  const existingWordKeys = new Set(existingWords.map((entry) => `${entry.category}|${entry.word}`));
-
   let insertedWords = 0;
+  let updatedWords = 0;
+  let deletedWords = 0;
+
   for (const pack of DEFAULT_WORD_PACKS) {
-    for (const word of pack.items) {
-      const dedupeKey = `${pack.title}|${word}`;
-      if (existingWordKeys.has(dedupeKey)) {
+    const categoryAliases = new Set(getWordPackCategoryAliases(pack));
+    const rowsInScope = existingWords.filter((entry) => categoryAliases.has(entry.category));
+    const expectedByWord = new Map(
+      pack.items.map((item) => [item.word, item])
+    );
+    const syncedWords = new Set<string>();
+
+    for (const row of rowsInScope) {
+      const expectedItem = expectedByWord.get(row.word);
+      if (!expectedItem || syncedWords.has(row.word)) {
+        await ctx.db.delete(row._id);
+        deletedWords += 1;
+        continue;
+      }
+
+      syncedWords.add(row.word);
+
+      const patch: { category?: string; hint?: string } = {};
+      if (row.category !== pack.title) {
+        patch.category = pack.title;
+      }
+      if (row.hint !== expectedItem.hint) {
+        patch.hint = expectedItem.hint;
+      }
+
+      if (patch.category || patch.hint) {
+        await ctx.db.patch(row._id, patch);
+        updatedWords += 1;
+      }
+    }
+
+    for (const item of pack.items) {
+      if (syncedWords.has(item.word)) {
         continue;
       }
 
       await ctx.db.insert("wordPacks", {
         category: pack.title,
-        word,
-        hint: pack.hint,
+        word: item.word,
+        hint: item.hint,
       });
-      existingWordKeys.add(dedupeKey);
       insertedWords += 1;
     }
   }
@@ -75,7 +106,7 @@ export async function ensureDefaultContent(ctx: MutationCtx) {
     }
   }
 
-  return { insertedWords, insertedQuestions };
+  return { insertedWords, updatedWords, deletedWords, insertedQuestions };
 }
 
 export async function getDefaultPackCount(

@@ -8,6 +8,6 @@ export const seedData = mutation({
     const totalWords = (await ctx.db.query("wordPacks").collect()).length;
     const totalQuestions = (await ctx.db.query("questionPacks").collect()).length;
 
-    return `Conteudo sincronizado: +${result.insertedWords} palavras, +${result.insertedQuestions} perguntas. Totais: ${totalWords} palavras e ${totalQuestions} perguntas.`;
+    return `Conteudo sincronizado: +${result.insertedWords} palavras, ${result.updatedWords} atualizadas, ${result.deletedWords} removidas, +${result.insertedQuestions} perguntas. Totais: ${totalWords} palavras e ${totalQuestions} perguntas.`;
   },
 });
