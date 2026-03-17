@@ -1,137 +1,241 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { useI18n } from "@/lib/I18nContext";
-import { Heart, Copy, Check } from "lucide-react";
+import { Check, Copy, ExternalLink, Heart, QrCode, X } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
+import {
+  GlassField,
+  GlassInput,
+  GlassLabel,
+  GlassPanel,
+  GlassSection,
+} from "./ui/glass";
 
 interface SupportModalProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
+const PIX_KEY = "998f5509-a89d-4b95-8ae2-9bb00ca3c8ce";
+const PIX_COPY_PASTE_CODE =
+  "00020126880014BR.GOV.BCB.PIX0136998f5509-a89d-4b95-8ae2-9bb00ca3c8ce0226Muito obrigado pelo apoio!5204000053039865802BR5925Luan Antoni Taraschi Ramo6009SAO PAULO62140510qcsVJz4z986304252C";
+
 export function SupportModal({ isOpen, onClose }: SupportModalProps) {
   const { t, language } = useI18n();
   const [copied, setCopied] = useState(false);
-  
-  const pixKey = "998f5509-a89d-4b95-8ae2-9bb00ca3c8ce";
-  const pixCopyPasteCode = "00020126880014BR.GOV.BCB.PIX0136998f5509-a89d-4b95-8ae2-9bb00ca3c8ce0226Muito obrigado pelo apoio!5204000053039865802BR5925Luan Antoni Taraschi Ramo6009SAO PAULO62140510qcsVJz4z986304252C";
 
   if (!isOpen) return null;
 
   const handleCopyPix = async () => {
     try {
-      await navigator.clipboard.writeText(pixCopyPasteCode);
+      await navigator.clipboard.writeText(PIX_COPY_PASTE_CODE);
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch (error) {
+      console.error("Failed to copy PIX code:", error);
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity"
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="absolute inset-0 bg-black/68 backdrop-blur-md"
         onClick={onClose}
       />
-      
-      {/* Modal Content */}
-      <div className="relative w-full max-w-md bg-[#200268]/95 backdrop-blur-xl border-[3px] border-[#D64DC2]/50 rounded-[32px] shadow-2xl p-6 md:p-8 animate-in zoom-in-95 duration-200">
-        
-        {/* Close Button */}
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/5 hover:bg-white/20 flex items-center justify-center text-white font-londrina text-xl transition-all hover:scale-105"
-          title={t('close')}
+
+      <motion.div
+        initial={{ opacity: 0, y: 20, scale: 0.96 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+        className="relative z-10 w-full max-w-xl"
+      >
+        <GlassPanel
+          tone="special"
+          className="custom-scrollbar max-h-[90vh] overflow-y-auto rounded-[34px] p-5 sm:p-6"
         >
-          X
-        </button>
-
-        {/* Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#FF577B]/20 text-[#FF577B] mb-4">
-            <Heart size={32} fill="currentColor" />
-          </div>
-          <h2 className="font-londrina text-4xl text-white tracking-widest">{t('supportTitle')}</h2>
-          <p className="font-balsamiq text-white/80 mt-2 text-lg leading-relaxed">
-            {t('supportMessage')}
-          </p>
-        </div>
-
-        <div className="space-y-6">
-          {/* PIX Section - Only for PT */}
-          {language === 'pt' && (
-            <div className="bg-white/5 rounded-2xl p-4 border border-white/10 flex flex-col items-center">
-              <div className="bg-white rounded-xl flex items-center justify-center mb-4 p-3 shadow-inner">
-                <QRCodeSVG 
-                  value={pixCopyPasteCode} 
-                  size={160} 
-                  level="M" 
-                  includeMargin={false} 
-                />
-              </div>
-              
-              <div className="w-full">
-                <label className="font-oswald text-white/60 text-sm uppercase tracking-wider mb-2 block text-center">
-                  {t('pixKey')}
-                </label>
-                <div className="flex bg-black/40 rounded-full border border-white/10 overflow-hidden mb-4">
-                  <input 
-                    type="text" 
-                    readOnly 
-                    value={pixKey}
-                    className="flex-1 bg-transparent px-4 py-3 font-mono text-sm text-center text-white/90 outline-none"
-                  />
-                  <button 
-                    onClick={handleCopyPix}
-                    className="bg-[#4DDBA8] hover:bg-[#3bc291] text-[#200268] font-londrina px-6 transition-colors flex items-center gap-2"
-                  >
-                    {copied ? <Check size={18} /> : <Copy size={18} />}
-                    {copied ? t('pixKeyCopied') : "Copia e Cola"}
-                  </button>
-                </div>
-
-                {/* Botão Nubank */}
-                <a 
-                  href="https://nubank.com.br/cobrar/12kdqf/69b978ef-7b9c-468e-b001-28e6b786f0ad" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="block text-center bg-purple-600 hover:bg-purple-700 text-white w-full rounded-full py-3 font-londrina text-xl tracking-wide transition-colors shadow-md"
-                >
-                  Pagar com link Nubank
-                </a>
-              </div>
-            </div>
-          )}
-
-          {/* PayPal Section */}
-          <button 
-            onClick={() => window.open("https://paypal.com", "_blank")}
-            className="w-full bg-[#00B8EB] hover:bg-[#009ac7] text-[#200268] font-londrina text-2xl py-4 rounded-full transition-transform hover:scale-[1.02] flex items-center justify-center gap-3"
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/8 text-white/72 transition-all hover:border-white/20 hover:bg-white/14 hover:text-white"
+            title={t("close")}
           >
-            {t('donatePayPal')}
+            <X size={20} />
           </button>
 
-          {/* Optional: Donor Code Hook */}
-          <div className="pt-4 border-t border-white/10">
-            <label className="font-oswald text-white/60 text-sm uppercase tracking-wider mb-2 block">
-              {t('donorCode')}
-            </label>
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                placeholder={t('donorCodePlaceholder')}
-                className="flex-1 bg-black/40 border border-white/10 rounded-full px-4 py-2 font-balsamiq text-white outline-none focus:border-[#D64DC2]"
-              />
-              <button className="bg-white/10 hover:bg-white/20 text-white font-londrina px-4 rounded-full transition-colors">
-                OK
-              </button>
+          <div className="relative z-10 space-y-5">
+            <div className="pr-12 text-center sm:pr-14">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.88 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.08, duration: 0.26 }}
+                className="mx-auto mb-4 flex h-[72px] w-[72px] items-center justify-center rounded-full border border-white/14 bg-white/10 shadow-[0_18px_40px_rgba(0,0,0,0.18)]"
+              >
+                <Heart size={30} className="text-[#ff7ba0]" fill="currentColor" />
+              </motion.div>
+
+              <p className="font-condensed text-xs uppercase tracking-[0.34em] text-white/55">
+                Support the project
+              </p>
+              <h2 className="mt-3 font-display text-3xl text-white sm:text-4xl">
+                {t("supportTitle")}
+              </h2>
+              <p className="mx-auto mt-3 max-w-md font-body text-sm leading-relaxed text-white/74 sm:text-base">
+                {t("supportMessage")}
+              </p>
             </div>
+
+            {language === "pt" && (
+              <motion.div
+                initial={{ opacity: 0, y: 18 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12, duration: 0.28 }}
+              >
+                <GlassSection className="rounded-[28px] p-4 sm:p-5">
+                  <div className="flex flex-col gap-5 lg:flex-row lg:items-center">
+                    <div className="flex flex-1 flex-col items-center text-center lg:items-start lg:text-left">
+                      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 font-condensed text-[11px] uppercase tracking-[0.26em] text-white/60">
+                        <QrCode size={14} />
+                        Pix
+                      </div>
+                      <h3 className="mt-3 font-display text-2xl text-white">
+                        Apoio rapido por QR code
+                      </h3>
+                      <p className="mt-2 max-w-sm font-body text-sm text-white/68">
+                        Escaneie o QR ou use a chave Pix abaixo. O mesmo codigo e usado no botao de copia e cola.
+                      </p>
+                    </div>
+
+                    <div className="mx-auto rounded-[26px] bg-white p-4 shadow-[0_20px_40px_rgba(0,0,0,0.22)]">
+                      <QRCodeSVG
+                        value={PIX_COPY_PASTE_CODE}
+                        size={170}
+                        level="M"
+                        includeMargin={false}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mt-5 space-y-3">
+                    <div>
+                      <GlassLabel>{t("pixKey")}</GlassLabel>
+                      <GlassField className="mt-2 rounded-[20px]">
+                        <GlassInput readOnly value={PIX_KEY} className="font-mono text-sm" />
+                      </GlassField>
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-[1.15fr_0.85fr]">
+                      <button
+                        type="button"
+                        onClick={handleCopyPix}
+                        className="group relative overflow-hidden rounded-[20px] border border-emerald-300/20 bg-[linear-gradient(135deg,rgba(77,219,168,0.96),rgba(0,184,235,0.94))] px-4 py-3 text-left text-[#17063a] shadow-[0_18px_40px_rgba(0,184,235,0.18)] transition-transform duration-200 hover:-translate-y-0.5 active:translate-y-0"
+                      >
+                        <span className="pointer-events-none absolute inset-y-0 left-[-25%] w-16 rotate-[14deg] bg-white/35 blur-xl transition-transform duration-700 group-hover:translate-x-[220%]" />
+                        <span className="relative flex items-center justify-between gap-3">
+                          <span>
+                            <span className="block font-condensed text-[11px] uppercase tracking-[0.24em] text-[#17063a]/64">
+                              Pix copia e cola
+                            </span>
+                            <span className="mt-1 block font-display text-xl">
+                              {copied ? t("pixKeyCopied") : "Copiar codigo"}
+                            </span>
+                          </span>
+                          <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white/28">
+                            {copied ? <Check size={18} /> : <Copy size={18} />}
+                          </span>
+                        </span>
+                      </button>
+
+                      <a
+                        href="https://nubank.com.br/cobrar/12kdqf/69b978ef-7b9c-468e-b001-28e6b786f0ad"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group relative overflow-hidden rounded-[20px] border border-fuchsia-300/20 bg-[linear-gradient(135deg,rgba(184,52,255,0.92),rgba(116,26,255,0.94))] px-4 py-3 text-white shadow-[0_18px_40px_rgba(116,26,255,0.22)] transition-transform duration-200 hover:-translate-y-0.5"
+                      >
+                        <span className="pointer-events-none absolute inset-y-0 left-[-28%] w-16 rotate-[14deg] bg-white/28 blur-xl transition-transform duration-700 group-hover:translate-x-[230%]" />
+                        <span className="relative flex items-center justify-between gap-3">
+                          <span>
+                            <span className="block font-condensed text-[11px] uppercase tracking-[0.24em] text-white/62">
+                              Nubank
+                            </span>
+                            <span className="mt-1 block font-display text-xl">
+                              Pagar com link
+                            </span>
+                          </span>
+                          <ExternalLink size={18} />
+                        </span>
+                      </a>
+                    </div>
+                  </div>
+                </GlassSection>
+              </motion.div>
+            )}
+
+            <motion.div
+              initial={{ opacity: 0, y: 18 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: language === "pt" ? 0.16 : 0.12, duration: 0.28 }}
+              className="grid gap-4 md:grid-cols-[1.2fr_0.8fr]"
+            >
+              <GlassSection className="rounded-[28px] p-4 sm:p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="font-condensed text-[11px] uppercase tracking-[0.26em] text-white/58">
+                      International
+                    </p>
+                    <h3 className="mt-2 font-display text-2xl text-white">
+                      {t("donatePayPal")}
+                    </h3>
+                    <p className="mt-2 max-w-sm font-body text-sm text-white/68">
+                      Para apoio fora do Pix, use PayPal. Mantive essa rota como alternativa direta e limpa.
+                    </p>
+                  </div>
+                  <div className="rounded-full border border-sky-300/18 bg-sky-400/14 px-3 py-1 font-condensed text-[11px] uppercase tracking-[0.24em] text-sky-100">
+                    PayPal
+                  </div>
+                </div>
+
+                <a
+                  href="https://paypal.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-4 flex min-h-14 items-center justify-between rounded-[20px] border border-sky-300/18 bg-[linear-gradient(135deg,rgba(0,184,235,0.92),rgba(16,129,255,0.92))] px-4 py-3 text-[#0a153a] shadow-[0_18px_40px_rgba(0,184,235,0.18)] transition-transform duration-200 hover:-translate-y-0.5"
+                >
+                  <span className="font-display text-xl">Abrir PayPal</span>
+                  <ExternalLink size={18} />
+                </a>
+              </GlassSection>
+
+              <GlassSection className="rounded-[28px] p-4 sm:p-5">
+                <p className="font-condensed text-[11px] uppercase tracking-[0.26em] text-white/58">
+                  Extra
+                </p>
+                <h3 className="mt-2 font-display text-2xl text-white">
+                  {t("donorCode")}
+                </h3>
+                <p className="mt-2 font-body text-sm text-white/68">
+                  Campo opcional para futuros beneficios e rastreamento de apoio.
+                </p>
+
+                <div className="mt-4 flex gap-2">
+                  <GlassField className="flex-1 rounded-[18px]">
+                    <GlassInput placeholder={t("donorCodePlaceholder")} />
+                  </GlassField>
+                  <button
+                    type="button"
+                    className="rounded-[18px] border border-white/10 bg-white/10 px-4 font-condensed text-xs uppercase tracking-[0.22em] text-white/82 transition-colors hover:bg-white/16"
+                  >
+                    OK
+                  </button>
+                </div>
+              </GlassSection>
+            </motion.div>
           </div>
-        </div>
-      </div>
+        </GlassPanel>
+      </motion.div>
     </div>
   );
 }

@@ -12,6 +12,8 @@ import PhaseIndicator from "../PhaseIndicator";
 import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
 import { useSound } from "@/lib/useSound";
 import { ReactionAnchor } from "../reactions/ReactionAnchor";
+import GlassSelect from "../ui/GlassSelect";
+import { GlassSection } from "../ui/glass";
 
 interface ResultsPhaseProps {
   round: SafeRound;
@@ -95,6 +97,12 @@ export function ResultsPhase({
     ? players.find((player) => player._id === roundResult.votedOutId) ?? null
     : null;
   const groupWon = !roundResult.impostorWon;
+  const nextMasterOptions = players
+    .filter((player) => player.status !== "disconnected")
+    .map((player) => ({
+      value: String(player._id),
+      label: `${player.name}${player.isHost ? " (Host)" : ""}`,
+    }));
 
   return (
     <div className="fixed inset-0 z-40 flex h-[100dvh] w-full flex-col items-center justify-center bg-black/80 px-4 pb-6 pt-12 backdrop-blur-md">
@@ -210,25 +218,27 @@ export function ResultsPhase({
               />
 
               {isMasterMode && isHost && !isSpectator && (
-              <div className="flex w-full flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-4">
-                <span className="font-condensed text-xs uppercase tracking-wider text-white/60">
-                  Mestre da proxima rodada
-                </span>
-                <select
-                  value={selectedMasterId ?? room.settings.customMasterId ?? ""}
-                  onChange={(e) => setSelectedMasterId(e.target.value)}
-                  className="w-full max-w-[240px] rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none focus:border-white/40"
-                >
-                  {players
-                    .filter((p) => p.status !== "disconnected")
-                    .map((p) => (
-                      <option key={p._id} value={p._id} className="bg-surface-primary text-white">
-                        {p.name} {p.isHost ? "(Host)" : ""}
-                      </option>
-                    ))}
-                </select>
-              </div>
-            )}
+                <GlassSection className="flex w-full flex-col items-center gap-3 rounded-[24px] p-4">
+                  <span className="font-condensed text-xs uppercase tracking-[0.24em] text-white/60">
+                    Mestre da proxima rodada
+                  </span>
+                  <GlassSelect
+                    ariaLabel="Selecionar mestre da proxima rodada"
+                    value={
+                      selectedMasterId ??
+                      String(
+                        room.settings.customMasterId ??
+                          players.find((player) => player.isHost)?._id ??
+                          ""
+                      )
+                    }
+                    onChange={setSelectedMasterId}
+                    options={nextMasterOptions}
+                    tone="info"
+                    className="w-full max-w-[260px]"
+                  />
+                </GlassSection>
+              )}
 
             {isMasterMode && !isSpectator ? (
                 <>

@@ -12,6 +12,7 @@ import PlayerAvatar from "@/components/game/PlayerAvatar";
 import SignInModal from "@/components/auth/SignInModal";
 import GameSettingsButton from "@/components/game/GameSettingsButton";
 import ThemePickerDialog from "@/components/game/ThemePickerDialog";
+import GlassSelect from "@/components/game/ui/GlassSelect";
 import { BubbleText } from "@/components/ui/bubble-text";
 import { THEME_ICON_MAP } from "@/lib/themeIcons";
 import { Icon } from "@iconify/react";
@@ -742,9 +743,20 @@ function LobbyPanel({
               {room.questionMode === "master" && (
                 <div className="flex flex-col items-center gap-2">
                   <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)] sm:text-sm">Quem sera o Mestre?</span>
-                  <select value={room.settings.customMasterId || players.find((player) => player.isHost)?._id} onChange={(event) => onMasterChange(event.target.value)} disabled={!isHost} className="w-full max-w-[220px] rounded-xl border border-[var(--control-border)] bg-[var(--control-surface)] px-3 py-2 text-sm text-[var(--control-text)] outline-none focus:border-surface-primary focus:ring-1 focus:ring-surface-primary">
-                    {players.filter((player) => player.status !== "disconnected").map((player) => <option key={player._id} value={player._id}>{player.name} {player.isHost ? "(Host)" : ""}</option>)}
-                  </select>
+                  <GlassSelect
+                    ariaLabel="Selecionar mestre da rodada"
+                    value={String(room.settings.customMasterId || players.find((player) => player.isHost)?._id || "")}
+                    onChange={onMasterChange}
+                    disabled={!isHost}
+                    tone="special"
+                    className="w-full max-w-[240px]"
+                    options={players
+                      .filter((player) => player.status !== "disconnected")
+                      .map((player) => ({
+                        value: String(player._id),
+                        label: `${player.name}${player.isHost ? " (Host)" : ""}`,
+                      }))}
+                  />
                 </div>
               )}
             </div>
