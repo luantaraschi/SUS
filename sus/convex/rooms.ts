@@ -4,6 +4,8 @@ import { mutation, query } from "./_generated/server.js";
 import { generateUniqueCode } from "./lib/generateCode.js";
 import { distributeRolesInternal, getRoomContentReadiness } from "./rounds.js";
 import { ensureDefaultContent, getFallbackDefaultPackKey } from "./content.js";
+import { attemptSaveHistory } from "./history.js";
+import { auth } from "./auth.js";
 
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 12;
@@ -146,6 +148,7 @@ export const createRoom = mutation({
     sessionId: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
     const code = await generateUniqueCode(ctx, 4);
 
     const roomId = await ctx.db.insert("rooms", {
@@ -168,6 +171,7 @@ export const createRoom = mutation({
 
     const playerId = await ctx.db.insert("players", {
       roomId,
+      userId: userId ?? undefined,
       sessionId: args.sessionId,
       name: getDefaultPlayerName(args.hostName),
       emoji: getDefaultAvatarSeed(args.hostEmoji),
@@ -192,6 +196,7 @@ export const joinRoom = mutation({
     sessionId: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await auth.getUserId(ctx);
     const code = args.code.toUpperCase().trim();
 
     const room = await ctx.db
@@ -219,6 +224,7 @@ export const joinRoom = mutation({
 
       const playerId = await ctx.db.insert("players", {
         roomId: room._id,
+        userId: userId ?? undefined,
         sessionId: args.sessionId,
         name: getDefaultPlayerName(args.playerName),
         emoji: getDefaultAvatarSeed(args.playerEmoji),
@@ -282,6 +288,7 @@ export const joinRoom = mutation({
 
     const playerId = await ctx.db.insert("players", {
       roomId: room._id,
+      userId: userId ?? undefined,
       sessionId: args.sessionId,
       name: getDefaultPlayerName(args.playerName),
       emoji: getDefaultAvatarSeed(args.playerEmoji),
@@ -734,6 +741,7 @@ export const startNextRound = mutation({
 
     const nextNumber = room.currentRound + 1;
     if (nextNumber > room.settings.rounds) {
+      await attemptSaveHistory(ctx, { roomId: args.roomId });
       await ctx.db.patch(args.roomId, { status: "finished" });
       return { finished: true };
     }
@@ -908,6 +916,11 @@ export const backToLobby = mutation({
       }
     }
 
+    // Save history if any rounds were completed
+    if (room.currentRound > 0) {
+      await attemptSaveHistory(ctx, { roomId: args.roomId });
+    }
+
     // Reset room to lobby
     await ctx.db.patch(args.roomId, {
       status: "lobby",
@@ -928,5 +941,38 @@ export const backToLobby = mutation({
         status: "connected",
       });
     }
+  },
+});
+
+export const updateMasterForNextRound = mutation({
+  args: {
+    roomId: v.id("rooms"),
+    sessionId: v.string(),
+    customMasterId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const room = await ctx.db.get(args.roomId);
+    if (!room) throw new Error("Sala nao encontrada.");
+    if (room.hostId !== args.sessionId) {
+      throw new Error("Apenas o host pode alterar o mestre.");
+    }
+    if (room.status !== "playing") {
+      throw new Error("A sala nao esta em jogo.");
+    }
+
+    const players = await ctx.db
+      .query("players")
+      .withIndex("by_room", (q) => q.eq("roomId", args.roomId))
+      .collect();
+    const targetPlayer = players.find(
+      (p) => p._id === (args.customMasterId as Id<"players">)
+    );
+    if (!targetPlayer || targetPlayer.status === "disconnected") {
+      throw new Error("Jogador invalido.");
+    }
+
+    await ctx.db.patch(args.roomId, {
+      settings: { ...room.settings, customMasterId: args.customMasterId },
+    });
   },
 });

@@ -11,7 +11,6 @@ import GameButton from "@/components/game/GameButton";
 import PlayerAvatar from "@/components/game/PlayerAvatar";
 import SignInModal from "@/components/auth/SignInModal";
 import GameSettingsButton from "@/components/game/GameSettingsButton";
-import IdentityBar from "@/components/game/IdentityBar";
 import { BubbleText } from "@/components/ui/bubble-text";
 import { THEME_ICON_MAP } from "@/lib/themeIcons";
 import { Icon } from "@iconify/react";
@@ -284,8 +283,8 @@ export default function RoomLobbyPage({
           </div>
         )}
 
-        <div className="min-h-0 w-full max-w-[1080px] flex-1 px-2 pb-3 sm:px-4">
-          <div className="flex h-full min-h-0 flex-col gap-4 lg:hidden">
+        <div className="min-h-0 w-full max-w-[1080px] flex-1 overflow-hidden px-2 pb-3 sm:px-4">
+          <div className="flex h-full min-h-0 flex-col gap-4 overflow-hidden lg:hidden">
           <div className="flex flex-wrap items-center justify-center gap-3">
             {mobileTopPlayers.map((player) => (
               <PlayerAvatar
@@ -476,17 +475,6 @@ export default function RoomLobbyPage({
         </div>
       </div>
 
-        {myPlayer && (
-          <div className="z-40 flex shrink-0 justify-center px-2 pb-2 sm:px-4">
-            <IdentityBar
-              name={myPlayer.name}
-              avatarSeed={myPlayer.emoji}
-              imageUrl={myPlayer.avatarImageUrl}
-              statusLabel={isHost ? "Host" : "Na sala"}
-              detailLabel={`${playerCount} jogadores conectados`}
-            />
-          </div>
-        )}
       </div>
 
       {showSignIn && (

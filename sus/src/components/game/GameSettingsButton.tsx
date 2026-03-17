@@ -6,6 +6,7 @@ import { Icon } from "@iconify/react";
 import { useConvex, useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { useBackground } from "@/lib/BackgroundContext";
+import { useSound } from "@/lib/useSound";
 
 interface GameSettingsButtonProps {
   sessionId: string;
@@ -25,6 +26,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
     replacePreferences,
   } = useBackground();
 
+  const { muted: soundMuted, toggleMute: toggleSoundMute } = useSound();
   const [open, setOpen] = useState(false);
   const [bugMessage, setBugMessage] = useState("");
   const [remotePreferencesState, setRemotePreferencesState] = useState<
@@ -239,6 +241,30 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                       onClick={() => handleAnimationChange(!backgroundAnimationEnabled)}
                       className={`flex h-8 w-14 shrink-0 items-center rounded-full px-1 transition-colors ${
                         backgroundAnimationEnabled
+                          ? "justify-end bg-game-safe"
+                          : "justify-start bg-[var(--control-surface-muted)]"
+                      }`}
+                    >
+                      <span className="h-6 w-6 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.25)] transition-transform" />
+                    </button>
+                  </div>
+                </section>
+
+                <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <h3 className="font-display text-2xl">Sons do jogo</h3>
+                      <p className="mt-1 font-body text-sm text-[var(--panel-soft-text)]">
+                        Ative para ouvir efeitos sonoros durante o jogo.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={!soundMuted}
+                      onClick={toggleSoundMute}
+                      className={`flex h-8 w-14 shrink-0 items-center rounded-full px-1 transition-colors ${
+                        !soundMuted
                           ? "justify-end bg-game-safe"
                           : "justify-start bg-[var(--control-surface-muted)]"
                       }`}

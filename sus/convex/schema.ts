@@ -36,6 +36,7 @@ export default defineSchema({
 
   players: defineTable({
     roomId: v.id("rooms"),
+    userId: v.optional(v.id("users")),
     sessionId: v.string(),
     name: v.string(),
     emoji: v.string(),
@@ -175,6 +176,25 @@ export default defineSchema({
     backgroundAnimationEnabled: v.boolean(),
     updatedAt: v.number(),
   }).index("by_user", ["userId"]),
+
+  typingState: defineTable({
+    roomId: v.id("rooms"),
+    playerId: v.id("players"),
+    isTyping: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_room", ["roomId"])
+    .index("by_room_player", ["roomId", "playerId"]),
+
+  chatMessages: defineTable({
+    roomId: v.id("rooms"),
+    playerId: v.id("players"),
+    playerName: v.string(),
+    playerEmoji: v.string(),
+    text: v.string(),
+    isEmoji: v.boolean(),
+    sentAt: v.number(),
+  }).index("by_room", ["roomId"]),
 
   bugReports: defineTable({
     userId: v.optional(v.id("users")),

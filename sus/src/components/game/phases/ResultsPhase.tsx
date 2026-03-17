@@ -11,6 +11,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import PhaseIndicator from "../PhaseIndicator";
 import { useRouter } from "next/navigation";
 import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
+import { useSound } from "@/lib/useSound";
 
 interface ResultsPhaseProps {
   round: SafeRound;
@@ -29,11 +30,14 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
   const isHost = myPlayer.isHost;
   const isSpectator = myPlayer.isSpectator;
   const isMasterMode = isMasterQuestionMode(room);
+  const { play: playSound } = useSound();
   const [showResults, setShowResults] = useState(false);
   const [showRetry, setShowRetry] = useState(false);
+  const [selectedMasterId, setSelectedMasterId] = useState<string | null>(null);
   const startNextRound = useMutation(api.rooms.startNextRound);
   const requestNextRound = useMutation(api.rounds.requestNextRound);
   const recomputeResults = useMutation(api.rounds.recomputeResults);
+  const updateMasterForNextRound = useMutation(api.rooms.updateMasterForNextRound);
 
   const votes = useQuery(api.votes.getVotes, { roundId: round._id });
   const roundResult = useQuery(api.rounds.getRoundResult, { roundId: round._id });
@@ -47,6 +51,12 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
     if (roundResult !== null) return;
     void recomputeResults({ roundId: round._id, sessionId });
   }, [recomputeResults, round._id, roundResult, sessionId]);
+
+  // Play win/lose sound when results are revealed
+  useEffect(() => {
+    if (!showResults || !roundResult) return;
+    playSound(roundResult.impostorWon ? "lose" : "win");
+  }, [showResults, roundResult, playSound]);
 
   useEffect(() => {
     if (roundResult) return;
@@ -186,12 +196,42 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
                 url={typeof window !== "undefined" ? `${window.location.origin}/room/${room.code}` : ""}
               />
 
-              {isMasterMode && !isSpectator ? (
+              {isMasterMode && isHost && !isSpectator && (
+              <div className="flex w-full flex-col items-center gap-2 rounded-2xl border border-white/10 bg-white/5 p-4">
+                <span className="font-condensed text-xs uppercase tracking-wider text-white/60">
+                  Mestre da proxima rodada
+                </span>
+                <select
+                  value={selectedMasterId ?? room.settings.customMasterId ?? ""}
+                  onChange={(e) => setSelectedMasterId(e.target.value)}
+                  className="w-full max-w-[240px] rounded-xl border border-white/20 bg-white/10 px-3 py-2 text-sm text-white outline-none focus:border-white/40"
+                >
+                  {players
+                    .filter((p) => p.status !== "disconnected")
+                    .map((p) => (
+                      <option key={p._id} value={p._id} className="bg-surface-primary text-white">
+                        {p.name} {p.isHost ? "(Host)" : ""}
+                      </option>
+                    ))}
+                </select>
+              </div>
+            )}
+
+            {isMasterMode && !isSpectator ? (
                 <>
                   {isHost ? (
                     <Button
                       className="w-full py-6 font-bold"
-                      onClick={() => void startNextRound({ roomId: round.roomId, sessionId })}
+                      onClick={async () => {
+                        if (selectedMasterId) {
+                          await updateMasterForNextRound({
+                            roomId: round.roomId,
+                            sessionId,
+                            customMasterId: selectedMasterId,
+                          });
+                        }
+                        await startNextRound({ roomId: round.roomId, sessionId });
+                      }}
                     >
                       Proxima rodada (Host)
                     </Button>

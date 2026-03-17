@@ -12,7 +12,7 @@ import PlayerAvatar from "@/components/game/PlayerAvatar";
 import HowToPlayModal from "@/components/game/HowToPlayModal";
 import SignInModal from "@/components/auth/SignInModal";
 import GameSettingsButton from "@/components/game/GameSettingsButton";
-import IdentityBar from "@/components/game/IdentityBar";
+
 import { BubbleText } from "@/components/ui/bubble-text";
 import { useBackground } from "@/lib/BackgroundContext";
 import { useSessionId } from "@/lib/useSessionId";
@@ -375,15 +375,6 @@ export default function HomePage() {
         />
       )}
 
-      <div className="z-40 flex shrink-0 justify-center px-2 pb-2 sm:px-4">
-        <IdentityBar
-          name={displayName}
-          avatarSeed={avatarSeed}
-          imageUrl={avatarImageUrl}
-          statusLabel={isLoggedIn ? "Conta" : "Convidado"}
-          detailLabel={isLoggedIn ? "Perfil sincronizado" : `Sessao local ${sessionId.slice(0, 8)}`}
-        />
-      </div>
     </div>
   );
 }

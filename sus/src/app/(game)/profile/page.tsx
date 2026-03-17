@@ -23,7 +23,7 @@ export default function ProfilePage() {
   const { signOut } = useAuthActions();
 
   const profile = useQuery(api.profiles.current);
-  const histories = useQuery(api.history.getPlayerHistory, sessionId ? { sessionId } : "skip");
+  const histories = useQuery(api.history.getPlayerHistory, sessionId ? { sessionId, userId: profile?.userId } : "skip");
   const generateUploadUrl = useMutation(api.profiles.generateUploadUrl);
   const updateMyProfile = useMutation(api.profiles.updateMyProfile);
 

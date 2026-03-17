@@ -55,7 +55,7 @@ export async function attemptSaveHistory(
     }
 
     await ctx.db.insert("gameHistory", {
-      userId: undefined,
+      userId: player.userId ?? undefined,
       sessionId: player.sessionId,
       roomCode: room.code,
       mode: room.mode,
@@ -88,12 +88,31 @@ export async function attemptSaveHistory(
 }
 
 export const getPlayerHistory = query({
-  args: { sessionId: v.string() },
+  args: { sessionId: v.string(), userId: v.optional(v.id("users")) },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const bySession = await ctx.db
       .query("gameHistory")
       .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
-      .order("desc")
-      .take(20);
+      .collect();
+
+    if (!args.userId) {
+      return bySession.sort((a, b) => b.playedAt - a.playedAt).slice(0, 20);
+    }
+
+    const byUser = await ctx.db
+      .query("gameHistory")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    const seen = new Set<string>();
+    const merged = [];
+    for (const entry of [...bySession, ...byUser]) {
+      if (!seen.has(entry._id)) {
+        seen.add(entry._id);
+        merged.push(entry);
+      }
+    }
+
+    return merged.sort((a, b) => b.playedAt - a.playedAt).slice(0, 20);
   },
 });

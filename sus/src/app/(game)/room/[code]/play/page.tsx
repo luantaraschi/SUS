@@ -14,6 +14,7 @@ import { SpeakingPhase } from "@/components/game/phases/SpeakingPhase";
 import { EvidencePhase } from "@/components/game/phases/EvidencePhase";
 import { HostControls } from "@/components/game/HostControls";
 import { SpectatorBanner } from "@/components/game/SpectatorBanner";
+import FloatingChat from "@/components/game/FloatingChat";
 import { useRouter } from "next/navigation";
 
 export default function PlayPage({
@@ -122,6 +123,11 @@ export default function PlayPage({
       {myPlayer.isHost && <HostControls room={room} sessionId={sessionId || ""} />}
       {myPlayer.isSpectator && <SpectatorBanner />}
       {phaseComponent}
+      <FloatingChat
+        roomId={room._id}
+        playerId={myPlayer._id}
+        sessionId={sessionId || ""}
+      />
     </>
   );
 }

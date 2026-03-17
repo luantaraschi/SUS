@@ -10,6 +10,7 @@
 
 import type * as answers from "../answers.js";
 import type * as auth from "../auth.js";
+import type * as chat from "../chat.js";
 import type * as content from "../content.js";
 import type * as debug from "../debug.js";
 import type * as defaultContent from "../defaultContent.js";
@@ -25,6 +26,7 @@ import type * as profiles from "../profiles.js";
 import type * as rooms from "../rooms.js";
 import type * as rounds from "../rounds.js";
 import type * as seed from "../seed.js";
+import type * as typing from "../typing.js";
 import type * as users from "../users.js";
 import type * as votes from "../votes.js";
 
@@ -37,6 +39,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   answers: typeof answers;
   auth: typeof auth;
+  chat: typeof chat;
   content: typeof content;
   debug: typeof debug;
   defaultContent: typeof defaultContent;
@@ -52,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   rooms: typeof rooms;
   rounds: typeof rounds;
   seed: typeof seed;
+  typing: typeof typing;
   users: typeof users;
   votes: typeof votes;
 }>;
