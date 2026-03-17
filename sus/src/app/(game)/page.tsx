@@ -242,7 +242,7 @@ export default function HomePage() {
               <div className="flex w-full max-w-[420px] flex-col items-center gap-3.5 py-1">
               <div className="w-full">
                 <GameInput
-                  value={displayName}
+                  value={isLoggedIn ? displayName : guestName}
                   onChange={isLoggedIn ? () => undefined : setGuestName}
                   placeholder={`Anonimo${anonNumber}`}
                   variant="text"
@@ -375,7 +375,7 @@ export default function HomePage() {
         />
       )}
 
-      <div className="w-full max-w-[680px] px-2 pb-2 sm:px-4">
+      <div className="fixed inset-x-0 bottom-[52px] z-40 flex justify-center px-2 pb-2 sm:px-4">
         <IdentityBar
           name={displayName}
           avatarSeed={avatarSeed}

@@ -23,19 +23,6 @@ const MIN_ROUNDS = 1;
 const MAX_ROUNDS = 10;
 const MAX_IMPOSTORS = 3;
 
-const DESKTOP_POSITIONS = [
-  { top: "12%", left: "18%", transform: "translate(-50%, -50%)" },
-  { top: "12%", left: "82%", transform: "translate(-50%, -50%)" },
-  { top: "31%", left: "6%", transform: "translate(-50%, -50%)" },
-  { top: "53%", left: "6%", transform: "translate(-50%, -50%)" },
-  { top: "75%", left: "10%", transform: "translate(-50%, -50%)" },
-  { top: "31%", left: "94%", transform: "translate(-50%, -50%)" },
-  { top: "53%", left: "94%", transform: "translate(-50%, -50%)" },
-  { top: "75%", left: "90%", transform: "translate(-50%, -50%)" },
-  { top: "94%", left: "24%", transform: "translate(-50%, -35%)" },
-  { top: "94%", left: "50%", transform: "translate(-50%, -35%)" },
-  { top: "94%", left: "76%", transform: "translate(-50%, -35%)" },
-];
 
 function getAvatarStatus(status: "connected" | "ready" | "disconnected") {
   return status === "connected" ? "online" : status === "ready" ? "ready" : "disconnected";
@@ -145,6 +132,9 @@ export default function RoomLobbyPage({
   const surroundingPlayers = myPlayer ? arrangedPlayers.slice(1) : arrangedPlayers;
   const mobileTopPlayers = surroundingPlayers.slice(0, 4);
   const mobileBottomPlayers = surroundingPlayers.slice(4);
+  const halfIndex = Math.ceil(surroundingPlayers.length / 2);
+  const leftPlayers = surroundingPlayers.slice(0, halfIndex);
+  const rightPlayers = surroundingPlayers.slice(halfIndex);
   const playerCount = players?.filter((player) => player.status !== "disconnected").length ?? 0;
   const numImpostors = room?.settings.numImpostors || 1;
 
@@ -391,28 +381,25 @@ export default function RoomLobbyPage({
           )}
         </div>
 
-        <div className="relative hidden h-full min-h-0 items-center justify-center lg:flex">
-          {surroundingPlayers.map((player, index) => {
-            const position = DESKTOP_POSITIONS[index];
-            if (!position) return null;
-            return (
-              <div key={player._id} className="absolute z-20" style={{ top: position.top, left: position.left, transform: position.transform }}>
-                <PlayerAvatar
-                  name={player.name}
-                  avatarSeed={player.emoji}
-                  imageUrl={player.avatarImageUrl}
-                  isHost={player.isHost}
-                  isBot={player.isBot}
-                  status={getAvatarStatus(player.status)}
-                  size="orbit"
-                  canRemove={isHost && player.isBot && !removingBotId}
-                  onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
-                />
-              </div>
-            );
-          })}
+        <div className="hidden h-full min-h-0 items-center justify-center gap-4 lg:flex">
+          <div className="flex w-20 flex-col items-center gap-3">
+            {leftPlayers.map((player) => (
+              <PlayerAvatar
+                key={player._id}
+                name={player.name}
+                avatarSeed={player.emoji}
+                imageUrl={player.avatarImageUrl}
+                isHost={player.isHost}
+                isBot={player.isBot}
+                status={getAvatarStatus(player.status)}
+                size="orbit"
+                canRemove={isHost && player.isBot && !removingBotId}
+                onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
+              />
+            ))}
+          </div>
 
-          <GameCircle className="flex h-full min-h-0 max-h-[min(760px,100%)] max-w-[740px] px-6 pb-5 pt-12">
+          <GameCircle className="flex h-full min-h-0 max-h-[min(760px,100%)] max-w-[740px] flex-1 px-6 pb-5 pt-12">
             <div className="custom-scrollbar flex h-full min-h-0 w-full flex-col overflow-y-auto">
               <LobbyPanel
                 room={room}
@@ -469,11 +456,28 @@ export default function RoomLobbyPage({
               />
             </div>
           </GameCircle>
+
+          <div className="flex w-20 flex-col items-center gap-3">
+            {rightPlayers.map((player) => (
+              <PlayerAvatar
+                key={player._id}
+                name={player.name}
+                avatarSeed={player.emoji}
+                imageUrl={player.avatarImageUrl}
+                isHost={player.isHost}
+                isBot={player.isBot}
+                status={getAvatarStatus(player.status)}
+                size="orbit"
+                canRemove={isHost && player.isBot && !removingBotId}
+                onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
+              />
+            ))}
+          </div>
         </div>
       </div>
 
         {myPlayer && (
-          <div className="w-full max-w-[740px] px-2 pb-2 sm:px-4">
+          <div className="fixed inset-x-0 bottom-[52px] z-40 flex justify-center px-2 pb-2 sm:px-4">
             <IdentityBar
               name={myPlayer.name}
               avatarSeed={myPlayer.emoji}
@@ -552,11 +556,15 @@ function LobbyPanel({
   onStart: () => void;
   onLeave: () => void;
 }) {
+  const [themesExpanded, setThemesExpanded] = useState(false);
   const selectedPackValue = room.settings.customPackId
     ? `custom:${room.settings.customPackId}`
     : `default:${room.settings.defaultPackKey || "classico"}`;
   const systemPackOptions = packOptions.filter((pack) => pack.source === "default");
   const customPackOptions = packOptions.filter((pack) => pack.source === "custom");
+  const selectedPack = packOptions.find(
+    (pack) => (pack.source === "default" ? `default:${pack.key}` : `custom:${pack.key}`) === selectedPackValue
+  );
 
   return (
     <>
@@ -587,48 +595,66 @@ function LobbyPanel({
             <button type="button" onClick={() => onModeChange("question")} disabled={!isHost} className={room.mode === "question" ? "rounded-full bg-surface-primary px-7 py-2.5 text-sm font-black uppercase tracking-wider text-white transition-all sm:px-8 sm:text-base" : "px-7 py-2.5 text-sm font-black uppercase tracking-wider text-[var(--panel-soft-text)] transition-all sm:px-8 sm:text-base"}>Pergunta</button>
           </div>
 
-          {packOptions.length > 0 && (
+          {packOptions.length > 0 && !(room.mode === "question" && room.questionMode === "master") && (
             <div className="flex w-full max-w-[560px] flex-col items-center gap-3">
-              <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)] sm:text-sm">Tema</span>
-              <div className="grid w-full gap-3 sm:grid-cols-2">
-                {systemPackOptions.map((pack) => {
-                  const isSelected = selectedPackValue === `default:${pack.key}`;
-                  return (
-                    <button
-                      key={pack.key}
-                      type="button"
-                      onClick={() => onPackChange(`default:${pack.key}`)}
-                      disabled={!isHost}
-                      className={`flex items-center justify-between rounded-[18px] border px-4 py-3 text-left transition-colors ${
-                        isSelected
-                          ? "border-surface-primary bg-surface-primary text-white"
-                          : "border-[var(--control-border)] bg-[var(--control-surface)] text-[var(--control-text)]"
-                      } ${!isHost ? "opacity-70" : "hover:border-surface-primary/60 hover:bg-[var(--panel-muted)]"}`}
-                    >
-                      <span className="flex items-center gap-3">
-                        <Icon icon={THEME_ICON_MAP[pack.icon] ?? "solar:star-bold"} width={18} height={18} />
-                        <span className="font-body text-base">{pack.title}</span>
+              <button
+                type="button"
+                onClick={() => setThemesExpanded((prev) => !prev)}
+                className="flex w-full items-center justify-between rounded-[18px] border border-[var(--control-border)] bg-[var(--control-surface)] px-4 py-3 transition-colors hover:bg-[var(--panel-muted)]"
+              >
+                <span className="flex items-center gap-3">
+                  <Icon icon={THEME_ICON_MAP[selectedPack?.icon ?? "star"] ?? "solar:star-bold"} width={18} height={18} className="text-[var(--control-text)]" />
+                  <span className="font-body text-base text-[var(--control-text)]">{selectedPack?.title ?? "Classico"}</span>
+                </span>
+                <span className="flex items-center gap-2">
+                  <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)]">Temas</span>
+                  <Icon icon={themesExpanded ? "solar:alt-arrow-up-bold" : "solar:alt-arrow-down-bold"} width={16} height={16} className="text-[var(--panel-soft-text)]" />
+                </span>
+              </button>
+
+              {themesExpanded && (
+                <div className="flex w-full flex-col gap-3">
+                  <div className="grid w-full gap-3 sm:grid-cols-2">
+                    {systemPackOptions.map((pack) => {
+                      const isSelected = selectedPackValue === `default:${pack.key}`;
+                      return (
+                        <button
+                          key={pack.key}
+                          type="button"
+                          onClick={() => onPackChange(`default:${pack.key}`)}
+                          disabled={!isHost}
+                          className={`flex items-center justify-between rounded-[18px] border px-4 py-3 text-left transition-colors ${
+                            isSelected
+                              ? "border-surface-primary bg-surface-primary text-white"
+                              : "border-[var(--control-border)] bg-[var(--control-surface)] text-[var(--control-text)]"
+                          } ${!isHost ? "opacity-70" : "hover:border-surface-primary/60 hover:bg-[var(--panel-muted)]"}`}
+                        >
+                          <span className="flex items-center gap-3">
+                            <Icon icon={THEME_ICON_MAP[pack.icon] ?? "solar:star-bold"} width={18} height={18} />
+                            <span className="font-body text-base">{pack.title}</span>
+                          </span>
+                          <span className={`font-condensed text-[11px] uppercase tracking-[0.22em] ${isSelected ? "text-white/80" : "text-[var(--panel-soft-text)]"}`}>
+                            {pack.count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {customPackOptions.length > 0 && (
+                    <div className="flex w-full flex-col gap-2">
+                      <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)]">
+                        Meus packs
                       </span>
-                      <span className={`font-condensed text-[11px] uppercase tracking-[0.22em] ${isSelected ? "text-white/80" : "text-[var(--panel-soft-text)]"}`}>
-                        {pack.count}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              {customPackOptions.length > 0 && (
-                <div className="flex w-full flex-col gap-2">
-                  <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--panel-soft-text)]">
-                    Meus packs
-                  </span>
-                  <select value={selectedPackValue.startsWith("custom:") ? selectedPackValue : ""} onChange={(event) => onPackChange(event.target.value)} disabled={!isHost} className="w-full rounded-xl border border-[var(--control-border)] bg-[var(--control-surface)] px-3 py-2 text-sm text-[var(--control-text)] outline-none focus:border-surface-primary focus:ring-1 focus:ring-surface-primary disabled:opacity-50">
-                    <option value="">Usar pack do sistema</option>
-                    {customPackOptions.map((pack) => (
-                      <option key={pack.key} value={`custom:${pack.key}`}>
-                        {pack.title} ({pack.count})
-                      </option>
-                    ))}
-                  </select>
+                      <select value={selectedPackValue.startsWith("custom:") ? selectedPackValue : ""} onChange={(event) => onPackChange(event.target.value)} disabled={!isHost} className="w-full rounded-xl border border-[var(--control-border)] bg-[var(--control-surface)] px-3 py-2 text-sm text-[var(--control-text)] outline-none focus:border-surface-primary focus:ring-1 focus:ring-surface-primary disabled:opacity-50">
+                        <option value="">Usar pack do sistema</option>
+                        {customPackOptions.map((pack) => (
+                          <option key={pack.key} value={`custom:${pack.key}`}>
+                            {pack.title} ({pack.count})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
