@@ -10,6 +10,7 @@ import PhaseIndicator from "../PhaseIndicator";
 import { motion, AnimatePresence } from "framer-motion";
 import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
+import { getCenteredOddGridItemClass } from "@/lib/utils";
 
 interface EvidencePhaseProps {
   round: SafeRound;
@@ -99,7 +100,11 @@ export function EvidencePhase({
             myRole?.role === "master" && myRole.masterImpostorIds?.includes(player._id);
 
           return (
-            <ReactionAnchor key={answer._id} playerId={String(player._id)}>
+            <ReactionAnchor
+              key={answer._id}
+              playerId={String(player._id)}
+              className={getCenteredOddGridItemClass(index, answers?.length ?? 0, "md")}
+            >
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}

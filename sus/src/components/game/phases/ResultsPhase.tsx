@@ -5,7 +5,7 @@ import { useMutation, useQuery } from "convex/react";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn, getCenteredOddGridItemClass } from "@/lib/utils";
 import PlayerAvatar from "../PlayerAvatar";
 import { AnimatePresence, motion } from "framer-motion";
 import PhaseIndicator from "../PhaseIndicator";
@@ -265,9 +265,15 @@ export function ResultsPhase({
                   </div>
 
                   <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                    {realImpostors.map((impostor) => (
-                      <ReactionAnchor key={impostor._id} playerId={String(impostor._id)}>
-                        <GlassSection className="h-full rounded-[28px] p-5 text-center">
+                    {realImpostors.map((impostor, index) => (
+                      <ReactionAnchor
+                        key={impostor._id}
+                        playerId={String(impostor._id)}
+                        className={getCenteredOddGridItemClass(index, realImpostors.length, "sm")}
+                      >
+                        <GlassSection
+                          className="h-full rounded-[28px] p-5 text-center"
+                        >
                           <div className="flex flex-col items-center">
                             <PlayerAvatar
                               name={impostor.name}

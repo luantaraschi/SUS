@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { useQuery } from "convex/react";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
-import { cn } from "@/lib/utils";
+import { cn, getCenteredOddGridItemClass } from "@/lib/utils";
 import PlayerAvatar from "../PlayerAvatar";
 import PhaseIndicator from "../PhaseIndicator";
 import Timer from "../Timer";
@@ -129,7 +129,11 @@ export function RevealingPhase({
             myRole?.role === "master" && myRole.masterImpostorIds?.includes(player._id);
 
           return (
-            <ReactionAnchor key={answer._id} playerId={String(player._id)}>
+            <ReactionAnchor
+              key={answer._id}
+              playerId={String(player._id)}
+              className={getCenteredOddGridItemClass(index, answers?.length ?? 0, "lg")}
+            >
               <motion.div
                 initial={{ opacity: 0, y: 26, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}

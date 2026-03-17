@@ -11,6 +11,7 @@ import PhaseIndicator from "../PhaseIndicator";
 import Timer from "../Timer";
 import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
+import { getCenteredOddGridItemClass } from "@/lib/utils";
 
 function isMasterQuestionMode(room: { mode: string; questionMode?: string }) {
   return room.mode === "question" && (room.questionMode ?? "system") === "master";
@@ -74,12 +75,16 @@ export function VotingPhase({ round, players, myPlayer, myRole, room, sessionId 
       )}
 
       <div className="mt-8 grid w-full flex-1 content-start grid-cols-1 gap-4 md:grid-cols-2">
-        {activePlayers.map((player) => {
+        {activePlayers.map((player, index) => {
           const isSelected = selectedSuspect === player._id;
           const isMe = myPlayer._id === player._id;
 
           return (
-            <ReactionAnchor key={player._id} playerId={String(player._id)}>
+            <ReactionAnchor
+              key={player._id}
+              playerId={String(player._id)}
+              className={getCenteredOddGridItemClass(index, activePlayers.length, "md")}
+            >
               <motion.button
                 whileHover={{ scale: hasVoted || isMe || isMaster ? 1 : 1.015 }}
                 whileTap={{ scale: hasVoted || isMe || isMaster ? 1 : 0.985 }}
@@ -121,7 +126,7 @@ export function VotingPhase({ round, players, myPlayer, myRole, room, sessionId 
             Respostas para consulta
           </p>
           <div className="grid w-full grid-cols-1 gap-3 md:grid-cols-2">
-            {answers.map((answer) => {
+            {answers.map((answer, index) => {
               const answerPlayer = players.find((p) => p._id === answer.playerId);
               if (!answerPlayer) return null;
               const isMarkedByMaster =
@@ -129,7 +134,7 @@ export function VotingPhase({ round, players, myPlayer, myRole, room, sessionId 
               return (
                 <div
                   key={answer._id}
-                  className="rounded-2xl border border-white/10 bg-black/15 p-4 text-center"
+                  className={`rounded-2xl border border-white/10 bg-black/15 p-4 text-center ${getCenteredOddGridItemClass(index, answers.length, "md")}`}
                 >
                   <p className="mb-1 flex items-center justify-center gap-1 font-hand text-sm text-white/60">
                     [{answerPlayer.name}]

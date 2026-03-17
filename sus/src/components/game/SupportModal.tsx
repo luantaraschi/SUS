@@ -51,11 +51,11 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
         initial={{ opacity: 0, y: 20, scale: 0.96 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-xl"
+        className="relative z-10 w-full max-w-xl max-h-[90vh]"
       >
         <GlassPanel
           tone="special"
-          className="custom-scrollbar max-h-[90vh] overflow-y-auto rounded-[34px] p-5 sm:p-6"
+          className="h-full overflow-hidden rounded-[34px] p-5 sm:p-6"
         >
           <button
             type="button"
@@ -66,8 +66,9 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
             <X size={20} />
           </button>
 
-          <div className="relative z-10 space-y-5">
-            <div className="pr-12 text-center sm:pr-14">
+          <div className="custom-scrollbar relative z-10 max-h-[calc(90vh-2.5rem)] overflow-y-auto pr-1">
+            <div className="space-y-5">
+            <div className="mx-auto max-w-lg text-center">
               <motion.div
                 initial={{ opacity: 0, scale: 0.88 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -233,6 +234,7 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
                 </div>
               </GlassSection>
             </motion.div>
+            </div>
           </div>
         </GlassPanel>
       </motion.div>
