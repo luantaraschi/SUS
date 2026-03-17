@@ -13,7 +13,6 @@ interface SpeakingPhaseProps {
   players: PublicPlayer[];
   myPlayer: Doc<"players">;
   myRole?: RoleView;
-  room: Doc<"rooms">;
   sessionId: string;
 }
 
@@ -22,7 +21,6 @@ export function SpeakingPhase({
   players,
   myPlayer,
   myRole,
-  room,
   sessionId,
 }: SpeakingPhaseProps) {
   const speakingState = useQuery(api.rounds.getSpeakingState, {

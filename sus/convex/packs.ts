@@ -31,7 +31,7 @@ export const getMyPacks = query({
     const packs = await packsQuery.order("desc").collect();
 
     if (args.mode) {
-      return packs.filter((p) => p.mode === args.mode);
+      return packs.filter((pack) => pack.mode === args.mode);
     }
     return packs;
   },
@@ -85,7 +85,7 @@ export const createPack = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
-    if (!userId) throw new Error("Apenas usuários logados podem criar packs.");
+    if (!userId) throw new Error("Apenas usuarios logados podem criar packs.");
 
     if (args.items.length === 0) {
       throw new Error("O pack precisa ter pelo menos um item.");
@@ -107,13 +107,13 @@ export const deletePack = mutation({
   args: { packId: v.id("customPacks") },
   handler: async (ctx, args) => {
     const userId = await auth.getUserId(ctx);
-    if (!userId) throw new Error("Não autorizado.");
+    if (!userId) throw new Error("Nao autorizado.");
 
     const pack = await ctx.db.get(args.packId);
-    if (!pack) throw new Error("Pack não encontrado.");
+    if (!pack) throw new Error("Pack nao encontrado.");
 
     if (pack.authorId !== userId) {
-      throw new Error("Você só pode deletar seus próprios packs.");
+      throw new Error("Voce so pode deletar seus proprios packs.");
     }
 
     await ctx.db.delete(args.packId);

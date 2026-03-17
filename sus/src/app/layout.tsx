@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from "next";
 import {
-  Londrina_Solid,
   Balsamiq_Sans,
-  Kalam,
-  Oswald,
   JetBrains_Mono,
+  Kalam,
+  Londrina_Solid,
+  Oswald,
 } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -24,18 +24,21 @@ const balsamiq = Balsamiq_Sans({
 const kalam = Kalam({
   weight: ["400", "700"],
   subsets: ["latin"],
+  preload: false,
   variable: "--font-hand",
 });
 
 const oswald = Oswald({
   weight: ["400", "700"],
   subsets: ["latin"],
+  preload: false,
   variable: "--font-condensed",
 });
 
 const jetbrains = JetBrains_Mono({
   weight: ["400", "700"],
   subsets: ["latin"],
+  preload: false,
   variable: "--font-mono",
 });
 
@@ -44,8 +47,8 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "SUS — Jogo de Deduzir",
-  description: "Um jogo social de dedução online para jogar com a galera! Descubra quem é o impostor.",
+  title: "SUS - Jogo de Deduzir",
+  description: "Um jogo social de deducao online para jogar com a galera! Descubra quem e o impostor.",
   manifest: "/manifest.json",
   icons: {
     icon: [
@@ -60,8 +63,8 @@ export const metadata: Metadata = {
     title: "SUS",
   },
   openGraph: {
-    title: "SUS — Jogo de Deduzir",
-    description: "Um jogo social de dedução para jogar com os amigos.",
+    title: "SUS - Jogo de Deduzir",
+    description: "Um jogo social de deducao para jogar com os amigos.",
     siteName: "SUS",
     locale: "pt_BR",
     type: "website",
