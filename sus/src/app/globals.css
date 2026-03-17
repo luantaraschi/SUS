@@ -216,6 +216,29 @@ html[data-color-scheme="dark"] {
   border-radius: 999px;
 }
 
+/* ===== GLASS PANEL (overrides panel/control tokens for translucent cards) ===== */
+.glass-panel {
+  --panel-text: #F8F7FF;
+  --panel-soft-text: rgba(248, 247, 255, 0.7);
+  --panel-muted: rgba(255, 255, 255, 0.08);
+  --control-surface: rgba(255, 255, 255, 0.12);
+  --control-border: rgba(255, 255, 255, 0.18);
+  --control-text: #F8F7FF;
+  --control-soft-text: rgba(248, 247, 255, 0.6);
+  --control-surface-muted: rgba(255, 255, 255, 0.08);
+  --control-disabled-bg: rgba(255, 255, 255, 0.06);
+  --control-disabled-border: rgba(255, 255, 255, 0.08);
+  --control-disabled-text: rgba(248, 247, 255, 0.38);
+}
+
+.glass-panel .custom-scrollbar {
+  scrollbar-color: rgba(255, 255, 255, 0.25) transparent;
+}
+
+.glass-panel .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 .post-it-paper {
   box-shadow:
     0 18px 32px rgba(0, 0, 0, 0.18),

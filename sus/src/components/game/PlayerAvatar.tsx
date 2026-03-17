@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { motion } from "framer-motion";
 import BotIcon from "./BotIcon";
 
 type PlayerStatus = "online" | "ready" | "waiting" | "disconnected";
@@ -18,6 +19,7 @@ interface PlayerAvatarProps {
   className?: string;
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "lobby" | "orbit";
   hideName?: boolean;
+  interactive?: boolean;
 }
 
 const STATUS_INDICATOR: Record<PlayerStatus, { color: string; label: string }> = {
@@ -186,6 +188,7 @@ export default function PlayerAvatar({
   className = "",
   size = "md",
   hideName = false,
+  interactive = false,
 }: PlayerAvatarProps) {
   const statusInfo = STATUS_INDICATOR[status];
   const isDimmed = !isBot && (status === "disconnected" || status === "waiting");
@@ -196,8 +199,11 @@ export default function PlayerAvatar({
 
   const seed = avatarSeed ?? emoji ?? name;
   return (
-    <div
-      className={`flex flex-col items-center gap-1 ${isDimmed ? "opacity-60" : ""} ${className}`}
+    <motion.div
+      whileHover={interactive ? { y: -4, scale: 1.05 } : undefined}
+      whileTap={interactive ? { scale: 0.9 } : undefined}
+      transition={interactive ? { type: "spring", stiffness: 400, damping: 20 } : undefined}
+      className={`flex flex-col items-center gap-1 ${isDimmed ? "opacity-60" : ""} ${interactive ? "cursor-pointer" : ""} ${className}`}
     >
       {isHost && (
         <span
@@ -264,6 +270,6 @@ export default function PlayerAvatar({
           {statusInfo.label}
         </span>
       )}
-    </div>
+    </motion.div>
   );
 }

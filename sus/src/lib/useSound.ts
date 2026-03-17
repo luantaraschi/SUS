@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useSyncExternalStore } from "react";
+import { playSynth } from "./synthSounds";
 
 export type SoundName =
   | "click"
@@ -10,7 +11,9 @@ export type SoundName =
   | "lose"
   | "tick"
   | "message"
-  | "next-round";
+  | "next-round"
+  | "join"
+  | "kick";
 
 const MUTE_KEY = "sus.sound.muted";
 const audioCache = new Map<string, HTMLAudioElement>();
@@ -56,7 +59,9 @@ export function useSound() {
       audioCache.set(path, audio);
     }
     audio.currentTime = 0;
-    audio.play().catch(() => {});
+    audio.play().catch(() => {
+      playSynth(name);
+    });
   }, []);
 
   const toggleMute = useCallback(() => {

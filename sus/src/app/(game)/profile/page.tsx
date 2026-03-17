@@ -16,6 +16,13 @@ function randomSeed() {
   return seed || crypto.randomUUID().slice(0, 8);
 }
 
+function isVictory(game: { wasImpostor: number; correctVotes: number; timesSurvived: number }): boolean {
+  if (game.wasImpostor > 0) {
+    return game.timesSurvived > 0;
+  }
+  return game.correctVotes > 0;
+}
+
 export default function ProfilePage() {
   const router = useRouter();
   const sessionId = useSessionId();
@@ -52,7 +59,7 @@ export default function ProfilePage() {
 
   const totalGames = histories?.length ?? 0;
   const impostorGames = histories?.filter((history) => history.wasImpostor > 0).length ?? 0;
-  const wins = histories?.filter((history) => history.finalRank === 1).length ?? 0;
+  const wins = histories?.filter((history) => isVictory(history)).length ?? 0;
   const crewWins =
     histories?.filter((history) => history.wasImpostor === 0 && history.correctVotes > 0).length ?? 0;
 
@@ -138,7 +145,7 @@ export default function ProfilePage() {
       <div className="flex w-full max-w-4xl items-center justify-between">
         <button
           onClick={() => router.push("/")}
-          className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
+          className="flex h-12 w-12 items-center justify-center rounded-full bg-white/20 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30 active:scale-95"
         >
           <Icon icon="solar:arrow-left-bold" width={24} height={24} />
         </button>
@@ -146,7 +153,7 @@ export default function ProfilePage() {
         {profile && (
           <button
             onClick={handleLogout}
-            className="flex items-center gap-2 rounded-full bg-red-500/80 px-4 py-2 font-display text-sm uppercase tracking-widest text-white shadow-sm backdrop-blur-sm transition-all hover:bg-red-500"
+            className="flex items-center gap-2 rounded-full bg-red-500/80 px-4 py-2 font-display text-sm uppercase tracking-widest text-white shadow-sm backdrop-blur-sm transition-all hover:bg-red-500 active:scale-95"
           >
             Sair da Conta
           </button>
@@ -272,22 +279,22 @@ export default function ProfilePage() {
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <div className="rounded-[28px] border border-white/20 bg-white/10 p-4 text-center">
+              <div className="rounded-[28px] border border-white/20 bg-white/10 p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
                 <Icon icon="solar:gamepad-bold" width={32} height={32} className="mx-auto mb-2 text-blue-300" />
                 <span className="block font-display text-3xl text-white">{totalGames}</span>
                 <span className="text-xs font-condensed uppercase tracking-widest text-white/70">Partidas</span>
               </div>
-              <div className="rounded-[28px] border border-white/20 bg-white/10 p-4 text-center">
+              <div className="rounded-[28px] border border-white/20 bg-white/10 p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
                 <Icon icon="solar:medal-star-bold" width={32} height={32} className="mx-auto mb-2 text-yellow-400" />
                 <span className="block font-display text-3xl text-white">{wins}</span>
                 <span className="text-xs font-condensed uppercase tracking-widest text-white/70">Vitorias</span>
               </div>
-              <div className="rounded-[28px] border border-white/20 bg-white/10 p-4 text-center">
+              <div className="rounded-[28px] border border-white/20 bg-white/10 p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
                 <Icon icon="solar:ghost-bold" width={32} height={32} className="mx-auto mb-2 text-red-400" />
                 <span className="block font-display text-3xl text-white">{impostorGames}</span>
                 <span className="text-xs font-condensed uppercase tracking-widest text-white/70">Vezes Impostor</span>
               </div>
-              <div className="rounded-[28px] border border-white/20 bg-white/10 p-4 text-center">
+              <div className="rounded-[28px] border border-white/20 bg-white/10 p-4 text-center transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)]">
                 <Icon icon="solar:magnifer-bold" width={32} height={32} className="mx-auto mb-2 text-green-400" />
                 <span className="block font-display text-3xl text-white">{crewWins}</span>
                 <span className="text-xs font-condensed uppercase tracking-widest text-white/70">Acertos</span>
@@ -295,7 +302,7 @@ export default function ProfilePage() {
 
               <button
                 onClick={() => router.push("/profile/packs")}
-                className="col-span-2 flex items-center justify-center gap-2 rounded-[28px] border border-white/20 bg-white/10 px-5 py-4 font-display text-lg text-white transition-all hover:bg-white/18"
+                className="col-span-2 flex items-center justify-center gap-2 rounded-[28px] border border-white/20 bg-white/10 px-5 py-4 font-display text-lg text-white transition-all duration-200 hover:-translate-y-1 hover:bg-white/18 hover:shadow-[0_8px_24px_rgba(0,0,0,0.15)] active:scale-[0.98]"
               >
                 <Icon icon="solar:folder-with-files-bold" width={24} />
                 Meus Pacotes Customizados
@@ -337,8 +344,12 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex flex-col items-end gap-1">
-                  <span className={`font-display text-xl ${game.finalRank === 1 ? "text-yellow-400" : "text-[var(--panel-soft-text)]"}`}>
-                    {game.finalRank}º Lugar
+                  <span className={`rounded-full px-3 py-0.5 font-display text-sm uppercase tracking-wider ${
+                    isVictory(game)
+                      ? "bg-game-safe/20 text-game-safe"
+                      : "bg-game-impostor/20 text-game-impostor"
+                  }`}>
+                    {isVictory(game) ? "Vitoria" : "Derrota"}
                   </span>
                   <span className="text-xs font-condensed uppercase tracking-widest text-[var(--control-soft-text)]">
                     {game.wasImpostor > 0 ? "Fui Impostor" : "Fui Tripulante"}

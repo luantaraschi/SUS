@@ -17,6 +17,7 @@ import { THEME_ICON_MAP } from "@/lib/themeIcons";
 import { Icon } from "@iconify/react";
 import { Plus } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSound } from "@/lib/useSound";
 
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 12;
@@ -122,6 +123,9 @@ export default function RoomLobbyPage({
   const { code } = use(params);
   const router = useRouter();
   const sessionId = useSessionId();
+
+  const { play: playSound } = useSound();
+  const prevPlayerCountRef = useRef<number | null>(null);
 
   const [codeHidden, setCodeHidden] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -259,6 +263,17 @@ export default function RoomLobbyPage({
     };
   }, [myPlayer?._id, sessionId, updateStatus]);
 
+  useEffect(() => {
+    if (!players) return;
+    const count = players.filter((p) => p.status !== "disconnected").length;
+    const prev = prevPlayerCountRef.current;
+    if (prev !== null) {
+      if (count > prev) playSound("join");
+      else if (count < prev) playSound("kick");
+    }
+    prevPlayerCountRef.current = count;
+  }, [players, playSound]);
+
   if (!sessionId) {
     return <div className="flex min-h-dvh items-center justify-center font-display text-2xl text-white">Carregando...</div>;
   }
@@ -335,6 +350,7 @@ export default function RoomLobbyPage({
                     isBot={player.isBot}
                     status={getAvatarStatus(player.status)}
                     size="orbit"
+                    interactive
                     canRemove={isHost && player.isBot && !removingBotId}
                     onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
                   />
@@ -413,6 +429,7 @@ export default function RoomLobbyPage({
                       isBot={player.isBot}
                       status={getAvatarStatus(player.status)}
                       size="orbit"
+                      interactive
                       canRemove={isHost && player.isBot && !removingBotId}
                       onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
                     />
@@ -433,6 +450,7 @@ export default function RoomLobbyPage({
                     isBot={player.isBot}
                     status={getAvatarStatus(player.status)}
                     size="orbit"
+                    interactive
                     canRemove={isHost && player.isBot && !removingBotId}
                     onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
                   />
@@ -510,6 +528,7 @@ export default function RoomLobbyPage({
                     isBot={player.isBot}
                     status={getAvatarStatus(player.status)}
                     size="orbit"
+                    interactive
                     canRemove={isHost && player.isBot && !removingBotId}
                     onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
                   />
