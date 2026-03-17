@@ -92,6 +92,7 @@ export default defineSchema({
     resultReadyAt: v.optional(v.number()),
     speakingOrder: v.optional(v.array(v.id("players"))),
     currentSpeakerIndex: v.optional(v.number()),
+    speakingTurnCount: v.optional(v.number()),
     votingRequestedBy: v.optional(v.array(v.id("players"))),
     evidenceReadyBy: v.optional(v.array(v.id("players"))),
     nextRoundReadyBy: v.optional(v.array(v.id("players"))),

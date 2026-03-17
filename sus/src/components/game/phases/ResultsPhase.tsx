@@ -5,15 +5,25 @@ import { useMutation, useQuery } from "convex/react";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import PlayerAvatar from "../PlayerAvatar";
-import ShareResult from "../ShareResult";
 import { AnimatePresence, motion } from "framer-motion";
 import PhaseIndicator from "../PhaseIndicator";
 import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
 import { useSound } from "@/lib/useSound";
 import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import GlassSelect from "../ui/GlassSelect";
-import { GlassSection } from "../ui/glass";
+import { GlassPanel, GlassSection } from "../ui/glass";
+import {
+  ArrowRight,
+  Check,
+  Copy,
+  Crown,
+  ShieldAlert,
+  ShieldCheck,
+  Sparkles,
+  Vote,
+} from "lucide-react";
 
 interface ResultsPhaseProps {
   round: SafeRound;
@@ -44,6 +54,7 @@ export function ResultsPhase({
   const { play: playSound } = useSound();
   const [showResults, setShowResults] = useState(false);
   const [showRetry, setShowRetry] = useState(false);
+  const [copied, setCopied] = useState(false);
   const [selectedMasterId, setSelectedMasterId] = useState<string | null>(null);
   const startNextRound = useMutation(api.rooms.startNextRound);
   const requestNextRound = useMutation(api.rounds.requestNextRound);
@@ -63,7 +74,6 @@ export function ResultsPhase({
     void recomputeResults({ roundId: round._id, sessionId });
   }, [recomputeResults, round._id, roundResult, sessionId]);
 
-  // Play win/lose sound when results are revealed
   useEffect(() => {
     if (!showResults || !roundResult) return;
     playSound(roundResult.impostorWon ? "lose" : "win");
@@ -75,19 +85,64 @@ export function ResultsPhase({
     return () => window.clearTimeout(timer);
   }, [roundResult]);
 
+  const handleShareResult = async () => {
+    const impostorNames = roundResult?.impostorIds
+      ?.map((impostorId) => players.find((player) => player._id === impostorId)?.name)
+      .filter(Boolean)
+      .join(", ");
+    const shareTitle = `SUS - Sala ${room.code}`;
+    const shareText = `${impostorNames ? `O impostor era: ${impostorNames}. ` : ""}${roundResult?.impostorWon ? "Vitoria do IMPOSTOR!" : "Vitoria do GRUPO!"}`;
+    const shareUrl =
+      typeof window !== "undefined" ? `${window.location.origin}/room/${room.code}` : "";
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: shareTitle,
+          text: shareText,
+          url: shareUrl,
+        });
+        return;
+      } catch {
+        // fall through to clipboard
+      }
+    }
+
+    try {
+      await navigator.clipboard.writeText(`${shareTitle}\n\n${shareText}\n\nJogue aqui: ${shareUrl}`);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+    }
+  };
+
   if (roundResult === undefined || roundResult === null) {
     return (
-      <div className="fixed inset-0 z-40 flex h-dvh w-full flex-col items-center justify-center bg-black/80 px-4 pb-6 pt-12 backdrop-blur-md">
-        <div className="h-24 w-24 animate-spin rounded-full border-8 border-white/20 border-t-white" />
-        <p className="mt-6 text-2xl font-bold uppercase tracking-widest text-white">Calculando...</p>
-        {showRetry && (
-          <button
-            onClick={() => void recomputeResults({ roundId: round._id, sessionId })}
-            className="mt-6 rounded-full border border-white/20 bg-white/10 px-6 py-3 font-display text-sm font-bold uppercase tracking-wider text-white transition-all hover:bg-white/20"
-          >
-            Tentar novamente
-          </button>
-        )}
+      <div className="flex min-h-dvh items-center justify-center px-4 py-10">
+        <GlassPanel tone="info" className="w-full max-w-xl rounded-[34px] px-6 py-8 text-center">
+          <div className="relative z-10">
+            <div className="mx-auto h-20 w-20 animate-spin rounded-full border-[6px] border-white/15 border-t-white" />
+            <p className="mt-5 font-condensed text-xs uppercase tracking-[0.34em] text-white/54">
+              Fechando a rodada
+            </p>
+            <h2 className="mt-3 font-display text-3xl text-white sm:text-4xl">
+              Calculando resultado
+            </h2>
+            <p className="mt-3 font-body text-sm leading-relaxed text-white/72 sm:text-base">
+              Consolidando votos, impostores e placar final desta rodada.
+            </p>
+
+            {showRetry && (
+              <Button
+                onClick={() => void recomputeResults({ roundId: round._id, sessionId })}
+                className="mt-6 h-[50px] rounded-[20px] border border-white/12 bg-white/12 px-6 text-sm font-semibold text-white hover:bg-white/18"
+              >
+                Tentar novamente
+              </Button>
+            )}
+          </div>
+        </GlassPanel>
       </div>
     );
   }
@@ -97,6 +152,7 @@ export function ResultsPhase({
     ? players.find((player) => player._id === roundResult.votedOutId) ?? null
     : null;
   const groupWon = !roundResult.impostorWon;
+  const resultTone = groupWon ? "safe" : "impostor";
   const nextMasterOptions = players
     .filter((player) => player.status !== "disconnected")
     .map((player) => ({
@@ -104,195 +160,331 @@ export function ResultsPhase({
       label: `${player.name}${player.isHost ? " (Host)" : ""}`,
     }));
 
+  const outcomeSummary = !roundResult.votedOutId
+    ? "Houve empate nos votos. Sem eliminacao, o SUS escapou da rodada."
+    : `${votedOut?.name ?? "Alguem"} foi votado e ${realImpostors.some((player) => player._id === votedOut?._id) ? "era" : "nao era"} o impostor.`;
+
   return (
-    <div className="fixed inset-0 z-40 flex h-[100dvh] w-full flex-col items-center justify-center bg-black/80 px-4 pb-6 pt-12 backdrop-blur-md">
+    <div className="mx-auto flex min-h-dvh w-full max-w-6xl flex-col px-4 py-8 sm:py-10">
       <AnimatePresence mode="wait">
         {!showResults ? (
           <motion.div
             key="loading"
-            initial={{ scale: 0.8, opacity: 0 }}
+            initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 1.2, opacity: 0, transition: { duration: 0.3 } }}
-            transition={{ duration: 0.5, repeatType: "reverse", repeat: Infinity }}
-            className="flex flex-col items-center gap-4"
+            exit={{ scale: 1.04, opacity: 0 }}
+            transition={{ duration: 0.45 }}
+            className="flex min-h-[60dvh] items-center justify-center"
           >
-            <div className="h-24 w-24 animate-spin rounded-full border-8 border-white/20 border-t-white" />
-            <p className="text-2xl font-bold uppercase tracking-widest text-white">Calculando...</p>
+            <GlassPanel tone="special" className="w-full max-w-xl rounded-[36px] px-6 py-8 text-center">
+              <div className="relative z-10">
+                <div className="mx-auto h-20 w-20 animate-spin rounded-full border-[6px] border-white/15 border-t-white" />
+                <p className="mt-5 font-condensed text-xs uppercase tracking-[0.34em] text-white/56">
+                  Resultado sincronizado
+                </p>
+                <h2 className="mt-3 font-display text-3xl text-white sm:text-4xl">
+                  Revelando a rodada
+                </h2>
+              </div>
+            </GlassPanel>
           </motion.div>
         ) : (
           <motion.div
             key="results"
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            className="flex w-full max-w-5xl flex-col items-center gap-8"
+            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full"
           >
             <PhaseIndicator currentPhase="results" mode={round.mode} questionMode={room.questionMode} />
-            <h1
-              className={`text-center font-display text-4xl font-black uppercase tracking-tight drop-shadow-[0_0_15px_currentColor] md:text-5xl ${
-                groupWon ? "text-game-safe" : "text-game-impostor"
-              }`}
-            >
-              {groupWon ? "Vitoria do grupo" : "Vitoria do impostor"}
-            </h1>
 
-            <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-6 rounded-3xl border-2 border-white/10 bg-surface-primary p-6 shadow-2xl">
-              <span className="text-sm font-bold uppercase tracking-widest text-white/60">
-                {realImpostors.length > 1 ? "Os impostores eram:" : "O impostor era:"}
-              </span>
-              <div className="flex flex-row flex-wrap justify-center gap-6">
-                {realImpostors.map((impostor) => (
-                  <ReactionAnchor
-                    key={impostor._id}
-                    playerId={String(impostor._id)}
-                    className="flex flex-col items-center gap-3"
+            <GlassPanel tone={resultTone} className="mt-6 rounded-[38px] px-6 py-7 sm:px-8 sm:py-8">
+              <div className="relative z-10 flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+                <div className="max-w-3xl">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 font-condensed text-[11px] uppercase tracking-[0.28em] text-white/60">
+                    {groupWon ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}
+                    Resultado oficial
+                  </div>
+                  <h1
+                    className={cn(
+                      "mt-4 font-display text-[clamp(2.7rem,7vw,5.2rem)] leading-none text-white",
+                      groupWon
+                        ? "drop-shadow-[0_0_28px_rgba(77,219,168,0.28)]"
+                        : "drop-shadow-[0_0_28px_rgba(255,87,123,0.28)]"
+                    )}
                   >
-                    <PlayerAvatar
-                      name={impostor.name}
-                      avatarSeed={impostor.emoji}
-                      imageUrl={impostor.avatarImageUrl}
-                      size="xl"
-                    />
-                    <span className="text-xl font-bold text-white">{impostor.name}</span>
-                  </ReactionAnchor>
-                ))}
+                    {groupWon ? "Vitoria do grupo" : "Vitoria do impostor"}
+                  </h1>
+                  <p className="mt-4 max-w-2xl font-body text-base leading-relaxed text-white/74 sm:text-lg">
+                    {outcomeSummary}
+                  </p>
+                </div>
+
+                <GlassSection className="rounded-[26px] px-4 py-4 lg:min-w-[260px]">
+                  <p className="font-condensed text-[11px] uppercase tracking-[0.24em] text-white/54">
+                    Leitura final
+                  </p>
+                  <div className="mt-3 space-y-2">
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="font-condensed text-[11px] uppercase tracking-[0.22em] text-white/42">
+                        Eliminado
+                      </span>
+                      <span className="max-w-[140px] truncate font-body text-sm text-white/88">
+                        {votedOut?.name ?? "Empate"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-4">
+                      <span className="font-condensed text-[11px] uppercase tracking-[0.22em] text-white/42">
+                        Impostores
+                      </span>
+                      <span className="max-w-[140px] truncate text-right font-body text-sm text-white/88">
+                        {realImpostors.map((player) => player.name).join(", ")}
+                      </span>
+                    </div>
+                  </div>
+                </GlassSection>
+              </div>
+            </GlassPanel>
+
+            <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(320px,0.9fr)]">
+              <GlassPanel tone="special" className="rounded-[34px] px-5 py-6 sm:px-6">
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="font-condensed text-[11px] uppercase tracking-[0.24em] text-white/56">
+                        {realImpostors.length > 1 ? "Identidades reveladas" : "Identidade revelada"}
+                      </p>
+                      <h2 className="mt-2 font-display text-2xl text-white sm:text-3xl">
+                        {realImpostors.length > 1 ? "Os impostores eram" : "O impostor era"}
+                      </h2>
+                    </div>
+
+                    <div className="rounded-full border border-white/10 bg-white/8 px-3 py-1.5 font-condensed text-[11px] uppercase tracking-[0.22em] text-white/60">
+                      SUS
+                    </div>
+                  </div>
+
+                  <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                    {realImpostors.map((impostor) => (
+                      <ReactionAnchor key={impostor._id} playerId={String(impostor._id)}>
+                        <GlassSection className="h-full rounded-[28px] p-5 text-center">
+                          <div className="flex flex-col items-center">
+                            <PlayerAvatar
+                              name={impostor.name}
+                              avatarSeed={impostor.emoji}
+                              imageUrl={impostor.avatarImageUrl}
+                              size="xl"
+                            />
+                            <p className="mt-4 font-display text-2xl text-white">
+                              {impostor.name}
+                            </p>
+                            <p className="mt-2 font-condensed text-[11px] uppercase tracking-[0.24em] text-white/56">
+                              Impostor confirmado
+                            </p>
+                          </div>
+                        </GlassSection>
+                      </ReactionAnchor>
+                    ))}
+                  </div>
+                </div>
+              </GlassPanel>
+
+              <div className="flex flex-col gap-6">
+                <GlassPanel tone="neutral" className="rounded-[34px] px-5 py-6 sm:px-6">
+                  <div className="relative z-10">
+                    <p className="font-condensed text-[11px] uppercase tracking-[0.24em] text-white/56">
+                      Resumo da rodada
+                    </p>
+                    <h2 className="mt-2 font-display text-2xl text-white">
+                      Conteudo jogado
+                    </h2>
+
+                    <div className="mt-5 grid gap-3">
+                      {round.mode === "word" && round.word && (
+                        <GlassSection className="rounded-[24px] px-4 py-4">
+                          <p className="font-condensed text-[11px] uppercase tracking-[0.22em] text-emerald-100/70">
+                            Palavra da rodada
+                          </p>
+                          <p className="mt-2 font-display text-2xl text-white">{round.word}</p>
+                        </GlassSection>
+                      )}
+
+                      {round.mode === "question" && round.questionMain && (
+                        <GlassSection className="rounded-[24px] px-4 py-4">
+                          <p className="font-condensed text-[11px] uppercase tracking-[0.22em] text-emerald-100/70">
+                            Pergunta normal
+                          </p>
+                          <p className="mt-2 font-body text-base leading-relaxed text-white/86">
+                            &quot;{round.questionMain}&quot;
+                          </p>
+                        </GlassSection>
+                      )}
+
+                      {round.mode === "question" && round.questionImpostor && (
+                        <GlassSection className="rounded-[24px] px-4 py-4">
+                          <p className="font-condensed text-[11px] uppercase tracking-[0.22em] text-rose-100/70">
+                            Pergunta do SUS
+                          </p>
+                          <p className="mt-2 font-body text-base leading-relaxed text-white/86">
+                            &quot;{round.questionImpostor}&quot;
+                          </p>
+                        </GlassSection>
+                      )}
+                    </div>
+                  </div>
+                </GlassPanel>
+
+                <GlassPanel tone="neutral" className="rounded-[34px] px-5 py-6 sm:px-6">
+                  <div className="relative z-10">
+                    <div className="flex items-center gap-2">
+                      <Vote size={16} className="text-white/62" />
+                      <p className="font-condensed text-[11px] uppercase tracking-[0.24em] text-white/56">
+                        Ledger de votos
+                      </p>
+                    </div>
+
+                    <div className="mt-4 flex max-h-[320px] flex-col gap-2 overflow-y-auto pr-1 custom-scrollbar">
+                      {votes?.map((vote) => {
+                        const voterPlayer = players.find((player) => player._id === vote.voterId);
+                        const targetPlayer = players.find((player) => player._id === vote.targetId);
+                        if (!voterPlayer || !targetPlayer) return null;
+
+                        return (
+                          <GlassSection key={vote._id} className="rounded-[20px] px-4 py-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <span className="max-w-[120px] truncate font-body text-sm text-white/72">
+                                {voterPlayer.name}
+                              </span>
+                              <ArrowRight size={14} className="shrink-0 text-white/28" />
+                              <span className="max-w-[120px] truncate text-right font-body text-sm text-rose-100">
+                                {targetPlayer.name}
+                              </span>
+                            </div>
+                          </GlassSection>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </GlassPanel>
               </div>
             </div>
 
-            <div className="w-full text-center">
-              <p className="mb-2 text-lg text-white/80">
-                {roundResult.votedOutId
-                  ? `${votedOut?.name} foi votado e ${realImpostors.find((player) => player._id === votedOut?._id) ? "era" : "nao era"} o impostor.`
-                  : "Houve um empate nos votos."}
-              </p>
-              {isMasterMode && round.questionMain && (
-                <div className="mx-auto mt-4 max-w-xl rounded-2xl border border-game-safe/30 bg-game-safe/10 p-4">
-                  <p className="font-condensed text-xs uppercase tracking-wider text-game-safe/70">Pergunta Normal</p>
-                  <p className="mt-1 font-body text-base text-white">&quot;{round.questionMain}&quot;</p>
-                </div>
-              )}
-              {isMasterMode && round.questionImpostor && (
-                <div className="mx-auto mt-3 max-w-xl rounded-2xl border border-game-impostor/30 bg-game-impostor/10 p-4">
-                  <p className="font-condensed text-xs uppercase tracking-wider text-game-impostor/70">Pergunta do SUS</p>
-                  <p className="mt-1 font-body text-base text-white">&quot;{round.questionImpostor}&quot;</p>
-                </div>
-              )}
-              {!isMasterMode && round.mode === "question" && round.questionMain && round.questionImpostor && (
-                <p className="mx-auto mt-3 max-w-3xl font-body text-sm text-white/65 sm:text-base">
-                  Pergunta normal: &quot;{round.questionMain}&quot; | Pergunta do impostor: &quot;{round.questionImpostor}&quot;
-                </p>
-              )}
-              {round.mode === "word" && round.word && (
-                <p className="mx-auto mt-3 max-w-3xl font-body text-sm text-white/65 sm:text-base">
-                  Palavra da rodada: &quot;{round.word}&quot;
-                </p>
-              )}
-            </div>
-
-            <div className="mx-auto mt-4 grid max-h-[25dvh] w-full max-w-xl grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
-              {votes?.map((vote) => {
-                const voterPlayer = players.find((player) => player._id === vote.voterId);
-                const targetPlayer = players.find((player) => player._id === vote.targetId);
-                if (!voterPlayer || !targetPlayer) return null;
-
-                return (
-                  <div
-                    key={vote._id}
-                    className="flex flex-col items-center gap-2 rounded-lg border border-white/5 bg-surface-primary/50 p-2 sm:flex-row sm:justify-center"
-                  >
-                    <span className="max-w-[80px] truncate text-xs text-white/70">{voterPlayer.name}</span>
-                    <span className="hidden text-xs text-white/30 sm:block">-&gt;</span>
-                    <span className="text-[10px] text-white/30 sm:hidden">Votou em</span>
-                    <span className="max-w-[80px] truncate text-xs font-bold text-red-400">
-                      {targetPlayer.name}
-                    </span>
+            <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+              <GlassPanel tone="info" className="rounded-[34px] px-5 py-6 sm:px-6">
+                <div className="relative z-10">
+                  <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 font-condensed text-[11px] uppercase tracking-[0.24em] text-white/56">
+                    <Sparkles size={14} />
+                    Proxima acao
                   </div>
-                );
-              })}
-            </div>
 
-            <div className="mx-auto mt-4 flex w-full max-w-sm flex-col gap-3">
-              <ShareResult
-                title={`SUS - Sala ${room.code}`}
-                text={`O impostor era: ${realImpostors.map((impostor) => impostor.name).join(", ")}!\n\n${groupWon ? "Vitoria do GRUPO!" : "Vitoria do IMPOSTOR!"}`}
-                url={typeof window !== "undefined" ? `${window.location.origin}/room/${room.code}` : ""}
-              />
-
-              {isMasterMode && isHost && !isSpectator && (
-                <GlassSection className="flex w-full flex-col items-center gap-3 rounded-[24px] p-4">
-                  <span className="font-condensed text-xs uppercase tracking-[0.24em] text-white/60">
-                    Mestre da proxima rodada
-                  </span>
-                  <GlassSelect
-                    ariaLabel="Selecionar mestre da proxima rodada"
-                    value={
-                      selectedMasterId ??
-                      String(
-                        room.settings.customMasterId ??
-                          players.find((player) => player.isHost)?._id ??
-                          ""
-                      )
-                    }
-                    onChange={setSelectedMasterId}
-                    options={nextMasterOptions}
-                    tone="info"
-                    className="w-full max-w-[260px]"
-                  />
-                </GlassSection>
-              )}
-
-            {isMasterMode && !isSpectator ? (
-                <>
-                  {isHost ? (
+                  <div className="mt-5 flex flex-col gap-3">
                     <Button
-                      className="w-full py-6 font-bold"
-                      disabled={isReturningToLobby}
-                      onClick={async () => {
-                        if (selectedMasterId) {
-                          await updateMasterForNextRound({
-                            roomId: round.roomId,
-                            sessionId,
-                            customMasterId: selectedMasterId,
-                          });
-                        }
-                        await startNextRound({ roomId: round.roomId, sessionId });
-                      }}
+                      onClick={() => void handleShareResult()}
+                      className="h-[54px] rounded-[22px] border border-white/12 bg-white/12 text-sm font-semibold text-white hover:bg-white/18"
                     >
-                      Proxima rodada (Host)
+                      {copied ? <Check size={16} /> : <Copy size={16} />}
+                      {copied ? "Texto copiado" : "Compartilhar resultado"}
                     </Button>
-                  ) : (
-                    <Button
-                      className="w-full py-6 font-bold"
-                      disabled={round.nextRoundReadyBy?.includes(myPlayer._id) ?? false}
-                      onClick={() => void requestNextRound({ roundId: round._id, playerId: myPlayer._id, sessionId })}
-                    >
-                      {round.nextRoundReadyBy?.includes(myPlayer._id)
-                        ? `Aguardando... (${round.nextRoundReadyBy?.length ?? 0} votos)`
-                        : `Proxima rodada (${round.nextRoundReadyBy?.length ?? 0} votos)`}
-                    </Button>
+
+                    {isMasterMode && !isSpectator ? (
+                      <>
+                        {isHost ? (
+                          <Button
+                            className="h-[54px] rounded-[22px] border border-white/10 bg-white text-sm font-semibold text-[#1a0b3d] shadow-[0_16px_36px_rgba(255,255,255,0.16)] hover:bg-white"
+                            disabled={isReturningToLobby}
+                            onClick={async () => {
+                              if (selectedMasterId) {
+                                await updateMasterForNextRound({
+                                  roomId: round.roomId,
+                                  sessionId,
+                                  customMasterId: selectedMasterId,
+                                });
+                              }
+                              await startNextRound({ roomId: round.roomId, sessionId });
+                            }}
+                          >
+                            Proxima rodada (Host)
+                          </Button>
+                        ) : (
+                          <Button
+                            className="h-[54px] rounded-[22px] border border-white/12 bg-white text-sm font-semibold text-[#1a0b3d] shadow-[0_16px_36px_rgba(255,255,255,0.16)] hover:bg-white disabled:border-white/8 disabled:bg-white/20 disabled:text-white/42"
+                            disabled={round.nextRoundReadyBy?.includes(myPlayer._id) ?? false}
+                            onClick={() =>
+                              void requestNextRound({
+                                roundId: round._id,
+                                playerId: myPlayer._id,
+                                sessionId,
+                              })
+                            }
+                          >
+                            {round.nextRoundReadyBy?.includes(myPlayer._id)
+                              ? `Aguardando... (${round.nextRoundReadyBy?.length ?? 0} votos)`
+                              : `Proxima rodada (${round.nextRoundReadyBy?.length ?? 0} votos)`}
+                          </Button>
+                        )}
+                      </>
+                    ) : !isSpectator && isHost ? (
+                      <Button
+                        className="h-[54px] rounded-[22px] border border-white/10 bg-white text-sm font-semibold text-[#1a0b3d] shadow-[0_16px_36px_rgba(255,255,255,0.16)] hover:bg-white"
+                        disabled={isReturningToLobby}
+                        onClick={() => void startNextRound({ roomId: round.roomId, sessionId })}
+                      >
+                        Proxima rodada
+                      </Button>
+                    ) : null}
+
+                    {isHost && (
+                      <Button
+                        onClick={() => void onBackToLobby()}
+                        disabled={isReturningToLobby}
+                        className="h-[54px] rounded-[22px] border border-white/12 bg-white/8 text-sm font-semibold text-white hover:bg-white/12 disabled:opacity-60"
+                      >
+                        {isReturningToLobby ? "Voltando..." : "Voltar ao Lobby"}
+                      </Button>
+                    )}
+                  </div>
+
+                  {!isMasterMode && !isHost && (
+                    <p className="mt-4 font-body text-sm text-white/58">
+                      Aguardando o host iniciar a proxima rodada.
+                    </p>
                   )}
-                </>
-              ) : !isSpectator && isHost ? (
-                    <Button
-                      className="w-full py-6 font-bold"
-                      disabled={isReturningToLobby}
-                      onClick={() => void startNextRound({ roomId: round.roomId, sessionId })}
-                    >
-                      Proxima rodada
-                    </Button>
-              ) : null}
+                </div>
+              </GlassPanel>
 
-              {isHost && (
-                <button
-                  onClick={() => void onBackToLobby()}
-                  disabled={isReturningToLobby}
-                  className="w-full rounded-xl border border-white/20 bg-white/10 py-4 font-bold text-white transition-all hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {isReturningToLobby ? "Voltando..." : "Voltar ao Lobby"}
-                </button>
+              {isMasterMode && isHost && !isSpectator ? (
+                <GlassPanel tone="special" className="rounded-[34px] px-5 py-6 sm:px-6">
+                  <div className="relative z-10">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 font-condensed text-[11px] uppercase tracking-[0.24em] text-white/56">
+                      <Crown size={14} />
+                      Mestre da proxima rodada
+                    </div>
+                    <p className="mt-4 font-body text-sm leading-relaxed text-white/70">
+                      Defina quem conduz a proxima rodada antes de avancar.
+                    </p>
+                    <div className="mt-5">
+                      <GlassSelect
+                        ariaLabel="Selecionar mestre da proxima rodada"
+                        value={
+                          selectedMasterId ??
+                          String(
+                            room.settings.customMasterId ??
+                              players.find((player) => player.isHost)?._id ??
+                              ""
+                          )
+                        }
+                        onChange={setSelectedMasterId}
+                        options={nextMasterOptions}
+                        tone="special"
+                        className="w-full"
+                      />
+                    </div>
+                  </div>
+                </GlassPanel>
+              ) : (
+                <div />
               )}
             </div>
-
-            {!isMasterMode && !isHost && <p className="mt-8 text-center font-medium text-white/60">Aguardando o host...</p>}
           </motion.div>
         )}
       </AnimatePresence>

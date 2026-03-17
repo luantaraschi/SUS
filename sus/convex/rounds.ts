@@ -86,6 +86,7 @@ async function enterSpeaking(
     status: "speaking",
     speakingOrder: order,
     currentSpeakerIndex: 0,
+    speakingTurnCount: 0,
     votingRequestedBy: [],
     phaseEndsAt: undefined,
   });
@@ -755,7 +756,10 @@ export const botAutoPass = internalMutation({
 
     const order = round.speakingOrder!;
     const nextIndex = (args.expectedIndex + 1) % order.length;
-    await ctx.db.patch(round._id, { currentSpeakerIndex: nextIndex });
+    await ctx.db.patch(round._id, {
+      currentSpeakerIndex: nextIndex,
+      speakingTurnCount: (round.speakingTurnCount ?? 0) + 1,
+    });
 
     const nextPlayer = await ctx.db.get(order[nextIndex]!);
     if (nextPlayer?.isBot) {
@@ -790,7 +794,10 @@ export const passTurn = mutation({
     }
 
     const nextIndex = (round.currentSpeakerIndex! + 1) % order.length;
-    await ctx.db.patch(round._id, { currentSpeakerIndex: nextIndex });
+    await ctx.db.patch(round._id, {
+      currentSpeakerIndex: nextIndex,
+      speakingTurnCount: (round.speakingTurnCount ?? 0) + 1,
+    });
 
     const nextPlayer = await ctx.db.get(order[nextIndex]!);
     if (nextPlayer?.isBot) {
@@ -858,6 +865,7 @@ export const getSpeakingState = query({
     return {
       speakingOrder: round.speakingOrder ?? [],
       currentSpeakerIndex: round.currentSpeakerIndex ?? 0,
+      speakingTurnCount: round.speakingTurnCount ?? 0,
       votingRequestedBy: round.votingRequestedBy ?? [],
     };
   },
