@@ -9,7 +9,6 @@ import PlayerAvatar from "../PlayerAvatar";
 import ShareResult from "../ShareResult";
 import { AnimatePresence, motion } from "framer-motion";
 import PhaseIndicator from "../PhaseIndicator";
-import { useRouter } from "next/navigation";
 import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
 import { useSound } from "@/lib/useSound";
 import { ReactionAnchor } from "../reactions/ReactionAnchor";
@@ -20,14 +19,23 @@ interface ResultsPhaseProps {
   myPlayer: Doc<"players">;
   sessionId: string;
   room: Doc<"rooms">;
+  onBackToLobby: () => Promise<void>;
+  isReturningToLobby: boolean;
 }
 
 function isMasterQuestionMode(room: { mode: string; questionMode?: string }) {
   return room.mode === "question" && (room.questionMode ?? "system") === "master";
 }
 
-export function ResultsPhase({ round, players, myPlayer, sessionId, room }: ResultsPhaseProps) {
-  const router = useRouter();
+export function ResultsPhase({
+  round,
+  players,
+  myPlayer,
+  sessionId,
+  room,
+  onBackToLobby,
+  isReturningToLobby,
+}: ResultsPhaseProps) {
   const isHost = myPlayer.isHost;
   const isSpectator = myPlayer.isSpectator;
   const isMasterMode = isMasterQuestionMode(room);
@@ -227,6 +235,7 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
                   {isHost ? (
                     <Button
                       className="w-full py-6 font-bold"
+                      disabled={isReturningToLobby}
                       onClick={async () => {
                         if (selectedMasterId) {
                           await updateMasterForNextRound({
@@ -253,20 +262,24 @@ export function ResultsPhase({ round, players, myPlayer, sessionId, room }: Resu
                   )}
                 </>
               ) : !isSpectator && isHost ? (
-                <Button
-                  className="w-full py-6 font-bold"
-                  onClick={() => void startNextRound({ roomId: round.roomId, sessionId })}
-                >
-                  Proxima rodada
-                </Button>
+                    <Button
+                      className="w-full py-6 font-bold"
+                      disabled={isReturningToLobby}
+                      onClick={() => void startNextRound({ roomId: round.roomId, sessionId })}
+                    >
+                      Proxima rodada
+                    </Button>
               ) : null}
 
-              <button
-                onClick={() => router.push(`/room/${room.code}`)}
-                className="w-full rounded-xl border border-white/20 bg-white/10 py-4 font-bold text-white transition-all hover:bg-white/20"
-              >
-                Voltar ao Lobby
-              </button>
+              {isHost && (
+                <button
+                  onClick={() => void onBackToLobby()}
+                  disabled={isReturningToLobby}
+                  className="w-full rounded-xl border border-white/20 bg-white/10 py-4 font-bold text-white transition-all hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {isReturningToLobby ? "Voltando..." : "Voltar ao Lobby"}
+                </button>
+              )}
             </div>
 
             {!isMasterMode && !isHost && <p className="mt-8 text-center font-medium text-white/60">Aguardando o host...</p>}

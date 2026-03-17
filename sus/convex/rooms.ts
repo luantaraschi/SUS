@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel.js";
-import { mutation, query } from "./_generated/server.js";
+import { mutation, query, type MutationCtx } from "./_generated/server.js";
 import { generateUniqueCode } from "./lib/generateCode.js";
 import { distributeRolesInternal, getRoomContentReadiness } from "./rounds.js";
 import { ensureDefaultContent, getFallbackDefaultPackKey } from "./content.js";
@@ -43,6 +43,37 @@ const BOT_PRESETS = [
 
 type PlayerDoc = Doc<"players">;
 type RoomDoc = Doc<"rooms">;
+
+async function deleteRoundGraph(ctx: MutationCtx, roundId: Id<"rounds">) {
+  const votes = await ctx.db
+    .query("votes")
+    .withIndex("by_round", (q) => q.eq("roundId", roundId))
+    .collect();
+  for (const vote of votes) {
+    await ctx.db.delete(vote._id);
+  }
+
+  const answers = await ctx.db
+    .query("answers")
+    .withIndex("by_round", (q) => q.eq("roundId", roundId))
+    .collect();
+  for (const answer of answers) {
+    await ctx.db.delete(answer._id);
+  }
+
+  await ctx.db.delete(roundId);
+}
+
+async function clearRoundsForRoom(ctx: MutationCtx, roomId: Id<"rooms">) {
+  const rounds = await ctx.db
+    .query("rounds")
+    .withIndex("by_room", (q) => q.eq("roomId", roomId))
+    .collect();
+
+  for (const round of rounds) {
+    await deleteRoundGraph(ctx, round._id);
+  }
+}
 
 function getRandomItem<T>(items: T[]): T {
   return items[Math.floor(Math.random() * items.length)]!;
@@ -606,6 +637,7 @@ export const startGame = mutation({
     }
 
     await clearLobbyMessagesForRoom(ctx, args.roomId);
+    await clearRoundsForRoom(ctx, args.roomId);
 
     const impostorIds = pickImpostorIds(activePlayers, room.settings.numImpostors || 1);
     const masterId = resolveMasterId(room, activePlayers, impostorIds);
@@ -897,38 +929,12 @@ export const backToLobby = mutation({
 
     await clearLobbyMessagesForRoom(ctx, args.roomId);
 
-    // Clean up current round data
-    if (room.currentRound > 0) {
-      const round = await ctx.db
-        .query("rounds")
-        .withIndex("by_room_number", (q) =>
-          q.eq("roomId", args.roomId).eq("number", room.currentRound)
-        )
-        .first();
-
-      if (round) {
-        const votes = await ctx.db
-          .query("votes")
-          .withIndex("by_round", (q) => q.eq("roundId", round._id))
-          .collect();
-        for (const vote of votes) {
-          await ctx.db.delete(vote._id);
-        }
-
-        const answers = await ctx.db
-          .query("answers")
-          .withIndex("by_round", (q) => q.eq("roundId", round._id))
-          .collect();
-        for (const answer of answers) {
-          await ctx.db.delete(answer._id);
-        }
-      }
-    }
-
     // Save history if any rounds were completed
     if (room.currentRound > 0) {
       await attemptSaveHistory(ctx, { roomId: args.roomId });
     }
+
+    await clearRoundsForRoom(ctx, args.roomId);
 
     // Reset room to lobby
     await ctx.db.patch(args.roomId, {

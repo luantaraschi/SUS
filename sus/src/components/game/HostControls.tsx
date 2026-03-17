@@ -8,12 +8,18 @@ import { api } from "../../../convex/_generated/api";
 interface HostControlsProps {
   room: Doc<"rooms">;
   sessionId: string;
+  onBackToLobby: () => Promise<void>;
+  isReturningToLobby: boolean;
 }
 
-export function HostControls({ room, sessionId }: HostControlsProps) {
+export function HostControls({
+  room,
+  sessionId,
+  onBackToLobby,
+  isReturningToLobby,
+}: HostControlsProps) {
   const [showConfirm, setShowConfirm] = useState<"restart" | "lobby" | null>(null);
   const restartRound = useMutation(api.rooms.restartRound);
-  const backToLobby = useMutation(api.rooms.backToLobby);
 
   const handleRestart = () => {
     void restartRound({ roomId: room._id, sessionId });
@@ -21,8 +27,8 @@ export function HostControls({ room, sessionId }: HostControlsProps) {
   };
 
   const handleBackToLobby = () => {
-    void backToLobby({ roomId: room._id, sessionId });
     setShowConfirm(null);
+    void onBackToLobby();
   };
 
   return (
@@ -30,6 +36,7 @@ export function HostControls({ room, sessionId }: HostControlsProps) {
       <div className="fixed right-4 top-4 z-50 flex gap-2">
         <button
           onClick={() => setShowConfirm("restart")}
+          disabled={isReturningToLobby}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 backdrop-blur-sm transition-all hover:bg-black/60 hover:text-white"
           title="Recomecar Rodada"
         >
@@ -42,6 +49,7 @@ export function HostControls({ room, sessionId }: HostControlsProps) {
         </button>
         <button
           onClick={() => setShowConfirm("lobby")}
+          disabled={isReturningToLobby}
           className="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-black/40 text-white/70 backdrop-blur-sm transition-all hover:bg-black/60 hover:text-white"
           title="Voltar ao Lobby"
         >
@@ -67,15 +75,17 @@ export function HostControls({ room, sessionId }: HostControlsProps) {
             <div className="flex gap-3">
               <button
                 onClick={() => setShowConfirm(null)}
+                disabled={isReturningToLobby}
                 className="flex-1 rounded-full border border-white/20 bg-white/10 py-3 font-display text-sm font-bold text-white transition-all hover:bg-white/20"
               >
                 Cancelar
               </button>
               <button
+                disabled={isReturningToLobby}
                 onClick={showConfirm === "restart" ? handleRestart : handleBackToLobby}
                 className="flex-1 rounded-full bg-game-impostor py-3 font-display text-sm font-bold text-white transition-all hover:bg-game-impostor/80"
               >
-                Confirmar
+                {showConfirm === "lobby" && isReturningToLobby ? "Voltando..." : "Confirmar"}
               </button>
             </div>
           </div>

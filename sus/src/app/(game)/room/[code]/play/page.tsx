@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use, useCallback, useEffect, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { useSessionId } from "@/lib/useSessionId";
@@ -26,6 +26,8 @@ export default function PlayPage({
   const { code } = use(params);
   const router = useRouter();
   const sessionId = useSessionId();
+  const roomPath = `/room/${code.toUpperCase()}`;
+  const [isReturningToLobby, setIsReturningToLobby] = useState(false);
 
   const room = useQuery(api.rooms.getRoomByCode, { code: code.toUpperCase() }); 
   const myPlayer = useQuery(
@@ -49,6 +51,21 @@ export default function PlayPage({
   );
 
   const updateStatus = useMutation(api.players.updateStatus);
+  const backToLobby = useMutation(api.rooms.backToLobby);
+
+  const handleBackToLobby = useCallback(async () => {
+    if (!room || !sessionId || isReturningToLobby) return;
+
+    setIsReturningToLobby(true);
+
+    try {
+      await backToLobby({ roomId: room._id, sessionId });
+      router.replace(roomPath);
+    } catch (error) {
+      setIsReturningToLobby(false);
+      console.error("Failed to return room to lobby", error);
+    }
+  }, [backToLobby, isReturningToLobby, room, roomPath, router, sessionId]);
 
   // Fix 1.4: cleanup de disconnection — marca jogador como disconnected ao sair da página
   useEffect(() => {
@@ -62,9 +79,15 @@ export default function PlayPage({
   // Redireciona para lobby se a sala não estiver em jogo
   useEffect(() => {
     if (room && room.status !== "playing") {
-      router.push(`/room/${code}`);
+      router.replace(roomPath);
     }
-  }, [room, code, router]);
+  }, [room, roomPath, router]);
+
+  useEffect(() => {
+    if (room?.status === "playing" && round === null) {
+      router.replace(roomPath);
+    }
+  }, [room?.status, roomPath, round, router]);
 
   // Fix 1.5: Se myPlayer é null (não undefined/loading), o jogador não é membro da sala
   useEffect(() => {
@@ -88,6 +111,8 @@ export default function PlayPage({
     players,
     room,
     sessionId: sessionId || "",
+    onBackToLobby: handleBackToLobby,
+    isReturningToLobby,
   };
 
   let phaseComponent: React.ReactNode = null;
@@ -121,7 +146,14 @@ export default function PlayPage({
 
   return (
     <ReactionProvider roomId={room._id}>
-      {myPlayer.isHost && <HostControls room={room} sessionId={sessionId || ""} />}
+      {myPlayer.isHost && (
+        <HostControls
+          room={room}
+          sessionId={sessionId || ""}
+          onBackToLobby={handleBackToLobby}
+          isReturningToLobby={isReturningToLobby}
+        />
+      )}
       {myPlayer.isSpectator && <SpectatorBanner />}
       {phaseComponent}
       <FloatingChat
