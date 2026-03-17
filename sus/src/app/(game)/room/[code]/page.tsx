@@ -16,6 +16,7 @@ import { BubbleText } from "@/components/ui/bubble-text";
 import { THEME_ICON_MAP } from "@/lib/themeIcons";
 import { Icon } from "@iconify/react";
 import { Plus } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 
 const MIN_PLAYERS = 3;
 const MAX_PLAYERS = 12;
@@ -58,6 +59,14 @@ function Counter({
   disableDecrement: boolean;
   disableIncrement: boolean;
 }) {
+  const [direction, setDirection] = useState(1);
+  const [prevValue, setPrevValue] = useState(value);
+
+  if (value !== prevValue) {
+    setDirection(value > prevValue ? 1 : -1);
+    setPrevValue(value);
+  }
+
   return (
     <div className="flex min-w-[110px] flex-col items-center gap-1.5">
       <span className="font-condensed text-xs uppercase tracking-wider text-[var(--panel-soft-text)] sm:text-sm">
@@ -72,9 +81,26 @@ function Counter({
         >
           <Icon icon="solar:alt-arrow-down-bold" width={20} height={20} />
         </button>
-        <span className="w-10 text-center font-display text-3xl text-[var(--panel-text)] sm:w-14 sm:text-5xl">
-          {value}
-        </span>
+        <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden sm:h-14 sm:w-14">
+          <AnimatePresence mode="popLayout" custom={direction} initial={false}>
+            <motion.span
+              key={value}
+              custom={direction}
+              variants={{
+                initial: (dir: number) => ({ y: dir > 0 ? "100%" : "-100%", opacity: 0 }),
+                animate: { y: "0%", opacity: 1 },
+                exit: (dir: number) => ({ y: dir > 0 ? "-100%" : "100%", opacity: 0 }),
+              }}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="absolute text-center font-display text-3xl text-[var(--panel-text)] sm:text-5xl"
+            >
+              {value}
+            </motion.span>
+          </AnimatePresence>
+        </div>
         <button
           type="button"
           onClick={onIncrement}
@@ -99,6 +125,7 @@ export default function RoomLobbyPage({
 
   const [codeHidden, setCodeHidden] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
   const [isStartingGame, setIsStartingGame] = useState(false);
   const [isAddingBot, setIsAddingBot] = useState(false);
   const [removingBotId, setRemovingBotId] = useState<string | null>(null);
@@ -161,6 +188,16 @@ export default function RoomLobbyPage({
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       setCopied(false);
+    }
+  }, [code]);
+
+  const handleCopyCode = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(code.toUpperCase());
+      setCodeCopied(true);
+      window.setTimeout(() => setCodeCopied(false), 2000);
+    } catch {
+      setCodeCopied(false);
     }
   }, [code]);
 
@@ -311,6 +348,7 @@ export default function RoomLobbyPage({
                     code={code}
                     codeHidden={codeHidden}
                     copied={copied}
+                    codeCopied={codeCopied}
                     playerCount={playerCount}
                     numImpostors={numImpostors}
                     packOptions={packOptions ?? []}
@@ -321,6 +359,7 @@ export default function RoomLobbyPage({
                     startReadinessMessage={startReadiness.message}
                     onToggleCodeHidden={() => setCodeHidden((current) => !current)}
                     onShare={handleShare}
+                    onCopyCode={handleCopyCode}
                     onChangeMaxPlayers={(delta) => updateRoomSettings({ maxPlayers: Math.max(Math.max(MIN_PLAYERS, playerCount), Math.min(MAX_PLAYERS, room.settings.maxPlayers + delta)) })}
                     onChangeRounds={(delta) => updateRoomSettings({ rounds: Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, room.settings.rounds + delta)) })}
                     onChangeImpostors={(delta) => updateRoomSettings({ numImpostors: Math.max(1, Math.min(MAX_IMPOSTORS, numImpostors + delta)) })}
@@ -407,6 +446,7 @@ export default function RoomLobbyPage({
                     code={code}
                     codeHidden={codeHidden}
                     copied={copied}
+                    codeCopied={codeCopied}
                     playerCount={playerCount}
                     numImpostors={numImpostors}
                     packOptions={packOptions ?? []}
@@ -417,6 +457,7 @@ export default function RoomLobbyPage({
                     startReadinessMessage={startReadiness.message}
                     onToggleCodeHidden={() => setCodeHidden((current) => !current)}
                     onShare={handleShare}
+                    onCopyCode={handleCopyCode}
                     onChangeMaxPlayers={(delta) => updateRoomSettings({ maxPlayers: Math.max(Math.max(MIN_PLAYERS, playerCount), Math.min(MAX_PLAYERS, room.settings.maxPlayers + delta)) })}
                     onChangeRounds={(delta) => updateRoomSettings({ rounds: Math.max(MIN_ROUNDS, Math.min(MAX_ROUNDS, room.settings.rounds + delta)) })}
                     onChangeImpostors={(delta) => updateRoomSettings({ numImpostors: Math.max(1, Math.min(Math.min(MAX_IMPOSTORS, room.settings.maxPlayers - 2), numImpostors + delta)) })}
@@ -499,6 +540,7 @@ function LobbyPanel({
   code,
   codeHidden,
   copied,
+  codeCopied,
   playerCount,
   numImpostors,
   packOptions,
@@ -509,6 +551,7 @@ function LobbyPanel({
   startReadinessMessage,
   onToggleCodeHidden,
   onShare,
+  onCopyCode,
   onChangeMaxPlayers,
   onChangeRounds,
   onChangeImpostors,
@@ -525,6 +568,7 @@ function LobbyPanel({
   code: string;
   codeHidden: boolean;
   copied: boolean;
+  codeCopied: boolean;
   playerCount: number;
   numImpostors: number;
   packOptions: Array<{ key: string; title: string; icon: string; source: "default" | "custom"; count: number }>;
@@ -535,6 +579,7 @@ function LobbyPanel({
   startReadinessMessage: string | null;
   onToggleCodeHidden: () => void;
   onShare: () => void;
+  onCopyCode: () => void;
   onChangeMaxPlayers: (delta: number) => void;
   onChangeRounds: (delta: number) => void;
   onChangeImpostors: (delta: number) => void;
@@ -572,11 +617,17 @@ function LobbyPanel({
                 <Icon icon={codeHidden ? "solar:eye-closed-bold" : "solar:eye-bold"} width={28} height={28} />
               </button>
               <CodeBlock code={code.toUpperCase()} hidden={codeHidden} />
-              <button type="button" onClick={onShare} className="text-[var(--panel-soft-text)] transition-colors hover:text-[var(--panel-text)]">
-                <Icon icon="solar:share-bold" width={28} height={28} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button type="button" onClick={onCopyCode} className="text-[var(--panel-soft-text)] transition-colors hover:text-[var(--panel-text)]">
+                  <Icon icon={codeCopied ? "solar:clipboard-check-bold" : "solar:copy-bold"} width={28} height={28} />
+                </button>
+                <button type="button" onClick={onShare} className="text-[var(--panel-soft-text)] transition-colors hover:text-[var(--panel-text)]">
+                  <Icon icon={copied ? "solar:check-circle-bold" : "solar:share-bold"} width={28} height={28} />
+                </button>
+              </div>
             </div>
             {copied && <span className="font-body text-sm text-game-safe sm:text-base">Link copiado!</span>}
+            {codeCopied && <span className="font-body text-sm text-game-safe sm:text-base">Código copiado!</span>}
           </div>
 
           <div className="flex flex-wrap justify-center gap-4 sm:gap-8">
@@ -585,9 +636,37 @@ function LobbyPanel({
             <Counter label="Impostores" value={numImpostors} onDecrement={() => onChangeImpostors(-1)} onIncrement={() => onChangeImpostors(1)} disableDecrement={!isHost || numImpostors <= 1} disableIncrement={!isHost || numImpostors >= Math.min(MAX_IMPOSTORS, room.settings.maxPlayers - 2)} />
           </div>
 
-          <div className="flex rounded-full bg-[var(--panel-muted)] p-1.5">
-            <button type="button" onClick={() => onModeChange("word")} disabled={!isHost} className={room.mode === "word" ? "rounded-full bg-surface-primary px-7 py-2.5 text-sm font-black uppercase tracking-wider text-white transition-all sm:px-8 sm:text-base" : "px-7 py-2.5 text-sm font-black uppercase tracking-wider text-[var(--panel-soft-text)] transition-all sm:px-8 sm:text-base"}>Palavra</button>
-            <button type="button" onClick={() => onModeChange("question")} disabled={!isHost} className={room.mode === "question" ? "rounded-full bg-surface-primary px-7 py-2.5 text-sm font-black uppercase tracking-wider text-white transition-all sm:px-8 sm:text-base" : "px-7 py-2.5 text-sm font-black uppercase tracking-wider text-[var(--panel-soft-text)] transition-all sm:px-8 sm:text-base"}>Pergunta</button>
+          <div className="flex relative rounded-full bg-[var(--panel-muted)] p-1.5 isolate">
+            <button
+              type="button"
+              onClick={() => onModeChange("word")}
+              disabled={!isHost}
+              className={`relative z-10 px-7 py-2.5 text-sm font-black uppercase tracking-wider transition-all sm:px-8 sm:text-base ${room.mode === "word" ? "text-white" : "text-[var(--panel-soft-text)] hover:text-[var(--panel-text)]"}`}
+            >
+              Palavra
+              {room.mode === "word" && (
+                <motion.div
+                  layoutId="modeIndicator"
+                  className="absolute inset-0 -z-10 rounded-full bg-surface-primary"
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => onModeChange("question")}
+              disabled={!isHost}
+              className={`relative z-10 px-7 py-2.5 text-sm font-black uppercase tracking-wider transition-all sm:px-8 sm:text-base ${room.mode === "question" ? "text-white" : "text-[var(--panel-soft-text)] hover:text-[var(--panel-text)]"}`}
+            >
+              Pergunta
+              {room.mode === "question" && (
+                <motion.div
+                  layoutId="modeIndicator"
+                  className="absolute inset-0 -z-10 rounded-full bg-surface-primary"
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                />
+              )}
+            </button>
           </div>
 
           {packOptions.length > 0 && !(room.mode === "question" && room.questionMode === "master") && (

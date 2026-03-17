@@ -9,12 +9,13 @@ import { usePathname } from "next/navigation";
 function GameLayoutInner({ children }: { children: React.ReactNode }) {
   const { variant, themeId, backgroundAnimationEnabled } = useBackground();
   const pathname = usePathname();
-  const usesFixedShell = pathname === "/" || /^\/room\/[^/]+$/.test(pathname);
+  const usesViewportShell = pathname === "/" || /^\/room\/[^/]+$/.test(pathname);
+  const showFooter = pathname === "/" || pathname?.startsWith("/profile");
 
   return (
     <div
       className={`relative flex min-h-0 flex-col ${
-        usesFixedShell ? "h-dvh overflow-hidden" : "min-h-dvh"
+        usesViewportShell ? "h-dvh overflow-hidden" : "min-h-dvh"
       }`}
     >
       <ShaderBackground
@@ -25,12 +26,14 @@ function GameLayoutInner({ children }: { children: React.ReactNode }) {
       <ConvexStatusBanner />
       <main
         className={`relative z-10 flex w-full flex-1 flex-col items-center justify-start px-3 py-3 sm:px-4 sm:py-4 ${
-          usesFixedShell ? "min-h-0 overflow-hidden pb-[88px]" : ""
+          usesViewportShell ? "min-h-0 overflow-hidden" : ""
+        } ${
+          showFooter ? "pb-[88px]" : ""
         }`}
       >
         {children}
       </main>
-      <Footer fixed={usesFixedShell} />
+      {showFooter ? <Footer fixed /> : null}
     </div>
   );
 }

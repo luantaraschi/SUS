@@ -48,7 +48,7 @@ export default function GameButton({
     <motion.button
       type={type}
       whileHover={disabled ? undefined : { scale: 1.02 }}
-      whileTap={disabled ? undefined : { scale: 0.98 }}
+      whileTap={disabled ? undefined : { scale: 0.95 }}
       onClick={onClick}
       disabled={disabled}
       className={`
