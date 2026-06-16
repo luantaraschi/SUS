@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Icon } from "@iconify/react";
-import GameButton from "@/components/game/GameButton";
+import { Button } from "@/components/ui/button";
 
 interface SignInModalProps {
   onClose: () => void;
@@ -67,16 +67,16 @@ export default function SignInModal({ onClose, onSuccess }: SignInModalProps) {
         </p>
 
         <div className="flex flex-col gap-4">
-          <GameButton
-            variant="outline"
-            size="lg"
-            icon={<Icon icon="flat-color-icons:google" width={24} height={24} />}
+          <Button
+            variant="glass"
+            size="game-lg"
             onClick={handleGoogle}
             disabled={isSubmitting}
             className="!bg-white !text-black !border-gray-200"
           >
+            <Icon icon="flat-color-icons:google" width={24} height={24} />
             Continuar com Google
-          </GameButton>
+          </Button>
 
           <div className="flex items-center gap-2">
             <div className="h-px bg-gray-200 flex-1" />
@@ -106,15 +106,15 @@ export default function SignInModal({ onClose, onSuccess }: SignInModalProps) {
                 {error}
               </p>
             )}
-            <GameButton
-              variant="filled"
-              size="lg"
+            <Button
+              variant="primary"
+              size="game-lg"
               type="submit"
               disabled={isSubmitting || !email || !password}
               className="mt-2"
             >
               {step === "signIn" ? "Entrar" : "Criar Conta"}
-            </GameButton>
+            </Button>
           </form>
 
           <div className="text-center mt-2">

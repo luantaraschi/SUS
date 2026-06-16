@@ -6,7 +6,7 @@ import { useMutation, useQuery } from "convex/react";
 import { Icon } from "@iconify/react";
 import { api } from "../../../convex/_generated/api";
 import GameCircle from "@/components/game/GameCircle";
-import GameButton from "@/components/game/GameButton";
+import { Button } from "@/components/ui/button";
 import GameInput from "@/components/game/GameInput";
 import PlayerAvatar from "@/components/game/PlayerAvatar";
 import HowToPlayModal from "@/components/game/HowToPlayModal";
@@ -273,10 +273,9 @@ export default function HomePage() {
                   <div className="my-1.5 h-px w-full bg-[var(--control-border)]" />
 
                   <div className="flex w-full flex-col gap-3">
-                    <GameButton
-                      variant="outline"
-                      size="lg"
-                      icon={<Icon icon="solar:login-2-bold" width={20} height={20} />}
+                    <Button
+                      variant="glass"
+                      size="game-lg"
                       disabled={code.length !== 4 || loading}
                       onClick={handleJoin}
                       className={
@@ -285,27 +284,28 @@ export default function HomePage() {
                           : "!bg-[#1e1b6e] !text-white !border-[#1e1b6e] !shadow-[0_4px_0_rgba(0,0,0,0.3)] hover:!brightness-110 !opacity-100"
                       }
                     >
+                      <Icon icon="solar:login-2-bold" width={20} height={20} />
                       Entrar
-                    </GameButton>
+                    </Button>
 
-                    <GameButton
-                      variant="filled"
-                      size="lg"
-                      icon={<Icon icon="solar:add-circle-bold" width={20} height={20} />}
+                    <Button
+                      variant="primary"
+                      size="game-lg"
                       disabled={loading}
                       onClick={handleCreate}
                     >
+                      <Icon icon="solar:add-circle-bold" width={20} height={20} />
                       Criar Sala
-                    </GameButton>
+                    </Button>
 
-                    <GameButton
-                      variant="outline"
-                      size="lg"
-                      icon={<Icon icon="solar:book-2-bold" width={20} height={20} />}
+                    <Button
+                      variant="glass"
+                      size="game-lg"
                       onClick={() => setShowHowToPlay(true)}
                     >
+                      <Icon icon="solar:book-2-bold" width={20} height={20} />
                       Como Jogar
-                    </GameButton>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -345,20 +345,18 @@ export default function HomePage() {
             </div>
 
             <div className="mt-1 border-t border-[var(--control-border)] pt-3">
-              <GameButton
-                variant="outline"
-                size="md"
+              <Button
+                variant="glass"
+                size="game-md"
                 onClick={() => {
                   setGuestAvatarSeed(randomSeed());
                   setIsAvatarModalOpen(false);
                 }}
-                className="!mb-0 !h-12 !text-base"
+                className="!h-12 !text-base"
               >
-                <div className="flex items-center gap-2">
-                  <Icon icon="solar:refresh-bold" width={20} height={20} />
-                  <span>Gerar Aleatorio</span>
-                </div>
-              </GameButton>
+                <Icon icon="solar:refresh-bold" width={20} height={20} />
+                <span>Gerar Aleatorio</span>
+              </Button>
             </div>
           </div>
         </div>

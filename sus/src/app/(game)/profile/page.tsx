@@ -7,7 +7,7 @@ import { Icon } from "@iconify/react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { api } from "../../../../convex/_generated/api";
 import PlayerAvatar from "@/components/game/PlayerAvatar";
-import GameButton from "@/components/game/GameButton";
+import { Button } from "@/components/ui/button";
 import { BubbleText } from "@/components/ui/bubble-text";
 import { useSessionId } from "@/lib/useSessionId";
 
@@ -237,10 +237,10 @@ export default function ProfilePage() {
                 </div>
 
                 <div className="flex flex-wrap gap-3">
-                  <GameButton
-                    variant="outline"
-                    size="md"
-                    className="!mb-0 !h-12 !text-base"
+                  <Button
+                    variant="glass"
+                    size="game-md"
+                    className="!h-12 !text-base"
                     onClick={() => {
                       setAvatarMode("generated");
                       setAvatarSeed(randomSeed());
@@ -249,15 +249,15 @@ export default function ProfilePage() {
                     }}
                   >
                     Gerar Novo Avatar
-                  </GameButton>
-                  <GameButton
-                    variant="outline"
-                    size="md"
-                    className="!mb-0 !h-12 !text-base"
+                  </Button>
+                  <Button
+                    variant="glass"
+                    size="game-md"
+                    className="!h-12 !text-base"
                     onClick={() => fileInputRef.current?.click()}
                   >
                     Escolher Foto
-                  </GameButton>
+                  </Button>
                 </div>
               </div>
 
@@ -267,15 +267,14 @@ export default function ProfilePage() {
                 </p>
               )}
 
-              <GameButton
-                variant="filled"
-                size="lg"
-                className="!mb-0"
+              <Button
+                variant="primary"
+                size="game-lg"
                 disabled={isSaving || !displayName.trim()}
                 onClick={handleSaveProfile}
               >
                 {isSaving ? "Salvando..." : "Salvar Perfil"}
-              </GameButton>
+              </Button>
             </div>
 
             <div className="grid grid-cols-2 gap-3 sm:gap-4">

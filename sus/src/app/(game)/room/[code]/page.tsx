@@ -7,7 +7,7 @@ import type { Id } from "../../../../../convex/_generated/dataModel";
 import { api } from "../../../../../convex/_generated/api";
 import { useSessionId } from "@/lib/useSessionId";
 import GameCircle from "@/components/game/GameCircle";
-import GameButton from "@/components/game/GameButton";
+import { Button } from "@/components/ui/button";
 import PlayerAvatar from "@/components/game/PlayerAvatar";
 import SignInModal from "@/components/auth/SignInModal";
 import GameSettingsButton from "@/components/game/GameSettingsButton";
@@ -287,7 +287,7 @@ export default function RoomLobbyPage({
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4">
         <p className="font-display text-3xl text-white">Sala nao encontrada</p>
-        <GameButton variant="outline" size="lg" onClick={() => router.push("/")}>Voltar</GameButton>
+        <Button variant="glass" size="game-lg" onClick={() => router.push("/")}>Voltar</Button>
       </div>
     );
   }
@@ -782,11 +782,15 @@ function LobbyPanel({
       <div className="mt-auto flex w-full flex-col gap-2 border-t border-[var(--control-border)] pt-4">
         {actionError && <p className="text-center font-body text-xs text-game-impostor sm:text-sm">{actionError}</p>}
         {isHost && (
-          <GameButton variant="filled" size="lg" icon={<Icon icon="solar:play-bold" width={20} height={20} />} onClick={onStart} disabled={startDisabled}>
+          <Button variant="primary" size="game-lg" onClick={onStart} disabled={startDisabled}>
+            <Icon icon="solar:play-bold" width={20} height={20} />
             Iniciar
-          </GameButton>
+          </Button>
         )}
-        <GameButton variant="outline" size="lg" icon={<Icon icon="solar:arrow-left-bold" width={20} height={20} />} onClick={onLeave}>Voltar</GameButton>
+        <Button variant="glass" size="game-lg" onClick={onLeave}>
+          <Icon icon="solar:arrow-left-bold" width={20} height={20} />
+          Voltar
+        </Button>
       </div>
     </div>
   );
