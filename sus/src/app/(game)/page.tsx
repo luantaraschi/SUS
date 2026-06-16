@@ -4,16 +4,19 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { Icon } from "@iconify/react";
+import { motion, useReducedMotion } from "framer-motion";
 import { api } from "../../../convex/_generated/api";
 import GameCircle from "@/components/game/GameCircle";
 import { Button } from "@/components/ui/button";
 import GameInput from "@/components/game/GameInput";
+import FormField from "@/components/game/FormField";
 import PlayerAvatar from "@/components/game/PlayerAvatar";
 import HowToPlayModal from "@/components/game/HowToPlayModal";
 import SignInModal from "@/components/auth/SignInModal";
 import GameSettingsButton from "@/components/game/GameSettingsButton";
 
 import { BubbleText } from "@/components/ui/bubble-text";
+import { staggerContainer, staggerItem } from "@/lib/motion";
 import { useBackground } from "@/lib/BackgroundContext";
 import { useSessionId } from "@/lib/useSessionId";
 
@@ -53,6 +56,7 @@ export default function HomePage() {
   const router = useRouter();
   const sessionId = useSessionId();
   const { setVariant, flashInvalid } = useBackground();
+  const reduceMotion = useReducedMotion();
 
   const profile = useQuery(api.profiles.current);
   const linkSession = useMutation(api.users.linkSession);
@@ -151,20 +155,23 @@ export default function HomePage() {
   if (!sessionId || profile === undefined) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
-        <p className="font-display text-2xl text-white animate-pulse">Carregando...</p>
+        <p className="font-display text-2xl text-[var(--color-text)] animate-pulse">Carregando...</p>
       </div>
     );
   }
 
+  const codeValid = code.length === 4 && roomExists === true;
+
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-hidden">
+      {/* Top bar: settings + account/profile */}
       <div className="pointer-events-none absolute inset-x-0 top-0 z-40 flex justify-end px-4 pt-3 sm:px-6 sm:pt-4">
         <div className="pointer-events-auto flex items-center gap-2">
           <GameSettingsButton sessionId={sessionId} />
           {isLoggedIn ? (
             <button
               onClick={() => router.push("/profile")}
-              className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
+              className="flex h-11 items-center gap-2 rounded-[var(--r-pill)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-4 text-[var(--color-text)] shadow-[var(--shadow-sm)] backdrop-blur-[var(--blur-md)] transition-[background-color,transform] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] active:scale-[0.96] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
             >
               <PlayerAvatar
                 name={profile.displayName}
@@ -178,25 +185,34 @@ export default function HomePage() {
           ) : (
             <button
               onClick={() => setShowSignIn(true)}
-              className="flex items-center gap-2 rounded-full bg-white/20 px-4 py-2 text-white shadow-sm backdrop-blur-sm transition-all hover:bg-white/30"
+              className="flex h-11 items-center gap-2 rounded-[var(--r-pill)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-4 text-[var(--color-text)] shadow-[var(--shadow-sm)] backdrop-blur-[var(--blur-md)] transition-[background-color,transform] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] active:scale-[0.96] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
             >
-              <Icon icon="solar:user-circle-bold" width={24} height={24} />
+              <Icon icon="solar:user-circle-bold" width={22} height={22} />
               <span className="hidden font-display text-sm tracking-widest sm:inline">Criar Conta</span>
             </button>
           )}
         </div>
       </div>
 
-      <div className="flex w-full min-h-0 flex-1 flex-col px-2 pt-4 sm:px-4 sm:pt-6">
+      <div className="flex w-full min-h-0 flex-1 flex-col px-3 pt-4 sm:px-4 sm:pt-6">
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center pb-4">
-          <div className={`flex w-full flex-col items-center justify-center -mt-12 sm:-mt-16 ${shakePanel ? "animate-shake" : ""}`}>
+          <div
+            className={`flex w-full max-w-[440px] flex-col items-center -mt-10 sm:-mt-14 ${
+              shakePanel ? "animate-shake" : ""
+            }`}
+          >
+            {/* Title + tagline */}
             <BubbleText
               text="SUS"
-              className="font-display text-[clamp(3.4rem,6vw,5.8rem)] tracking-wide drop-shadow-[0_3px_6px_rgba(0,0,0,0.3)]"
+              className="font-display text-[clamp(3.4rem,16vw,5.6rem)] leading-[0.9] tracking-[0.08em] [text-shadow:0_5px_0_rgba(0,0,0,0.18),0_0_34px_rgba(214,77,194,0.4)]"
             />
+            <p className="mt-1 text-center font-body text-[clamp(0.78rem,3.4vw,0.95rem)] tracking-wide text-[var(--color-text-muted)]">
+              o jogo de quem é o impostor
+            </p>
 
-            <div className="relative z-20 -mb-8 mt-2 flex flex-col items-center sm:-mb-10">
-              <button
+            {/* Avatar with gentle bob + crown + swap */}
+            <div className="relative z-20 mt-3 -mb-7 flex flex-col items-center sm:-mb-9">
+              <motion.button
                 onClick={() => {
                   if (isLoggedIn) {
                     router.push("/profile");
@@ -204,11 +220,22 @@ export default function HomePage() {
                     setIsAvatarModalOpen(true);
                   }
                 }}
-                className="relative transition-transform hover:scale-105 active:scale-95 focus:outline-none"
-                style={{
-                  transition: "transform 0.4s ease",
-                  transform: spinning ? "rotate(360deg)" : "rotate(0deg)",
-                }}
+                animate={
+                  reduceMotion
+                    ? undefined
+                    : { y: [0, -7, 0], rotate: spinning ? 360 : 0 }
+                }
+                transition={
+                  spinning
+                    ? { duration: 0.4, ease: "easeInOut" }
+                    : {
+                        y: { duration: 3.2, ease: "easeInOut", repeat: Infinity },
+                      }
+                }
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                className="relative rounded-full focus:outline-none focus-visible:shadow-[var(--ring-focus)]"
+                aria-label={isLoggedIn ? "Abrir perfil" : "Escolher avatar"}
               >
                 <PlayerAvatar
                   name={displayName}
@@ -218,97 +245,114 @@ export default function HomePage() {
                   size="2xl"
                   hideName
                 />
-              </button>
+              </motion.button>
 
               {isLoggedIn ? (
                 <button
                   onClick={() => router.push("/profile")}
-                  className="mt-2 rounded-full border border-white/25 bg-white/10 px-4 py-2 text-xs font-condensed uppercase tracking-[0.24em] text-white/80 backdrop-blur-sm transition-colors hover:bg-white/20"
+                  className="mt-2 rounded-[var(--r-pill)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-4 py-2 text-xs font-condensed uppercase tracking-[0.24em] text-[var(--color-text-muted)] backdrop-blur-[var(--blur-md)] transition-colors duration-[var(--t-quick)] hover:bg-[var(--glass-2)] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
                 >
                   Editar no perfil
                 </button>
               ) : (
                 <button
                   onClick={handleShuffleAvatar}
-                  className="absolute -right-1 bottom-2 flex h-14 w-14 items-center justify-center rounded-full border-4 border-white bg-[#1e1b6e] text-white shadow-xl transition-all hover:scale-110 active:scale-95 sm:bottom-4 sm:right-0 sm:h-16 sm:w-16 sm:border-[5px]"
+                  className="absolute -right-1 bottom-2 flex h-14 w-14 items-center justify-center rounded-full border-4 border-[var(--color-surface-white)] bg-[linear-gradient(180deg,var(--color-primary-1),var(--color-primary-2))] text-white shadow-[var(--shadow-md)] transition-transform duration-[var(--t-quick)] hover:scale-110 active:scale-95 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] sm:bottom-3 sm:right-0 sm:h-16 sm:w-16 sm:border-[5px]"
                   title="Trocar Avatar"
+                  aria-label="Gerar novo avatar"
                 >
-                  <Icon icon="solar:refresh-bold" width={28} height={28} className="sm:h-8 sm:w-8" />
+                  <Icon icon="solar:refresh-bold" width={26} height={26} className="sm:h-8 sm:w-8" />
                 </button>
               )}
             </div>
 
-            <GameCircle className="mt-2 flex w-full max-w-[680px] px-5 pb-4 pt-16 sm:px-7 sm:pb-5 sm:pt-[4.5rem]">
-              <div className="flex w-full flex-col items-center">
-                <div className="flex w-full max-w-[420px] flex-col items-center gap-3.5 py-1">
-                  <div className="w-full">
-                    <GameInput
-                      value={isLoggedIn ? displayName : guestName}
-                      onChange={isLoggedIn ? () => undefined : setGuestName}
-                      placeholder={`Anonimo${anonNumber}`}
-                      variant="text"
-                      maxLength={20}
-                      readOnly={isLoggedIn}
-                    />
-                    {isLoggedIn && (
-                      <p className="mt-2 text-center font-body text-xs text-[var(--panel-soft-text)]">
-                        O nome e a foto usados nas salas vem do seu perfil.
-                      </p>
-                    )}
-                  </div>
-
-                  <GameInput
-                    value={code}
-                    onChange={(value) => setCode(value.toUpperCase())}
-                    placeholder="Codigo"
-                    variant="code"
-                    maxLength={4}
-                    state={error ? "error" : code.length === 4 && roomExists === true ? "focus" : "default"}
-                  />
-
-                  {error && (
-                    <p className="text-center font-body text-sm text-game-impostor">{error}</p>
-                  )}
-
-                  <div className="my-1.5 h-px w-full bg-[var(--control-border)]" />
-
-                  <div className="flex w-full flex-col gap-3">
-                    <Button
-                      variant="glass"
-                      size="game-lg"
-                      disabled={code.length !== 4 || loading}
-                      onClick={handleJoin}
-                      className={
-                        code.length !== 4 || loading
-                          ? "!bg-[var(--control-disabled-bg)] !text-[var(--control-disabled-text)] !border-[var(--control-disabled-border)] !shadow-none !opacity-100 hover:!shadow-none"
-                          : "!bg-[#1e1b6e] !text-white !border-[#1e1b6e] !shadow-[0_4px_0_rgba(0,0,0,0.3)] hover:!brightness-110 !opacity-100"
+            {/* Glass card */}
+            <GameCircle className="mt-2 px-5 pb-5 pt-14 sm:px-7 sm:pb-6 sm:pt-16">
+              <motion.div
+                variants={staggerContainer}
+                initial="initial"
+                animate="animate"
+                className="flex w-full flex-col items-center"
+              >
+                <div className="flex w-full max-w-[380px] flex-col items-center gap-3.5">
+                  <motion.div variants={staggerItem} className="w-full">
+                    <FormField
+                      help={
+                        isLoggedIn
+                          ? "O nome e a foto usados nas salas vem do seu perfil."
+                          : undefined
                       }
                     >
-                      <Icon icon="solar:login-2-bold" width={20} height={20} />
-                      Entrar
-                    </Button>
+                      <GameInput
+                        id="home-name"
+                        aria-label="Seu nome"
+                        value={isLoggedIn ? displayName : guestName}
+                        onChange={isLoggedIn ? () => undefined : setGuestName}
+                        placeholder={`Anonimo${anonNumber}`}
+                        variant="text"
+                        maxLength={20}
+                        readOnly={isLoggedIn}
+                      />
+                    </FormField>
+                  </motion.div>
 
-                    <Button
-                      variant="primary"
-                      size="game-lg"
-                      disabled={loading}
-                      onClick={handleCreate}
-                    >
-                      <Icon icon="solar:add-circle-bold" width={20} height={20} />
-                      Criar Sala
-                    </Button>
+                  <motion.div variants={staggerItem} className="w-full">
+                    <FormField error={error || undefined}>
+                      <GameInput
+                        id="home-code"
+                        aria-label="Codigo da sala"
+                        value={code}
+                        onChange={(value) => setCode(value.toUpperCase())}
+                        placeholder="Codigo"
+                        variant="code"
+                        maxLength={4}
+                        state={error ? "error" : codeValid ? "focus" : "default"}
+                      />
+                    </FormField>
+                  </motion.div>
 
-                    <Button
-                      variant="glass"
-                      size="game-lg"
-                      onClick={() => setShowHowToPlay(true)}
-                    >
-                      <Icon icon="solar:book-2-bold" width={20} height={20} />
-                      Como Jogar
-                    </Button>
+                  <motion.div
+                    variants={staggerItem}
+                    className="my-1 h-px w-full bg-[linear-gradient(90deg,transparent,var(--glass-border),transparent)]"
+                  />
+
+                  <div className="flex w-full flex-col gap-3">
+                    <motion.div variants={staggerItem}>
+                      <Button
+                        variant="primary"
+                        size="game-lg"
+                        disabled={loading}
+                        onClick={handleCreate}
+                      >
+                        <Icon icon="solar:add-circle-bold" width={22} height={22} />
+                        Criar Sala
+                      </Button>
+                    </motion.div>
+
+                    <motion.div variants={staggerItem}>
+                      <Button
+                        variant="glass"
+                        size="game-lg"
+                        disabled={code.length !== 4 || loading}
+                        onClick={handleJoin}
+                      >
+                        <Icon icon="solar:login-2-bold" width={20} height={20} />
+                        Entrar
+                      </Button>
+                    </motion.div>
+
+                    <motion.div variants={staggerItem}>
+                      <button
+                        onClick={() => setShowHowToPlay(true)}
+                        className="flex h-11 w-full items-center justify-center gap-2 rounded-[var(--r-md)] border border-dashed border-[var(--w-28)] font-display text-sm uppercase tracking-widest text-[var(--color-text-muted)] transition-[background-color,transform] duration-[var(--t-quick)] hover:bg-[var(--glass-1)] active:scale-[0.97] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+                      >
+                        <Icon icon="solar:book-2-bold" width={18} height={18} />
+                        Como Jogar
+                      </button>
+                    </motion.div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             </GameCircle>
           </div>
         </div>
@@ -316,12 +360,13 @@ export default function HomePage() {
 
       {isAvatarModalOpen && !isLoggedIn && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm">
-          <div className="flex w-full max-w-md flex-col gap-4 rounded-3xl bg-[var(--panel-elevated)] p-5 text-[var(--panel-text)] shadow-2xl animate-in fade-in zoom-in duration-200 sm:p-6">
+          <div className="flex w-full max-w-md flex-col gap-4 rounded-[var(--r-xl)] bg-[var(--panel-elevated)] p-5 text-[var(--panel-text)] shadow-2xl animate-in fade-in zoom-in duration-200 sm:p-6">
             <div className="flex items-center justify-between">
               <h2 className="font-display text-2xl text-[var(--panel-text)]">Escolha seu Avatar</h2>
               <button
                 onClick={() => setIsAvatarModalOpen(false)}
                 className="rounded-full p-1 text-[var(--panel-soft-text)] transition-colors hover:bg-[var(--panel-muted)] hover:text-[var(--panel-text)]"
+                aria-label="Fechar"
               >
                 <Icon icon="solar:close-circle-bold" width={32} height={32} />
               </button>
@@ -335,7 +380,7 @@ export default function HomePage() {
                     setGuestAvatarSeed(seed);
                     setIsAvatarModalOpen(false);
                   }}
-                  className={`flex items-center justify-center transition-all hover:scale-110 active:scale-95 ${
+                  className={`flex items-center justify-center transition-transform duration-[var(--t-quick)] hover:scale-110 active:scale-95 ${
                     guestAvatarSeed === seed ? "scale-105 rounded-full ring-4 ring-surface-primary" : ""
                   }`}
                 >
@@ -373,7 +418,6 @@ export default function HomePage() {
           void linkSession({ sessionId });
         }}
       />
-
     </div>
   );
 }
