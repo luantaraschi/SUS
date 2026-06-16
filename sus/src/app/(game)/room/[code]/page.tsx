@@ -541,16 +541,15 @@ export default function RoomLobbyPage({
 
       </div>
 
-      {showSignIn && (
-        <SignInModal
-          onClose={() => setShowSignIn(false)}
-          onSuccess={() => {
-            setShowSignIn(false);
-            if (!sessionId) return;
-            void linkSession({ sessionId });
-          }}
-        />
-      )}
+      <SignInModal
+        open={showSignIn}
+        onClose={() => setShowSignIn(false)}
+        onSuccess={() => {
+          setShowSignIn(false);
+          if (!sessionId) return;
+          void linkSession({ sessionId });
+        }}
+      />
     </div>
   );
 }

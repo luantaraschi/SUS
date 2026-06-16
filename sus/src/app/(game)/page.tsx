@@ -362,18 +362,17 @@ export default function HomePage() {
         </div>
       )}
 
-      {showHowToPlay && <HowToPlayModal onClose={() => setShowHowToPlay(false)} />}
+      <HowToPlayModal open={showHowToPlay} onClose={() => setShowHowToPlay(false)} />
 
-      {showSignIn && (
-        <SignInModal
-          onClose={() => setShowSignIn(false)}
-          onSuccess={() => {
-            setShowSignIn(false);
-            if (!sessionId) return;
-            void linkSession({ sessionId });
-          }}
-        />
-      )}
+      <SignInModal
+        open={showSignIn}
+        onClose={() => setShowSignIn(false)}
+        onSuccess={() => {
+          setShowSignIn(false);
+          if (!sessionId) return;
+          void linkSession({ sessionId });
+        }}
+      />
 
     </div>
   );

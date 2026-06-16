@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { useConvex, useMutation } from "convex/react";
+import { Modal } from "@/components/ui/Modal";
 import { api } from "../../../convex/_generated/api";
 import { useBackground } from "@/lib/BackgroundContext";
 import { useSound } from "@/lib/useSound";
@@ -152,25 +153,15 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
         <Icon icon="solar:settings-bold" width={22} height={22} />
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[min(1080px,96vw)] flex-col overflow-hidden rounded-[32px] border border-[var(--panel-border)] bg-[var(--panel-surface)] p-4 text-[var(--panel-text)] shadow-[0_30px_80px_rgba(0,0,0,0.35)] sm:p-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <div>
-                <h2 className="font-display text-3xl">Configuracoes</h2>
-                <p className="font-body text-sm text-[var(--panel-soft-text)]">
-                  Ajuste a aparencia e relate problemas sem sair da sala.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--panel-muted)] text-[var(--panel-text)] transition-colors hover:bg-black/10"
-                aria-label="Fechar configuracoes"
-              >
-                <Icon icon="solar:close-circle-bold" width={26} height={26} />
-              </button>
-            </div>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        size="lg"
+        title="Configuracoes"
+      >
+          <p className="mb-5 font-body text-sm text-[var(--color-text-muted)]">
+            Ajuste a aparencia e relate problemas sem sair da sala.
+          </p>
 
             <div className="grid max-h-full items-start gap-5 overflow-y-auto pr-1 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] custom-scrollbar">
               <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4 lg:self-start">
@@ -285,9 +276,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                 </section>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }
