@@ -35,14 +35,17 @@ export default function Timer({ endsAt, className = "" }: TimerProps) {
 
   const toneClass =
     remainingSeconds <= 10
-      ? "animate-bounce-result text-game-impostor"
+      ? "animate-bounce-result text-[var(--color-imp)]"
       : remainingSeconds <= 30
-        ? "text-game-warning"
-        : "text-game-info";
+        ? "text-[var(--color-warn)]"
+        : "text-[var(--color-info)]";
 
   return (
-    <div className={`font-mono text-4xl font-bold tracking-wider sm:text-5xl ${toneClass} ${className}`}>
-      {display}
+    <div
+      aria-live="polite"
+      className={`font-mono text-4xl font-bold tracking-wider sm:text-5xl ${toneClass} ${className}`}
+    >
+      <span className="tnum">{display}</span>
     </div>
   );
 }

@@ -52,7 +52,7 @@ export default function Footer({ fixed = false }: FooterProps) {
             
             <button
               onClick={toggleLanguage}
-              className="flex items-center justify-center text-sm transition-transform hover:scale-110 opacity-70 hover:opacity-100"
+              className="flex size-10 items-center justify-center rounded-full text-sm transition-transform hover:scale-110 opacity-70 hover:opacity-100 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
               title="Toggle Language"
             >
               {language === 'pt' ? '🇧🇷' : '🇺🇸'}
@@ -70,14 +70,14 @@ export default function Footer({ fixed = false }: FooterProps) {
           <nav className="flex flex-1 justify-center gap-4 font-condensed text-xs uppercase tracking-widest text-white/50">
             <button 
               onClick={() => setActiveModal('privacy')}
-              className="transition-colors hover:text-white/80"
+              className="min-h-10 px-1 transition-colors hover:text-white/80 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
             >
               {t('privacy')}
             </button>
             <span>|</span>
             <button 
               onClick={() => setActiveModal('terms')}
-              className="transition-colors hover:text-white/80"
+              className="min-h-10 px-1 transition-colors hover:text-white/80 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
             >
               {t('terms')}
             </button>
@@ -90,7 +90,7 @@ export default function Footer({ fixed = false }: FooterProps) {
                 href={link.href}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="transition-colors hover:text-white"
+                className="flex size-10 items-center justify-center rounded-full transition-colors hover:text-white focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
               >
                 {link.icon}
               </a>

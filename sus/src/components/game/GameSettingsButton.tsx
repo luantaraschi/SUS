@@ -147,7 +147,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white shadow-lg backdrop-blur-md transition-transform hover:scale-105"
+        className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white shadow-lg backdrop-blur-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
         aria-label="Abrir configuracoes"
       >
         <Icon icon="solar:settings-bold" width={22} height={22} />
@@ -205,7 +205,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                         onClick={() =>
                           handleColorSchemeChange(option.value as "system" | "light" | "dark")
                         }
-                        className={`rounded-full border px-4 py-2 font-condensed text-sm uppercase tracking-[0.24em] transition-colors ${
+                        className={`min-h-10 rounded-full border px-4 py-2 font-condensed text-sm uppercase tracking-[0.24em] transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] ${
                           colorScheme === option.value
                             ? "border-surface-primary bg-surface-primary text-white"
                             : "border-[var(--control-border)] bg-[var(--control-surface)] text-[var(--control-text)]"
@@ -230,7 +230,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                       role="switch"
                       aria-checked={backgroundAnimationEnabled}
                       onClick={() => handleAnimationChange(!backgroundAnimationEnabled)}
-                      className={`flex h-8 w-14 shrink-0 items-center rounded-full px-1 transition-colors ${
+                      className={`flex h-10 w-14 shrink-0 items-center rounded-full px-1 transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] ${
                         backgroundAnimationEnabled
                           ? "justify-end bg-game-safe"
                           : "justify-start bg-[var(--control-surface-muted)]"
@@ -254,7 +254,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                       role="switch"
                       aria-checked={!soundMuted}
                       onClick={toggleSoundMute}
-                      className={`flex h-8 w-14 shrink-0 items-center rounded-full px-1 transition-colors ${
+                      className={`flex h-10 w-14 shrink-0 items-center rounded-full px-1 transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] ${
                         !soundMuted
                           ? "justify-end bg-game-safe"
                           : "justify-start bg-[var(--control-surface-muted)]"
