@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useMutation, useQuery } from "convex/react";
 import type { Doc } from "../../../../convex/_generated/dataModel";
 import { api } from "../../../../convex/_generated/api";
@@ -9,6 +10,7 @@ import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
 import PhaseIndicator from "../PhaseIndicator";
 import SpeakingOrbit from "../SpeakingOrbit";
 import { GlassSection } from "../ui/glass";
+import { playSound } from "@/lib/sound";
 
 interface SpeakingPhaseProps {
   round: SafeRound;
@@ -34,6 +36,50 @@ export function SpeakingPhase({
   const isHost = myPlayer.isHost;
   const isImpostor = myRole?.isImpostor ?? false;
 
+  // track previous speaker index to detect "becomes my turn"
+  const prevSpeakerIndexRef = useRef<number | null>(null);
+  // track previous voting-request count to detect threshold crossing
+  const prevVotingCountRef = useRef<number>(0);
+
+  const currentSpeakerIndex = speakingState?.currentSpeakerIndex ?? null;
+  const speakingOrder = speakingState?.speakingOrder ?? [];
+  const votingRequestedBy = speakingState?.votingRequestedBy ?? [];
+
+  const resolvedCurrentSpeaker =
+    currentSpeakerIndex !== null
+      ? (speakingOrder
+          .map((id) => players.find((p) => p._id === id))
+          .filter(Boolean) as PublicPlayer[])[currentSpeakerIndex] ?? null
+      : null;
+  const isMyTurnNow = resolvedCurrentSpeaker?._id === myPlayer._id;
+
+  const humanActiveCount = players.filter(
+    (p) => p.status !== "disconnected" && !p.isBot
+  ).length;
+  const majorityThreshold = Math.ceil(humanActiveCount / 2);
+
+  // turn.you — fire when currentSpeakerIndex changes and it's now my turn
+  useEffect(() => {
+    if (currentSpeakerIndex === null) return;
+    if (isMyTurnNow && prevSpeakerIndexRef.current !== currentSpeakerIndex) {
+      playSound("turn.you");
+    }
+    prevSpeakerIndexRef.current = currentSpeakerIndex;
+  }, [currentSpeakerIndex, isMyTurnNow]);
+
+  // vote.consensus — fire when votingRequestedBy crosses the majority threshold
+  useEffect(() => {
+    const count = votingRequestedBy.length;
+    if (
+      count >= majorityThreshold &&
+      majorityThreshold > 0 &&
+      prevVotingCountRef.current < majorityThreshold
+    ) {
+      playSound("vote.consensus");
+    }
+    prevVotingCountRef.current = count;
+  }, [votingRequestedBy.length, majorityThreshold]);
+
   if (!speakingState) {
     return (
       <div className="flex h-[calc(100dvh-1.5rem)] items-center justify-center sm:h-[calc(100dvh-2rem)]">
@@ -42,18 +88,13 @@ export function SpeakingPhase({
     );
   }
 
-  const { speakingOrder, currentSpeakerIndex, votingRequestedBy } = speakingState;
-  const orderedPlayers = speakingOrder
+  const orderedPlayers = speakingState.speakingOrder
     .map((id) => players.find((player) => player._id === id))
     .filter(Boolean) as PublicPlayer[];
-  const currentSpeaker = orderedPlayers[currentSpeakerIndex] ?? null;
+  const currentSpeaker = orderedPlayers[speakingState.currentSpeakerIndex] ?? null;
   const isMyTurn = currentSpeaker?._id === myPlayer._id;
 
-  const humanActive = players.filter(
-    (player) => player.status !== "disconnected" && !player.isBot
-  );
-  const majority = Math.ceil(humanActive.length / 2);
-  const hasRequestedVoting = votingRequestedBy.includes(myPlayer._id);
+  const hasRequestedVoting = speakingState.votingRequestedBy.includes(myPlayer._id);
   const privateLabel = isImpostor
     ? myRole?.secretContent
       ? `Voce e o SUS - dica: ${myRole.secretContent}`
@@ -77,7 +118,7 @@ export function SpeakingPhase({
       <div className="flex min-h-0 flex-1 items-center justify-center py-2">
         <SpeakingOrbit
           players={orderedPlayers}
-          currentSpeakerIndex={currentSpeakerIndex}
+          currentSpeakerIndex={speakingState.currentSpeakerIndex}
           myPlayerId={myPlayer._id}
           centerContent={
             <div className="space-y-2">
@@ -143,7 +184,7 @@ export function SpeakingPhase({
               </Button>
 
               <p className="text-center font-condensed text-[11px] uppercase tracking-[0.22em] text-white/52">
-                Consenso {votingRequestedBy.length}/{majority} votos
+                Consenso {speakingState.votingRequestedBy.length}/{majorityThreshold} votos
               </p>
             </div>
           </div>

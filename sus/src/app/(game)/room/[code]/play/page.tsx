@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { useSessionId } from "@/lib/useSessionId";
@@ -19,6 +19,7 @@ import { ReactionProvider } from "@/components/game/reactions/ReactionProvider";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { phaseTransition } from "@/lib/motion";
+import { playSound } from "@/lib/sound";
 
 export default function PlayPage({
   params,
@@ -97,6 +98,17 @@ export default function PlayPage({
       router.push("/");
     }
   }, [myPlayer, router]);
+
+  // phase.enter — play on every subsequent phase change (skip initial mount)
+  const phaseInitializedRef = useRef(false);
+  useEffect(() => {
+    if (!round?.status) return;
+    if (!phaseInitializedRef.current) {
+      phaseInitializedRef.current = true;
+      return;
+    }
+    playSound("phase.enter");
+  }, [round?.status]);
 
   if (!room || !myPlayer || !round || !players) {
     return (

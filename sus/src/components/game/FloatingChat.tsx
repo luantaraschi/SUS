@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "@iconify/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { playSound } from "@/lib/sound";
 
 const QUICK_EMOJIS = [
   "\u{1F440}",
@@ -47,6 +48,7 @@ export default function FloatingChat({
         text: trimmed,
         isEmoji,
       });
+      playSound("chat.message");
       setText("");
     },
     [playerId, roomId, sendMessage, sessionId]

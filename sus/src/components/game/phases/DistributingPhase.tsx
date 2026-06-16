@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import { useMutation } from "convex/react";
 import type { Doc, Id } from "../../../../convex/_generated/dataModel";
@@ -19,6 +19,7 @@ import {
   glassToneClasses,
 } from "../ui/glass";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
+import { playSound } from "@/lib/sound";
 import {
   Check,
   CircleDashed,
@@ -98,6 +99,15 @@ export function DistributingPhase({
   const [masterImpostor, setMasterImpostor] = useState("");
   const [selectedImpostor, setSelectedImpostor] = useState("random");
   const confirmSeen = useMutation(api.rounds.confirmSeen);
+
+  // Fire role.reveal once when the player's role/secret first arrives
+  const roleRevealedRef = useRef(false);
+  useEffect(() => {
+    if (myRole && !roleRevealedRef.current) {
+      roleRevealedRef.current = true;
+      playSound("role.reveal");
+    }
+  }, [myRole]);
   const setMasterQuestions = useMutation(api.rounds.setMasterQuestions);
   const showMasterBoardBackground =
     room.mode === "question" &&

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { playSound } from "@/lib/sound";
 
 interface TimerProps {
   endsAt: number | null | undefined;
@@ -9,6 +10,7 @@ interface TimerProps {
 
 export default function Timer({ endsAt, className = "" }: TimerProps) {
   const [now, setNow] = useState(() => Date.now());
+  const prevTickRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!endsAt) {
@@ -28,6 +30,17 @@ export default function Timer({ endsAt, className = "" }: TimerProps) {
     }
     return Math.max(0, Math.ceil((endsAt - now) / 1000));
   }, [endsAt, now]);
+
+  // Play a tick sound once per whole second when ≤10s remain
+  useEffect(() => {
+    if (remainingSeconds > 0 && remainingSeconds <= 10 && remainingSeconds !== prevTickRef.current) {
+      prevTickRef.current = remainingSeconds;
+      playSound("timer.tick");
+    }
+    if (remainingSeconds === 0) {
+      prevTickRef.current = null;
+    }
+  }, [remainingSeconds]);
 
   const mins = Math.floor(remainingSeconds / 60);
   const secs = remainingSeconds % 60;

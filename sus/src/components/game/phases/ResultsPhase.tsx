@@ -406,6 +406,7 @@ export function ResultsPhase({
                                   customMasterId: selectedMasterId,
                                 });
                               }
+                              playSound("round.next");
                               await startNextRound({ roomId: round.roomId, sessionId });
                             }}
                           >
@@ -415,13 +416,14 @@ export function ResultsPhase({
                           <Button
                             className="h-[54px] rounded-[22px] border border-white/12 bg-white text-sm font-semibold text-[#1a0b3d] shadow-[0_16px_36px_rgba(255,255,255,0.16)] hover:bg-white disabled:border-white/8 disabled:bg-white/20 disabled:text-white/42"
                             disabled={round.nextRoundReadyBy?.includes(myPlayer._id) ?? false}
-                            onClick={() =>
+                            onClick={() => {
+                              playSound("round.next");
                               void requestNextRound({
                                 roundId: round._id,
                                 playerId: myPlayer._id,
                                 sessionId,
-                              })
-                            }
+                              });
+                            }}
                           >
                             {round.nextRoundReadyBy?.includes(myPlayer._id)
                               ? `Aguardando... (${round.nextRoundReadyBy?.length ?? 0} votos)`
@@ -433,7 +435,10 @@ export function ResultsPhase({
                       <Button
                         className="h-[54px] rounded-[22px] border border-white/10 bg-white text-sm font-semibold text-[#1a0b3d] shadow-[0_16px_36px_rgba(255,255,255,0.16)] hover:bg-white"
                         disabled={isReturningToLobby}
-                        onClick={() => void startNextRound({ roomId: round.roomId, sessionId })}
+                        onClick={() => {
+                          playSound("round.next");
+                          void startNextRound({ roomId: round.roomId, sessionId });
+                        }}
                       >
                         Proxima rodada
                       </Button>

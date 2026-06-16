@@ -12,6 +12,7 @@ import Timer from "../Timer";
 import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
 import { getCenteredOddGridItemClass } from "@/lib/utils";
+import { playSound } from "@/lib/sound";
 
 function isMasterQuestionMode(room: { mode: string; questionMode?: string }) {
   return room.mode === "question" && (room.questionMode ?? "system") === "master";
@@ -51,6 +52,7 @@ export function VotingPhase({ round, players, myPlayer, myRole, room, sessionId 
       sessionId,
       suspectId: selectedSuspect,
     });
+    playSound("vote.cast");
   };
 
   return (
