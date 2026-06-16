@@ -107,6 +107,14 @@
   --blur-sm: 8px;
   --blur-md: 16px;
   --blur-lg: 24px;
+
+  /* --- v2 Typography scale --- */
+  --text-display: 4.5rem;
+  --text-h1: 2rem;
+  --text-h2: 1.5rem;
+  --text-base: 1rem;
+  --text-sm: .875rem;
+  --text-xs: .75rem;
 }
 
 :root {
@@ -405,6 +413,24 @@ html[data-color-scheme="dark"] {
   animation: float-up-fade var(--reaction-duration, 3000ms) ease-out both;
   transform-origin: center bottom;
   will-change: transform, opacity;
+}
+
+/* ===== v2 QUALITY UTILITIES ===== */
+.tnum { font-variant-numeric: tabular-nums; }
+
+h1, h2, h3 { text-wrap: balance; }
+p { text-wrap: pretty; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ===== KEYFRAMES ===== */
