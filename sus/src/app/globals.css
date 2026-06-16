@@ -100,8 +100,14 @@
   --color-primary-2: #4733C8;
   --color-primary-press: #2C1F8F;
 
-  /* --- v2 Radius tokens (new names only; existing --radius-* kept untouched) --- */
-  --radius-xs: 8px;
+  /* --- v2 Radius tokens (redesign scale under --r-* to avoid shadcn --radius-* collision) --- */
+  --r-xs: 8px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 26px;
+  --r-xl: 32px;
+  --r-2xl: 40px;
+  --r-pill: 999px;
 
   /* --- v2 Blur tokens --- */
   --blur-sm: 8px;
