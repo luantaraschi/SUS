@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useCallback, useEffect, useState } from "react";
+import { use, useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "../../../../../../convex/_generated/api";
 import { useSessionId } from "@/lib/useSessionId";
@@ -17,6 +17,9 @@ import { SpectatorBanner } from "@/components/game/SpectatorBanner";
 import FloatingChat from "@/components/game/FloatingChat";
 import { ReactionProvider } from "@/components/game/reactions/ReactionProvider";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { phaseTransition } from "@/lib/motion";
+import { playSound } from "@/lib/sound";
 
 export default function PlayPage({
   params,
@@ -96,6 +99,17 @@ export default function PlayPage({
     }
   }, [myPlayer, router]);
 
+  // phase.enter — play on every subsequent phase change (skip initial mount)
+  const phaseInitializedRef = useRef(false);
+  useEffect(() => {
+    if (!round?.status) return;
+    if (!phaseInitializedRef.current) {
+      phaseInitializedRef.current = true;
+      return;
+    }
+    playSound("phase.enter");
+  }, [round?.status]);
+
   if (!room || !myPlayer || !round || !players) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -115,34 +129,18 @@ export default function PlayPage({
     isReturningToLobby,
   };
 
-  let phaseComponent: React.ReactNode = null;
+  const phaseMap: Partial<Record<typeof round.status, React.ReactNode>> = {
+    distributing: <DistributingPhase {...phaseProps} />,
+    speaking: <SpeakingPhase {...phaseProps} />,
+    answering: <AnsweringPhase {...phaseProps} />,
+    revealing: <RevealingPhase {...phaseProps} />,
+    discussion: <DiscussionPhase {...phaseProps} />,
+    evidence: <EvidencePhase {...phaseProps} />,
+    voting: <VotingPhase {...phaseProps} />,
+    results: <ResultsPhase {...phaseProps} />,
+  };
 
-  switch (round.status) {
-    case "distributing":
-      phaseComponent = <DistributingPhase {...phaseProps} />;
-      break;
-    case "speaking":
-      phaseComponent = <SpeakingPhase {...phaseProps} />;
-      break;
-    case "answering":
-      phaseComponent = <AnsweringPhase {...phaseProps} />;
-      break;
-    case "revealing":
-      phaseComponent = <RevealingPhase {...phaseProps} />;
-      break;
-    case "discussion":
-      phaseComponent = <DiscussionPhase {...phaseProps} />;
-      break;
-    case "evidence":
-      phaseComponent = <EvidencePhase {...phaseProps} />;
-      break;
-    case "voting":
-      phaseComponent = <VotingPhase {...phaseProps} />;
-      break;
-    case "results":
-      phaseComponent = <ResultsPhase {...phaseProps} />;
-      break;
-  }
+  const phaseComponent = phaseMap[round.status] ?? null;
 
   return (
     <ReactionProvider roomId={room._id}>
@@ -155,7 +153,18 @@ export default function PlayPage({
         />
       )}
       {myPlayer.isSpectator && <SpectatorBanner />}
-      {phaseComponent}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={round.status}
+          variants={phaseTransition}
+          initial="initial"
+          animate="animate"
+          exit="exit"
+          className="w-full"
+        >
+          {phaseComponent}
+        </motion.div>
+      </AnimatePresence>
       <FloatingChat
         roomId={room._id}
         playerId={myPlayer._id}

@@ -1,73 +1,34 @@
 "use client";
 
+/**
+ * useSound — thin React hook over the sound/index.ts store.
+ *
+ * Preserves the original API surface (play, muted, toggleMute) so existing
+ * call sites need only update their SoundEvent string names, not the hook
+ * usage pattern.
+ */
+
 import { useCallback, useSyncExternalStore } from "react";
-import { playSynth } from "./synthSounds";
+import {
+  playSound as _playSound,
+  getMuted,
+  getMutedServer,
+  toggleMuted,
+  subscribe,
+  type SoundEvent,
+} from "./sound/index";
 
-export type SoundName =
-  | "click"
-  | "vote"
-  | "reveal"
-  | "win"
-  | "lose"
-  | "tick"
-  | "message"
-  | "next-round"
-  | "join"
-  | "kick";
-
-const MUTE_KEY = "sus.sound.muted";
-const audioCache = new Map<string, HTMLAudioElement>();
-
-let listeners: Array<() => void> = [];
-
-function emitChange() {
-  for (const listener of listeners) {
-    listener();
-  }
-}
-
-function subscribe(listener: () => void) {
-  listeners = [...listeners, listener];
-  return () => {
-    listeners = listeners.filter((l) => l !== listener);
-  };
-}
-
-function getMuted(): boolean {
-  if (typeof window === "undefined") return false;
-  return window.localStorage.getItem(MUTE_KEY) === "true";
-}
-
-function getSnapshot(): boolean {
-  return getMuted();
-}
-
-function getServerSnapshot(): boolean {
-  return false;
-}
+export type { SoundEvent };
 
 export function useSound() {
-  const muted = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+  const muted = useSyncExternalStore(subscribe, getMuted, getMutedServer);
 
-  const play = useCallback((name: SoundName) => {
-    if (getMuted()) return;
-    const path = `/sounds/${name}.mp3`;
-    let audio = audioCache.get(path);
-    if (!audio) {
-      audio = new Audio(path);
-      audio.volume = 0.5;
-      audioCache.set(path, audio);
-    }
-    audio.currentTime = 0;
-    audio.play().catch(() => {
-      playSynth(name);
-    });
+  const play = useCallback((event: SoundEvent) => {
+    _playSound(event);
   }, []);
 
   const toggleMute = useCallback(() => {
-    const next = !getMuted();
-    window.localStorage.setItem(MUTE_KEY, next ? "true" : "false");
-    emitChange();
+    toggleMuted();
   }, []);
 
   return { play, muted, toggleMute };

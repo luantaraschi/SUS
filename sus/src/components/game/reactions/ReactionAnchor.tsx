@@ -24,10 +24,10 @@ export function ReactionAnchor({
   const reactions = getReactionsForPlayer(playerId);
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative overflow-visible ${className}`}>
       {children}
       {reactions.length > 0 && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-full z-30 h-0">
+        <div className="pointer-events-none absolute inset-x-0 bottom-full z-30 h-0 overflow-visible">
           {reactions.map((reaction) => (
             <div
               key={reaction._id}

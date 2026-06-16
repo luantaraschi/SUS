@@ -3,13 +3,13 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useI18n } from "@/lib/I18nContext";
-import { Check, Copy, ExternalLink, Heart, QrCode, X } from "lucide-react";
+import { Check, Copy, ExternalLink, Heart, QrCode } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
 import { QRCodeSVG } from "qrcode.react";
 import {
   GlassField,
   GlassInput,
   GlassLabel,
-  GlassPanel,
   GlassSection,
 } from "./ui/glass";
 
@@ -26,8 +26,6 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
   const { t, language } = useI18n();
   const [copied, setCopied] = useState(false);
 
-  if (!isOpen) return null;
-
   const handleCopyPix = async () => {
     try {
       await navigator.clipboard.writeText(PIX_COPY_PASTE_CODE);
@@ -39,35 +37,8 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="absolute inset-0 bg-black/68 backdrop-blur-md"
-        onClick={onClose}
-      />
-
-      <motion.div
-        initial={{ opacity: 0, y: 20, scale: 0.96 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-xl max-h-[90vh]"
-      >
-        <GlassPanel
-          tone="special"
-          className="h-full overflow-hidden rounded-[34px] p-5 sm:p-6"
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/8 text-white/72 transition-all hover:border-white/20 hover:bg-white/14 hover:text-white"
-            title={t("close")}
-          >
-            <X size={20} />
-          </button>
-
-          <div className="custom-scrollbar relative z-10 max-h-[calc(90vh-2.5rem)] overflow-y-auto pr-1">
-            <div className="space-y-5">
+    <Modal open={isOpen} onClose={onClose} size="md">
+          <div className="space-y-5">
             <div className="mx-auto max-w-lg text-center">
               <motion.div
                 initial={{ opacity: 0, scale: 0.88 }}
@@ -234,10 +205,7 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
                 </div>
               </GlassSection>
             </motion.div>
-            </div>
           </div>
-        </GlassPanel>
-      </motion.div>
-    </div>
+    </Modal>
   );
 }

@@ -1,10 +1,9 @@
 "use client";
 
-import type { RefObject } from "react";
-import { Dialog } from "@base-ui/react/dialog";
 import { Icon } from "@iconify/react";
 import { THEME_ICON_MAP } from "@/lib/themeIcons";
 import { cn } from "@/lib/utils";
+import { Modal } from "@/components/ui/Modal";
 
 type ThemePackOption = {
   key: string;
@@ -21,7 +20,6 @@ type ThemePickerDialogProps = {
   packOptions: ThemePackOption[];
   isHost: boolean;
   onSelectPack: (value: string) => void;
-  triggerRef?: RefObject<HTMLElement | null>;
 };
 
 export default function ThemePickerDialog({
@@ -31,7 +29,6 @@ export default function ThemePickerDialog({
   packOptions,
   isHost,
   onSelectPack,
-  triggerRef,
 }: ThemePickerDialogProps) {
   const systemPackOptions = packOptions.filter((pack) => pack.source === "default");
   const customPackOptions = packOptions.filter((pack) => pack.source === "custom");
@@ -101,66 +98,54 @@ export default function ThemePickerDialog({
   };
 
   return (
-    <Dialog.Root open={open} onOpenChange={onOpenChange}>
-      <Dialog.Portal>
-        <Dialog.Backdrop className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md transition-opacity duration-200 data-[starting-style]:opacity-0 data-[ending-style]:opacity-0 motion-reduce:transition-none" />
-        <Dialog.Viewport className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto p-4">
-          <Dialog.Popup
-            finalFocus={triggerRef ?? true}
-            className="w-full max-w-5xl rounded-[32px] border border-[var(--panel-border)] bg-[var(--panel-surface)] p-5 text-[var(--panel-text)] shadow-[0_28px_80px_rgba(0,0,0,0.32)] transition-all duration-200 ease-out data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0 motion-reduce:transition-none motion-reduce:data-[starting-style]:scale-100 motion-reduce:data-[ending-style]:scale-100 sm:p-6"
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <Dialog.Title className="font-display text-3xl text-[var(--panel-text)] sm:text-4xl">
-                  Escolha um Tema
-                </Dialog.Title>
-                <p className="mt-1 font-body text-sm text-[var(--panel-soft-text)] sm:text-base">
-                  Selecione um tema oficial ou um pack customizado para a próxima rodada.
-                </p>
+    <Modal
+      open={open}
+      onClose={() => onOpenChange(false)}
+      size="lg"
+      className="max-w-5xl"
+    >
+      <div className="-mt-1">
+        <div>
+          <h2 className="font-display text-3xl text-[var(--color-text)] sm:text-4xl">
+            Escolha um Tema
+          </h2>
+          <p className="mt-1 font-body text-sm text-[var(--color-text-muted)] sm:text-base">
+            Selecione um tema oficial ou um pack customizado para a próxima rodada.
+          </p>
+        </div>
+
+        <div className="custom-scrollbar mt-6 max-h-[60vh] overflow-y-auto pr-1">
+          <section className="flex flex-col gap-3">
+            <div className="flex items-center justify-between gap-3">
+              <span className="font-condensed text-[11px] uppercase tracking-[0.26em] text-[var(--color-text-muted)] sm:text-xs">
+                Temas oficiais
+              </span>
+              <span className="font-body text-sm text-[var(--color-text-muted)]">
+                {systemPackOptions.length} opções
+              </span>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {systemPackOptions.map(renderPackCard)}
+            </div>
+          </section>
+
+          {customPackOptions.length > 0 && (
+            <section className="mt-6 flex flex-col gap-3 border-t border-[var(--glass-border)] pt-6">
+              <div className="flex items-center justify-between gap-3">
+                <span className="font-condensed text-[11px] uppercase tracking-[0.26em] text-[var(--color-text-muted)] sm:text-xs">
+                  Meus packs
+                </span>
+                <span className="font-body text-sm text-[var(--color-text-muted)]">
+                  {customPackOptions.length} opções
+                </span>
               </div>
-
-              <Dialog.Close
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[var(--panel-muted)] text-[var(--panel-soft-text)] transition-colors hover:bg-[var(--control-surface-muted)] hover:text-[var(--panel-text)]"
-                aria-label="Fechar seletor de temas"
-              >
-                <Icon icon="solar:close-circle-bold" width={28} height={28} />
-              </Dialog.Close>
-            </div>
-
-            <div className="custom-scrollbar mt-6 max-h-[70vh] overflow-y-auto pr-1">
-              <section className="flex flex-col gap-3">
-                <div className="flex items-center justify-between gap-3">
-                  <span className="font-condensed text-[11px] uppercase tracking-[0.26em] text-[var(--panel-soft-text)] sm:text-xs">
-                    Temas oficiais
-                  </span>
-                  <span className="font-body text-sm text-[var(--panel-soft-text)]">
-                    {systemPackOptions.length} opções
-                  </span>
-                </div>
-                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {systemPackOptions.map(renderPackCard)}
-                </div>
-              </section>
-
-              {customPackOptions.length > 0 && (
-                <section className="mt-6 flex flex-col gap-3 border-t border-[var(--control-border)] pt-6">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="font-condensed text-[11px] uppercase tracking-[0.26em] text-[var(--panel-soft-text)] sm:text-xs">
-                      Meus packs
-                    </span>
-                    <span className="font-body text-sm text-[var(--panel-soft-text)]">
-                      {customPackOptions.length} opções
-                    </span>
-                  </div>
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {customPackOptions.map(renderPackCard)}
-                  </div>
-                </section>
-              )}
-            </div>
-          </Dialog.Popup>
-        </Dialog.Viewport>
-      </Dialog.Portal>
-    </Dialog.Root>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {customPackOptions.map(renderPackCard)}
+              </div>
+            </section>
+          )}
+        </div>
+      </div>
+    </Modal>
   );
 }

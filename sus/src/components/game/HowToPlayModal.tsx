@@ -1,31 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { Icon } from "@iconify/react";
+import { Modal } from "@/components/ui/Modal";
 
 const tabs = ["Geral", "Palavra", "Pergunta"] as const;
 
-export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
+export default function HowToPlayModal({ onClose, open }: { onClose: () => void; open: boolean }) {
   const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("Geral");
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
-      onClick={onClose}
-    >
-      <div
-        className="custom-scrollbar relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-[32px] border border-[var(--panel-border)] bg-[var(--panel-surface)] p-6 text-[var(--panel-text)] shadow-2xl sm:p-8"
-        onClick={(event) => event.stopPropagation()}
-      >
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-[var(--panel-muted)] text-[var(--panel-soft-text)] transition-colors hover:bg-[var(--control-surface-muted)] hover:text-[var(--panel-text)]"
-          aria-label="Fechar como jogar"
-        >
-          <Icon icon="solar:close-circle-bold" width={28} height={28} />
-        </button>
-
+    <Modal open={open} onClose={onClose} size="lg">
         <div className="mt-2 mb-6 flex gap-1 rounded-full bg-[var(--panel-muted)] p-1">
           {tabs.map((tab) => (
             <button
@@ -188,7 +172,6 @@ export default function HowToPlayModal({ onClose }: { onClose: () => void }) {
             </>
           )}
         </div>
-      </div>
-    </div>
+    </Modal>
   );
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
@@ -13,11 +12,11 @@ import {
   ShieldCheck,
   Sparkles,
   UserRoundCheck,
-  X,
 } from "lucide-react";
 import { useI18n } from "@/lib/I18nContext";
 import type { Language } from "@/lib/locales";
-import { GlassPanel, GlassSection } from "./ui/glass";
+import { GlassSection } from "./ui/glass";
+import { Modal } from "@/components/ui/Modal";
 
 interface LegalModalProps {
   isOpen: boolean;
@@ -354,54 +353,20 @@ const DOCUMENTS: Record<Language, Record<LegalModalProps["type"], LegalDocument>
   },
 };
 
-function getTone(type: LegalModalProps["type"]) {
-  return type === "privacy" ? "info" : "special";
-}
-
 const HEADER_ICONS: Record<LegalModalProps["type"], LucideIcon> = {
   privacy: ShieldCheck,
   terms: ScrollText,
 };
 
 export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
-  const { t, language } = useI18n();
-
-  if (!isOpen) return null;
+  const { language } = useI18n();
 
   const document = DOCUMENTS[language][type];
   const HeaderIcon = HEADER_ICONS[type];
-  const tone = getTone(type);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="absolute inset-0 bg-black/72 backdrop-blur-md"
-        onClick={onClose}
-      />
-
-      <motion.div
-        initial={{ opacity: 0, y: 24, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-5xl max-h-[92vh]"
-      >
-        <GlassPanel
-          tone={tone}
-          className="overflow-hidden rounded-[34px] p-5 sm:p-6"
-        >
-          <button
-            type="button"
-            onClick={onClose}
-            className="absolute right-4 top-4 z-20 flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/8 text-white/72 transition-all hover:border-white/20 hover:bg-white/14 hover:text-white"
-            title={t("close")}
-          >
-            <X size={20} />
-          </button>
-
-          <div className="custom-scrollbar relative z-10 max-h-[calc(92vh-2.5rem)] overflow-y-auto pr-1">
-            <div className="space-y-5">
+    <Modal open={isOpen} onClose={onClose} size="lg">
+          <div className="space-y-5">
               <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06))] px-5 py-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] sm:px-6 sm:py-6">
                 <div className="absolute inset-y-0 right-[-12%] w-44 rounded-full bg-white/10 blur-3xl" />
                 <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -550,10 +515,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
                   </GlassSection>
                 </div>
               </section>
-            </div>
           </div>
-        </GlassPanel>
-      </motion.div>
-    </div>
+    </Modal>
   );
 }

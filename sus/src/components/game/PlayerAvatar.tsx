@@ -1,8 +1,13 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
-import BotIcon from "./BotIcon";
+import AvatarImage, { getAvatarUrl } from "./avatar/AvatarImage";
+import AvatarBadges, { HostCrown } from "./avatar/AvatarBadges";
+import AvatarStatus from "./avatar/AvatarStatus";
+import AvatarLabel from "./avatar/AvatarLabel";
+
+// Re-export so existing callers of `getAvatarUrl` from this module keep working.
+export { getAvatarUrl };
 
 type PlayerStatus = "online" | "ready" | "waiting" | "disconnected";
 
@@ -28,86 +33,6 @@ const STATUS_INDICATOR: Record<PlayerStatus, { color: string; label: string }> =
   waiting: { color: "bg-game-warning", label: "Aguardando" },
   disconnected: { color: "bg-surface-primary/40", label: "Offline" },
 };
-
-const BG_COLORS = [
-  "b6e3f4",
-  "c0aede",
-  "d1d4f9",
-  "ffd5dc",
-  "ffdfbf",
-  "c7f2a4",
-  "f9c6d0",
-  "b5ead7",
-  "ffeaa7",
-];
-
-function getBgColor(seed: string): string {
-  const index =
-    seed.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0) % BG_COLORS.length;
-  return BG_COLORS[index];
-}
-
-export function getAvatarUrl(seed: string, size: number): string {
-  const bg = getBgColor(seed);
-  return (
-    `https://api.dicebear.com/9.x/adventurer/svg` +
-    `?seed=${encodeURIComponent(seed)}` +
-    `&backgroundColor=${bg}` +
-    `&radius=50` +
-    `&size=${size}` +
-    `&v=${encodeURIComponent(seed.slice(0, 4))}`
-  );
-}
-
-function AvatarMedia({
-  name,
-  size,
-  seed,
-  imageUrl,
-}: {
-  name: string;
-  size: number;
-  seed: string;
-  imageUrl?: string | null;
-}) {
-  const generatedAvatarUrl = getAvatarUrl(seed, size);
-  const [displayMode, setDisplayMode] = useState<"upload" | "generated" | "fallback">(
-    imageUrl ? "upload" : "generated"
-  );
-
-  const src =
-    displayMode === "upload"
-      ? imageUrl ?? generatedAvatarUrl
-      : displayMode === "generated"
-        ? generatedAvatarUrl
-        : null;
-
-  if (!src) {
-    return (
-      <div className="flex h-full w-full items-center justify-center bg-surface-primary text-xl font-bold text-white">
-        {name.charAt(0).toUpperCase()}
-      </div>
-    );
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt={name}
-      width={size}
-      height={size}
-      className="h-full w-full object-cover"
-      onError={() => {
-        if (displayMode === "upload") {
-          setDisplayMode("generated");
-          return;
-        }
-        setDisplayMode("fallback");
-      }}
-    />
-  );
-}
 
 const SIZE_MAP = {
   sm: {
@@ -198,6 +123,7 @@ export default function PlayerAvatar({
     SIZE_MAP[size];
 
   const seed = avatarSeed ?? emoji ?? name;
+
   return (
     <motion.div
       whileHover={interactive ? { y: -4, scale: 1.05 } : undefined}
@@ -205,45 +131,26 @@ export default function PlayerAvatar({
       transition={interactive ? { type: "spring", stiffness: 400, damping: 20 } : undefined}
       className={`flex flex-col items-center gap-1 ${isDimmed ? "opacity-60" : ""} ${interactive ? "cursor-pointer" : ""} ${className}`}
     >
-      {isHost && (
-        <span
-          className={`${crown} relative z-10 -mb-3 -translate-y-1 leading-none drop-shadow-md sm:-mb-4`}
-          aria-label="Host"
-        >
-          {"\u{1F451}"}
-        </span>
-      )}
+      {isHost && <HostCrown crownClass={crown} />}
 
       <div className={`relative ${container}`}>
-        {isBot && (
-          <span
-            className={`absolute z-10 flex items-center justify-center rounded-full border-white bg-[#1e1b6e] text-white shadow-[0_4px_12px_rgba(0,0,0,0.3)] ${botBadge}`}
-          >
-            <BotIcon className={botIcon} />
-          </span>
-        )}
-
-        {canRemove && onRemove && (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onRemove();
-            }}
-            className="absolute -top-1 -right-1 z-20 flex h-4 w-4 items-center justify-center rounded-full bg-black/50 text-white text-[10px] hover:bg-game-impostor transition-colors"
-            aria-label={`Remover ${name}`}
-          >
-            &times;
-          </button>
-        )}
+        <AvatarBadges
+          name={name}
+          isHost={isHost}
+          isBot={isBot}
+          canRemove={canRemove}
+          onRemove={onRemove}
+          crownClass={crown}
+          botBadgeClass={botBadge}
+          botIconClass={botIcon}
+        />
 
         <div
           className={`relative h-full w-full overflow-hidden rounded-full ${
             isHost ? "border-[3px] border-yellow-400" : "border-[3px] border-white"
           }`}
         >
-          <AvatarMedia
+          <AvatarImage
             key={`${imageUrl ?? "generated"}:${seed}`}
             name={name}
             size={img}
@@ -252,23 +159,21 @@ export default function PlayerAvatar({
           />
 
           {showStatusIndicator && (
-            <span
-              className={`absolute rounded-full border-white ${statusIndicator} ${statusInfo.color}`}
+            <AvatarStatus
+              colorClass={statusInfo.color}
+              indicatorClass={statusIndicator}
             />
           )}
         </div>
       </div>
 
       {!hideName && (
-        <span className={`font-hand text-white drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)] ${nameSize}`}>
-          [{name}]
-        </span>
-      )}
-
-      {showStatusLabel && (
-        <span className="font-condensed text-[10px] uppercase tracking-wider text-white/70">
-          {statusInfo.label}
-        </span>
+        <AvatarLabel
+          name={name}
+          nameClass={nameSize}
+          showStatusLabel={showStatusLabel}
+          statusLabel={statusInfo.label}
+        />
       )}
     </motion.div>
   );

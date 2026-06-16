@@ -37,3 +37,6 @@ temp*.js
 
 # claude
 .claude/
+
+# Brainstorming visual companion
+.superpowers/

@@ -1,14 +1,16 @@
 import { useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Icon } from "@iconify/react";
-import GameButton from "@/components/game/GameButton";
+import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/Modal";
 
 interface SignInModalProps {
   onClose: () => void;
   onSuccess: () => void;
+  open: boolean;
 }
 
-export default function SignInModal({ onClose, onSuccess }: SignInModalProps) {
+export default function SignInModal({ onClose, onSuccess, open }: SignInModalProps) {
   const { signIn } = useAuthActions();
   const [step, setStep] = useState<"signIn" | "signUp">("signIn");
 
@@ -48,40 +50,32 @@ export default function SignInModal({ onClose, onSuccess }: SignInModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-white rounded-3xl p-6 sm:p-8 shadow-2xl flex flex-col gap-5 animate-in fade-in zoom-in duration-200">
-        <div className="flex items-center justify-between">
-          <h2 className="font-display text-3xl text-[#1e1b6e]">
-            {step === "signIn" ? "Entrar na Conta" : "Criar uma Conta"}
-          </h2>
-          <button
-            onClick={onClose}
-            className="p-1 rounded-full hover:bg-gray-100 text-[#1e1b6e]/60 hover:text-[#1e1b6e] transition-colors"
-          >
-            <Icon icon="solar:close-circle-bold" width={32} height={32} />
-          </button>
-        </div>
-
-        <p className="text-gray-600 font-body text-sm leading-relaxed">
+    <Modal
+      open={open}
+      onClose={onClose}
+      size="sm"
+      title={step === "signIn" ? "Entrar na Conta" : "Criar uma Conta"}
+    >
+      <div className="flex flex-col gap-5">
+        <p className="text-[var(--color-text-muted)] font-body text-sm leading-relaxed">
           Com uma conta, você salva seu histórico de partidas e pode criar seus próprios pacotes de palavras e perguntas!
         </p>
 
         <div className="flex flex-col gap-4">
-          <GameButton
-            variant="outline"
-            size="lg"
-            icon={<Icon icon="flat-color-icons:google" width={24} height={24} />}
+          <Button
+            variant="glass"
+            size="game-lg"
             onClick={handleGoogle}
             disabled={isSubmitting}
-            className="!bg-white !text-black !border-gray-200"
           >
+            <Icon icon="flat-color-icons:google" width={24} height={24} />
             Continuar com Google
-          </GameButton>
+          </Button>
 
           <div className="flex items-center gap-2">
-            <div className="h-px bg-gray-200 flex-1" />
-            <span className="text-sm text-gray-400 font-body uppercase">ou com email</span>
-            <div className="h-px bg-gray-200 flex-1" />
+            <div className="h-px bg-[var(--glass-border)] flex-1" />
+            <span className="text-sm text-[var(--color-text-muted)] font-body uppercase">ou com email</span>
+            <div className="h-px bg-[var(--glass-border)] flex-1" />
           </div>
 
           <form onSubmit={handlePasswordAuth} className="flex flex-col gap-3">
@@ -91,7 +85,7 @@ export default function SignInModal({ onClose, onSuccess }: SignInModalProps) {
               placeholder="Seu melhor email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full h-14 rounded-full border-2 border-gray-200 px-5 font-body text-lg focus:outline-none focus:border-[#1e1b6e] focus:ring-4 focus:ring-[#1e1b6e]/20 transition-all placeholder:text-gray-400"
+              className="w-full h-14 rounded-full border-2 border-[var(--glass-border)] bg-[var(--glass-1)] px-5 font-body text-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-info)] focus:shadow-[var(--ring-focus)] placeholder:text-[var(--color-text-muted)]"
             />
             <input
               type="password"
@@ -99,28 +93,28 @@ export default function SignInModal({ onClose, onSuccess }: SignInModalProps) {
               placeholder="Senha secreta"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full h-14 rounded-full border-2 border-gray-200 px-5 font-body text-lg focus:outline-none focus:border-[#1e1b6e] focus:ring-4 focus:ring-[#1e1b6e]/20 transition-all placeholder:text-gray-400"
+              className="w-full h-14 rounded-full border-2 border-[var(--glass-border)] bg-[var(--glass-1)] px-5 font-body text-lg text-[var(--color-text)] focus:outline-none focus:border-[var(--color-info)] focus:shadow-[var(--ring-focus)] placeholder:text-[var(--color-text-muted)]"
             />
             {error && (
-              <p className="text-red-500 font-body text-sm text-center font-bold">
+              <p className="text-[var(--color-imp)] font-body text-sm text-center font-bold">
                 {error}
               </p>
             )}
-            <GameButton
-              variant="filled"
-              size="lg"
+            <Button
+              variant="primary"
+              size="game-lg"
               type="submit"
               disabled={isSubmitting || !email || !password}
               className="mt-2"
             >
               {step === "signIn" ? "Entrar" : "Criar Conta"}
-            </GameButton>
+            </Button>
           </form>
 
           <div className="text-center mt-2">
             <button
               onClick={() => setStep(step === "signIn" ? "signUp" : "signIn")}
-              className="text-[#1e1b6e] font-body text-sm hover:underline font-bold"
+              className="text-[var(--color-info)] font-body text-sm hover:underline font-bold"
             >
               {step === "signIn"
                 ? "Ainda não tem conta? Criar conta."
@@ -129,6 +123,6 @@ export default function SignInModal({ onClose, onSuccess }: SignInModalProps) {
           </div>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }

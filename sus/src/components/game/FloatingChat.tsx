@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "@iconify/react";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
+import { playSound } from "@/lib/sound";
 
 const QUICK_EMOJIS = [
   "\u{1F440}",
@@ -47,6 +48,7 @@ export default function FloatingChat({
         text: trimmed,
         isEmoji,
       });
+      playSound("chat.message");
       setText("");
     },
     [playerId, roomId, sendMessage, sessionId]
@@ -69,7 +71,7 @@ export default function FloatingChat({
                   key={emoji}
                   type="button"
                   onClick={() => handleSend(emoji, true)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-lg transition-transform hover:scale-110 hover:bg-white/20 active:scale-95"
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-lg transition-transform hover:scale-110 hover:bg-white/20 active:scale-95 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
                 >
                   {emoji}
                 </button>
@@ -89,12 +91,12 @@ export default function FloatingChat({
                 onChange={(event) => setText(event.target.value.slice(0, 100))}
                 placeholder="Mensagem..."
                 maxLength={100}
-                className="h-9 flex-1 rounded-full border border-white/20 bg-white/10 px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/40"
+                className="h-10 flex-1 rounded-full border border-white/20 bg-white/10 px-3 text-sm text-white outline-none placeholder:text-white/40 focus:border-white/40 focus-visible:shadow-[var(--ring-focus)]"
               />
               <button
                 type="submit"
                 disabled={!text.trim()}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-surface-primary text-white transition-transform hover:scale-105 disabled:opacity-40"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-surface-primary text-white transition-transform hover:scale-105 disabled:opacity-40 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
               >
                 <Icon icon="solar:plain-bold" width={16} height={16} />
               </button>

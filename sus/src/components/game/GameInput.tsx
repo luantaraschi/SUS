@@ -16,10 +16,17 @@ interface GameInputProps
   maxLength?: number;
 }
 
+// Ring spread is always 3px so the box never changes size on focus/error.
+// Default: transparent ring (reserves the space, no layout shift).
+// Focus: token --ring-focus (box-shadow value defined in globals.css).
+// Error: impostor-tinted ring at the same spread.
 const STATE_STYLES: Record<InputState, string> = {
-  default: "border-surface-primary/40 focus:border-game-info focus:shadow-[0_0_0_3px_rgba(0,184,235,0.25)]",
-  focus: "border-game-info shadow-[0_0_0_3px_rgba(0,184,235,0.25)]",
-  error: "border-game-impostor shadow-[0_0_0_3px_rgba(255,87,123,0.25)]",
+  default:
+    "border-surface-primary/40 shadow-[0_0_0_3px_transparent] focus:border-game-info focus:shadow-[var(--ring-focus)]",
+  focus:
+    "border-game-info shadow-[var(--ring-focus)]",
+  error:
+    "border-game-impostor shadow-[0_0_0_3px_color-mix(in_srgb,var(--color-imp)_45%,transparent)]",
 };
 
 export default function GameInput({
@@ -50,7 +57,7 @@ export default function GameInput({
         className={`
           w-full rounded-pill border-[3px] bg-[var(--control-surface)] px-5 py-3 text-center
           font-display text-xl text-[var(--control-text)] sm:px-6 sm:py-4 sm:text-2xl
-          outline-none transition-all duration-200
+          outline-none transition-[box-shadow,border-color] duration-200
           placeholder:text-[var(--control-soft-text)]
           ${STATE_STYLES[state]}
           ${isCode ? "tracking-widest text-2xl sm:text-3xl uppercase font-bold" : ""}

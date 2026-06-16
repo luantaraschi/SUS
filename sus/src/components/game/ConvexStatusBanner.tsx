@@ -65,7 +65,7 @@ export default function ConvexStatusBanner() {
   }
 
   return (
-    <div className="pointer-events-none absolute left-1/2 top-4 z-40 w-[min(92vw,720px)] -translate-x-1/2 rounded-2xl border border-red-300/60 bg-red-500/90 px-4 py-3 text-center text-sm text-white shadow-[0_10px_30px_rgba(0,0,0,0.25)] backdrop-blur-sm">
+    <div className="pointer-events-none absolute left-1/2 top-4 z-40 w-[min(92vw,720px)] -translate-x-1/2 rounded-[var(--r-lg)] border border-[var(--color-imp)]/40 bg-[var(--color-imp)]/20 px-4 py-3 text-center text-sm text-[var(--color-text)] shadow-[var(--shadow-md)] backdrop-blur-[var(--blur-md)]">
       {transportIssue ? (
         <>
           Conexao com o backend indisponivel. Verifique o deployment ativo do Convex e a variavel{" "}

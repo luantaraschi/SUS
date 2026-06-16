@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import { Icon } from "@iconify/react";
 import { useConvex, useMutation } from "convex/react";
+import { Modal } from "@/components/ui/Modal";
 import { api } from "../../../convex/_generated/api";
 import { useBackground } from "@/lib/BackgroundContext";
 import { useSound } from "@/lib/useSound";
+import { playSound, getVolume, setVolume, subscribe } from "@/lib/sound";
 
 interface GameSettingsButtonProps {
   sessionId: string;
@@ -27,6 +29,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
   } = useBackground();
 
   const { muted: soundMuted, toggleMute: toggleSoundMute } = useSound();
+  const volume = useSyncExternalStore(subscribe, getVolume, () => 0.75);
   const [open, setOpen] = useState(false);
   const [bugMessage, setBugMessage] = useState("");
   const [remotePreferencesState, setRemotePreferencesState] = useState<
@@ -146,31 +149,21 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white shadow-lg backdrop-blur-md transition-transform hover:scale-105"
+        className="flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-black/30 text-white shadow-lg backdrop-blur-md transition-transform hover:scale-105 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
         aria-label="Abrir configuracoes"
       >
         <Icon icon="solar:settings-bold" width={22} height={22} />
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
-          <div className="flex max-h-[calc(100dvh-1.5rem)] w-full max-w-[min(1080px,96vw)] flex-col overflow-hidden rounded-[32px] border border-[var(--panel-border)] bg-[var(--panel-surface)] p-4 text-[var(--panel-text)] shadow-[0_30px_80px_rgba(0,0,0,0.35)] sm:p-6">
-            <div className="mb-5 flex items-center justify-between gap-4">
-              <div>
-                <h2 className="font-display text-3xl">Configuracoes</h2>
-                <p className="font-body text-sm text-[var(--panel-soft-text)]">
-                  Ajuste a aparencia e relate problemas sem sair da sala.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                className="flex h-11 w-11 items-center justify-center rounded-full bg-[var(--panel-muted)] text-[var(--panel-text)] transition-colors hover:bg-black/10"
-                aria-label="Fechar configuracoes"
-              >
-                <Icon icon="solar:close-circle-bold" width={26} height={26} />
-              </button>
-            </div>
+      <Modal
+        open={open}
+        onClose={() => setOpen(false)}
+        size="lg"
+        title="Configuracoes"
+      >
+          <p className="mb-5 font-body text-sm text-[var(--color-text-muted)]">
+            Ajuste a aparencia e relate problemas sem sair da sala.
+          </p>
 
             <div className="grid max-h-full items-start gap-5 overflow-y-auto pr-1 lg:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)] custom-scrollbar">
               <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4 lg:self-start">
@@ -214,7 +207,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                         onClick={() =>
                           handleColorSchemeChange(option.value as "system" | "light" | "dark")
                         }
-                        className={`rounded-full border px-4 py-2 font-condensed text-sm uppercase tracking-[0.24em] transition-colors ${
+                        className={`min-h-10 rounded-full border px-4 py-2 font-condensed text-sm uppercase tracking-[0.24em] transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] ${
                           colorScheme === option.value
                             ? "border-surface-primary bg-surface-primary text-white"
                             : "border-[var(--control-border)] bg-[var(--control-surface)] text-[var(--control-text)]"
@@ -239,7 +232,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                       role="switch"
                       aria-checked={backgroundAnimationEnabled}
                       onClick={() => handleAnimationChange(!backgroundAnimationEnabled)}
-                      className={`flex h-8 w-14 shrink-0 items-center rounded-full px-1 transition-colors ${
+                      className={`flex h-10 w-14 shrink-0 items-center rounded-full px-1 transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] ${
                         backgroundAnimationEnabled
                           ? "justify-end bg-game-safe"
                           : "justify-start bg-[var(--control-surface-muted)]"
@@ -263,7 +256,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                       role="switch"
                       aria-checked={!soundMuted}
                       onClick={toggleSoundMute}
-                      className={`flex h-8 w-14 shrink-0 items-center rounded-full px-1 transition-colors ${
+                      className={`flex h-10 w-14 shrink-0 items-center rounded-full px-1 transition-colors focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] ${
                         !soundMuted
                           ? "justify-end bg-game-safe"
                           : "justify-start bg-[var(--control-surface-muted)]"
@@ -272,6 +265,32 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                       <span className="h-6 w-6 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.25)] transition-transform" />
                     </button>
                   </div>
+
+                  <div className="mt-4">
+                    <label className="flex items-center justify-between gap-2 font-condensed text-xs uppercase tracking-[0.22em] text-[var(--panel-soft-text)]">
+                      <span>Volume</span>
+                      <span>{Math.round(volume * 100)}%</span>
+                    </label>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={Math.round(volume * 100)}
+                      onChange={(e) => setVolume(Number(e.target.value) / 100)}
+                      disabled={soundMuted}
+                      className="mt-2 h-2 w-full cursor-pointer appearance-none rounded-full bg-[var(--control-surface-muted)] accent-surface-primary disabled:cursor-not-allowed disabled:opacity-40"
+                      aria-label="Volume dos sons"
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => playSound("ui.click")}
+                    disabled={soundMuted}
+                    className="mt-4 w-full rounded-[20px] border border-[var(--control-border)] bg-[var(--control-surface)] px-4 py-2.5 font-condensed text-sm uppercase tracking-[0.22em] text-[var(--control-text)] transition-colors hover:bg-[var(--control-surface-muted)] disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+                  >
+                    Testar som
+                  </button>
                 </section>
 
                 <section className="rounded-[28px] border border-[var(--control-border)] bg-[var(--panel-elevated)] p-4">
@@ -285,9 +304,7 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
                 </section>
               </div>
             </div>
-          </div>
-        </div>
-      )}
+      </Modal>
     </>
   );
 }

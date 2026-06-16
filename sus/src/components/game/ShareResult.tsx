@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@iconify/react";
-import GameButton from "./GameButton";
+import { Button } from "@/components/ui/button";
 
 interface ShareResultProps {
   title: string;
@@ -41,15 +41,15 @@ export default function ShareResult({ title, text, url }: ShareResultProps) {
 
   return (
     <div className="flex flex-col items-center gap-2 w-full">
-      <GameButton
-        variant="outline"
-        size="lg"
-        className="w-full flex justify-center !text-base"
-        icon={<Icon icon={copied ? "solar:check-circle-bold" : "solar:share-bold"} width={20} />}
+      <Button
+        variant="glass"
+        size="game-lg"
+        className="flex justify-center !text-base"
         onClick={handleShare}
       >
+        <Icon icon={copied ? "solar:check-circle-bold" : "solar:share-bold"} width={20} />
         {copied ? "Texto Copiado!" : "Compartilhar Resultado"}
-      </GameButton>
+      </Button>
     </div>
   );
 }
