@@ -99,6 +99,10 @@
   --color-primary-1: #6A5BF0;
   --color-primary-2: #4733C8;
   --color-primary-press: #2C1F8F;
+  /* gradient highlight + on-color text tokens (button variants) */
+  --color-safe-light: #5fe6b6;
+  --color-safe-text: #08381f;
+  --color-imp-light: #ff6f93;
 
   /* --- v2 Radius tokens (redesign scale under --r-* to avoid shadcn --radius-* collision) --- */
   --r-xs: 8px;

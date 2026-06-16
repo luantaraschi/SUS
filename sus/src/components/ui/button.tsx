@@ -6,7 +6,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
-  "group/button inline-flex shrink-0 items-center justify-center rounded-[var(--r-md)] border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[transform,box-shadow] outline-none select-none active:scale-[0.96] focus-visible:shadow-[var(--ring-focus)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 min-h-[44px] aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+  "group/button inline-flex shrink-0 items-center justify-center rounded-[var(--r-md)] border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-[transform,box-shadow] outline-none select-none active:scale-[0.96] focus-visible:shadow-[var(--ring-focus)] focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -23,13 +23,13 @@ const buttonVariants = cva(
         link: "text-primary underline-offset-4 hover:underline",
         // Game variants
         primary:
-          "bg-[linear-gradient(180deg,var(--color-primary-1),var(--color-primary-2))] text-white shadow-[var(--shadow-press)] w-full rounded-xl border-[3px] border-transparent font-display uppercase tracking-widest",
+          "bg-[linear-gradient(180deg,var(--color-primary-1),var(--color-primary-2))] text-white shadow-[var(--shadow-press)] w-full border-[3px] border-transparent font-display uppercase tracking-widest",
         glass:
-          "bg-[var(--glass-1)] border border-[var(--glass-border)] backdrop-blur-[var(--blur-md)] text-[var(--color-text)] w-full rounded-xl border-[3px] font-display uppercase tracking-widest",
+          "bg-[var(--glass-1)] border-[3px] border-[var(--glass-border)] backdrop-blur-[var(--blur-md)] text-[var(--color-text)] w-full font-display uppercase tracking-widest",
         safe:
-          "bg-[linear-gradient(180deg,#5fe6b6,var(--color-safe))] text-[#08381f] w-full rounded-xl border-[3px] border-transparent font-display uppercase tracking-widest",
+          "bg-[linear-gradient(180deg,var(--color-safe-light),var(--color-safe))] text-[var(--color-safe-text)] w-full border-[3px] border-transparent font-display uppercase tracking-widest",
         danger:
-          "bg-[linear-gradient(180deg,#ff6f93,var(--color-imp))] text-white w-full rounded-xl border-[3px] border-transparent font-display uppercase tracking-widest",
+          "bg-[linear-gradient(180deg,var(--color-imp-light),var(--color-imp))] text-white w-full border-[3px] border-transparent font-display uppercase tracking-widest",
       },
       size: {
         // Existing shadcn sizes (unchanged)
@@ -44,10 +44,10 @@ const buttonVariants = cva(
         "icon-sm":
           "size-7 rounded-[min(var(--radius-md),12px)] in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
-        // Game sizes
-        "game-lg": "h-[60px] sm:h-16 px-8 text-xl sm:text-2xl gap-3",
-        "game-md": "h-12 sm:h-[52px] px-6 text-lg gap-2",
-        "game-sm": "h-9 px-4 text-base gap-1.5",
+        // Game sizes (min-h-[44px] for touch targets lives here, not on the base)
+        "game-lg": "h-[60px] sm:h-16 px-8 text-xl sm:text-2xl gap-3 min-h-[44px]",
+        "game-md": "h-12 sm:h-[52px] px-6 text-lg gap-2 min-h-[44px]",
+        "game-sm": "h-9 px-4 text-base gap-1.5 min-h-[44px]",
       },
     },
     defaultVariants: {
