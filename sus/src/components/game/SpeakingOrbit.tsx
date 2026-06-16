@@ -51,14 +51,14 @@ export default function SpeakingOrbit({
                 animate={
                   isCurrent
                     ? {
-                        scale: 1.08,
-                        boxShadow: [
-                          "0 0 0 rgba(0,184,235,0)",
-                          "0 0 36px rgba(0,184,235,0.3)",
-                          "0 0 0 rgba(0,184,235,0)",
+                        scale: [1, 1.06, 1],
+                        filter: [
+                          "drop-shadow(0 0 6px rgba(0,184,235,0.4))",
+                          "drop-shadow(0 0 22px rgba(0,184,235,0.85))",
+                          "drop-shadow(0 0 6px rgba(0,184,235,0.4))",
                         ],
                       }
-                    : { scale: 1 }
+                    : { scale: 1, filter: "drop-shadow(0 0 0px rgba(0,184,235,0))" }
                 }
                 transition={
                   isCurrent
@@ -66,8 +66,8 @@ export default function SpeakingOrbit({
                     : { duration: 0.18 }
                 }
                 className={cn(
-                  "flex w-[92px] flex-col items-center text-center sm:w-[108px]",
-                  isCurrent && "rounded-[28px] bg-sky-300/10 px-2 py-3 shadow-[0_0_36px_rgba(0,184,235,0.28)]",
+                  "flex w-[92px] flex-col items-center text-center sm:w-[108px] will-change-transform",
+                  isCurrent && "rounded-[28px] bg-sky-300/10 px-2 py-3",
                   !isCurrent && "opacity-80",
                   isMe && !isCurrent && "opacity-100"
                 )}
