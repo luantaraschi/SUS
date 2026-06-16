@@ -1,0 +1,38 @@
+# Normalize line endings: store everything as LF in the repo,
+# check out as LF in every working tree (deterministic across OSes).
+* text=auto eol=lf
+
+# Explicit text types (LF)
+*.ts    text eol=lf
+*.tsx   text eol=lf
+*.js    text eol=lf
+*.jsx   text eol=lf
+*.mjs   text eol=lf
+*.cjs   text eol=lf
+*.json  text eol=lf
+*.md    text eol=lf
+*.css   text eol=lf
+*.scss  text eol=lf
+*.html  text eol=lf
+*.svg   text eol=lf
+*.yml   text eol=lf
+*.yaml  text eol=lf
+*.txt   text eol=lf
+*.env   text eol=lf
+
+# Lockfile: keep LF, suppress noisy diffs
+package-lock.json text eol=lf -diff
+
+# Binary assets - never alter EOL or attempt a text diff
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+*.pdf   binary

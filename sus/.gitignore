@@ -30,6 +30,17 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 .dev-server*.log
+*.log
+
+# local build/lint/debug artifacts (console dumps - never commit)
+build_errors.txt
+lint_errors.txt
+footerlog*.txt
+gitlog.txt
+seed_output.log
+
+# scratch / code-gen snippets
+temp*.js
 
 # env files (can opt-in for committing if needed)
 .env*
