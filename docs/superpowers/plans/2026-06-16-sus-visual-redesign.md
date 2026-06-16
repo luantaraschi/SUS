@@ -21,6 +21,7 @@
   - "Expected" for visual steps = a described visual outcome to confirm in the screenshot.
 - **Commit after each task.** Conventional commits. Branch: `redesign/visual-overhaul` (already created).
 - **Token-first rule:** never introduce a new literal color/radius/shadow — add or use a token from `globals.css`.
+- **Canonical token names (as built in Phase 1 — use these everywhere):** color `--color-imp|safe|info|warn|special|gold|green`, `--color-primary-1|2|press`, `--color-bg-1|2|3`, `--color-text|-muted`, `--text-dim`; glass `--glass-1|2|-border`; alpha `--w-04..--w-72`; shadow `--shadow-sm|md|lg|press`; blur `--blur-sm|md|lg`; **radius `--r-xs|sm|md|lg|xl|2xl|pill`** (consume via `rounded-[var(--r-md)]` — the shadcn `--radius-*` names were left intact); **focus ring `var(--ring-focus)`** (box-shadow; `--ring` is the shadcn color token, do not repurpose); motion `--t-micro|quick|base|slow`, `--ease-out|in|in-out`, `--spring-playful`; type `--text-display|h1|h2|base|sm|xs`.
 - **Do not touch** Convex backend logic, game rules, or the phase state machine semantics.
 
 ---
