@@ -58,7 +58,7 @@ export function DistributingPhase({
   }
 
   // 3) Master setting up the round's two questions.
-  if (isMaster) {
+  if (room.mode === "question" && isMaster) {
     return (
       <MasterQuestionSetup
         round={round}

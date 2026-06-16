@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { spring } from "@/lib/motion";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
+import { getActivePlayers } from "@/lib/players";
 import PhaseIndicator from "../PhaseIndicator";
 import SpeakingOrbit from "../SpeakingOrbit";
 import { GlassSection } from "../ui/glass";
@@ -44,6 +45,8 @@ export function SpeakingPhase({
   const prevSpeakerIndexRef = useRef<number | null>(null);
   // track previous voting-request count to detect threshold crossing
   const prevVotingCountRef = useRef<number>(0);
+  // mount guard — skip sounds on first render to avoid false fires on load/rejoin
+  const hasMountedRef = useRef(false);
 
   const currentSpeakerIndex = speakingState?.currentSpeakerIndex ?? null;
   const speakingOrder = speakingState?.speakingOrder ?? [];
@@ -51,20 +54,22 @@ export function SpeakingPhase({
 
   const resolvedCurrentSpeaker =
     currentSpeakerIndex !== null
-      ? (speakingOrder
-          .map((id) => players.find((p) => p._id === id))
-          .filter(Boolean) as PublicPlayer[])[currentSpeakerIndex] ?? null
+      ? (players.find((p) => p._id === speakingOrder[currentSpeakerIndex]) ?? null)
       : null;
   const isMyTurnNow = resolvedCurrentSpeaker?._id === myPlayer._id;
 
-  const humanActiveCount = players.filter(
-    (p) => p.status !== "disconnected" && !p.isBot
-  ).length;
+  const humanActiveCount = getActivePlayers(players).length;
   const majorityThreshold = Math.ceil(humanActiveCount / 2);
 
   // turn.you — fire when currentSpeakerIndex changes and it's now my turn
   useEffect(() => {
     if (currentSpeakerIndex === null) return;
+    if (!hasMountedRef.current) {
+      // First render: seed refs without playing so we don't fire on load/rejoin
+      prevSpeakerIndexRef.current = currentSpeakerIndex;
+      hasMountedRef.current = true;
+      return;
+    }
     if (isMyTurnNow && prevSpeakerIndexRef.current !== currentSpeakerIndex) {
       playSound("turn.you");
     }
@@ -74,6 +79,11 @@ export function SpeakingPhase({
   // vote.consensus — fire when votingRequestedBy crosses the majority threshold
   useEffect(() => {
     const count = votingRequestedBy.length;
+    if (!hasMountedRef.current) {
+      // First render: seed ref without playing
+      prevVotingCountRef.current = count;
+      return;
+    }
     if (
       count >= majorityThreshold &&
       majorityThreshold > 0 &&

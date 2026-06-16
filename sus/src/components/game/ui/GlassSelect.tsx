@@ -49,7 +49,7 @@ export default function GlassSelect({
       <Select.Trigger
         aria-label={ariaLabel}
         className={cn(
-          "glass-panel glass-field flex min-h-12 w-full items-center justify-between gap-3 rounded-[20px] px-4 py-3 text-left text-sm text-white shadow-[0_16px_40px_rgba(0,0,0,0.22)] duration-200 hover:border-white/24 hover:bg-white/12 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:cursor-not-allowed disabled:opacity-50 data-[popup-open]:border-white/30 data-[popup-open]:bg-white/14 sm:text-base",
+          "glass-panel glass-field flex min-h-12 w-full items-center justify-between gap-3 rounded-[20px] px-4 py-3 text-left text-sm text-white shadow-[0_16px_40px_rgba(0,0,0,0.22)] transition-[border-color,background-color,box-shadow,color] duration-200 hover:border-white/24 hover:bg-white/12 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:cursor-not-allowed disabled:opacity-50 data-[popup-open]:border-white/30 data-[popup-open]:bg-white/14 sm:text-base",
           glassToneClasses(tone),
           className
         )}

@@ -17,6 +17,10 @@ export default function Timer({ endsAt, className = "" }: TimerProps) {
       return;
     }
 
+    // Reset prevTickRef when the target changes so a stale tick value from a
+    // previous countdown doesn't suppress the first tick of the new one.
+    prevTickRef.current = null;
+
     const timer = window.setInterval(() => {
       setNow(Date.now());
     }, 1000);

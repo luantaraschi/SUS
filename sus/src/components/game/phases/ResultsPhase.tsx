@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Doc } from "../../../../convex/_generated/dataModel";
@@ -46,6 +46,8 @@ export function ResultsPhase({
   const [showResults, setShowResults] = useState(false);
   const [showRetry, setShowRetry] = useState(false);
   const [selectedMasterId, setSelectedMasterId] = useState<string | null>(null);
+  // Guard: play win/lose sound exactly once per results reveal
+  const outcomeSoundPlayedRef = useRef(false);
 
   const startNextRound = useMutation(api.rooms.startNextRound);
   const requestNextRound = useMutation(api.rounds.requestNextRound);
@@ -67,9 +69,11 @@ export function ResultsPhase({
     void recomputeResults({ roundId: round._id, sessionId });
   }, [recomputeResults, round._id, roundResult, sessionId]);
 
-  // Wired reveal sounds — win/lose, fired once the results swap in.
+  // Wired reveal sounds — win/lose, fired exactly once per reveal.
   useEffect(() => {
     if (!showResults || !roundResult) return;
+    if (outcomeSoundPlayedRef.current) return;
+    outcomeSoundPlayedRef.current = true;
     playSound(roundResult.impostorWon ? "result.lose" : "result.win");
   }, [showResults, roundResult, playSound]);
 
