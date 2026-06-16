@@ -9,6 +9,7 @@ import PostItBoard from "../../PostItBoard";
 import { ReactionAnchor } from "../../reactions/ReactionAnchor";
 import { GlassPanel, GlassSection } from "../../ui/glass";
 import type { PublicPlayer } from "@/lib/game-view-types";
+import { getConnectedPlayers } from "@/lib/players";
 import { Check, CircleDashed, Clock3, Sparkles, WifiOff } from "lucide-react";
 
 /** ms after which an unconfirmed (non-ready) human player is treated as offline. */
@@ -145,8 +146,7 @@ export function RolesReadinessBoard({ players }: { players: PublicPlayer[] }) {
             </div>
 
             <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-              {players
-                .filter((player) => player.status !== "disconnected")
+              {getConnectedPlayers(players)
                 .map((player) => (
                   <ReadinessTile
                     key={player._id}

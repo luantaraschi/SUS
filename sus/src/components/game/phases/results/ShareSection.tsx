@@ -10,6 +10,7 @@ import GlassSelect from "../../ui/GlassSelect";
 import { GlassPanel } from "../../ui/glass";
 import { fadeInUp, spring } from "@/lib/motion";
 import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
+import { getConnectedPlayers } from "@/lib/players";
 
 interface ShareSectionProps {
   round: SafeRound;
@@ -51,8 +52,7 @@ export function ShareSection({
   const hasRequestedNext = round.nextRoundReadyBy?.includes(myPlayer._id) ?? false;
   const nextReadyCount = round.nextRoundReadyBy?.length ?? 0;
 
-  const nextMasterOptions = players
-    .filter((player) => player.status !== "disconnected")
+  const nextMasterOptions = getConnectedPlayers(players)
     .map((player) => ({
       value: String(player._id),
       label: `${player.name}${player.isHost ? " (Host)" : ""}`,

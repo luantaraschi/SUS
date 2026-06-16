@@ -12,6 +12,7 @@ import PlayerAvatar from "../PlayerAvatar";
 import PhaseIndicator from "../PhaseIndicator";
 import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, RoleView, SafeRound } from "@/lib/game-view-types";
+import { getActivePlayers } from "@/lib/players";
 import { getCenteredOddGridItemClass } from "@/lib/utils";
 import { GlassPanel, GlassSection } from "../ui/glass";
 import {
@@ -48,12 +49,8 @@ export function EvidencePhase({
   const isHost = myPlayer.isHost;
   const isSpectator = myPlayer.isSpectator;
 
-  const activePlayers = players.filter(
-    (p) =>
-      p.status !== "disconnected" &&
-      !p.isSpectator &&
-      !p.isBot &&
-      p._id !== round.masterId
+  const activePlayers = getActivePlayers(players).filter(
+    (p) => p._id !== round.masterId
   );
   const readyCount = round.evidenceReadyBy?.length ?? 0;
   const majority = Math.ceil(activePlayers.length / 2);

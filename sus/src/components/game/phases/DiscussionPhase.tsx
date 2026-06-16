@@ -9,6 +9,7 @@ import PhaseIndicator from "../PhaseIndicator";
 import Timer from "../Timer";
 import { ReactionAnchor } from "../reactions/ReactionAnchor";
 import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
+import { getConnectedPlayers } from "@/lib/players";
 import { GlassPanel, GlassSection } from "../ui/glass";
 import {
   fadeInUp,
@@ -38,9 +39,7 @@ export function DiscussionPhase({
   myPlayer,
 }: DiscussionPhaseProps) {
   const reduceMotion = useReducedMotion() ?? false;
-  const visiblePlayers = players.filter(
-    (player) => player.status !== "disconnected"
-  );
+  const visiblePlayers = getConnectedPlayers(players);
 
   return (
     <div className="mx-auto flex min-h-[100dvh] w-full max-w-5xl flex-col items-center justify-center px-4 py-10">
