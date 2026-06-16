@@ -76,7 +76,7 @@ export function ResultsPhase({
 
   useEffect(() => {
     if (!showResults || !roundResult) return;
-    playSound(roundResult.impostorWon ? "lose" : "win");
+    playSound(roundResult.impostorWon ? "result.lose" : "result.win");
   }, [showResults, roundResult, playSound]);
 
   useEffect(() => {

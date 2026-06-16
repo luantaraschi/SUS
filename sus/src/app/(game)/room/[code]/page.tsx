@@ -269,8 +269,8 @@ export default function RoomLobbyPage({
     const count = players.filter((p) => p.status !== "disconnected").length;
     const prev = prevPlayerCountRef.current;
     if (prev !== null) {
-      if (count > prev) playSound("join");
-      else if (count < prev) playSound("kick");
+      if (count > prev) playSound("lobby.join");
+      else if (count < prev) playSound("lobby.leave");
     }
     prevPlayerCountRef.current = count;
   }, [players, playSound]);

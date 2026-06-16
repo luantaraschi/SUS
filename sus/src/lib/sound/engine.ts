@@ -128,6 +128,22 @@ function getMasterGain(): GainNode | null {
   return _master;
 }
 
+/**
+ * Set the master output volume (0–1). Applies immediately via a short
+ * exponential ramp to avoid clicks. No-ops in SSR / when context not ready.
+ */
+export function setMasterVolume(value: number): void {
+  try {
+    const master = getMasterGain();
+    const ctx = getContext();
+    if (!master || !ctx) return;
+    const clamped = Math.min(Math.max(value, 0), 1);
+    master.gain.setTargetAtTime(clamped, ctx.currentTime, 0.01);
+  } catch {
+    // Silently ignore
+  }
+}
+
 // ---------------------------------------------------------------------------
 // playTone — oscillator with optional pitch sweep and ADSR envelope
 // ---------------------------------------------------------------------------
