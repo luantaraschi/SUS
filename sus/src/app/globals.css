@@ -191,6 +191,16 @@
   --shadow-press: 0 4px 0 var(--color-primary-press);
   /* NOTE: --ring already exists as a color token (#00B8EB); spec --ring (box-shadow) is added as --ring-focus to avoid collision */
   --ring-focus: 0 0 0 3px color-mix(in srgb, var(--color-info) 55%, transparent);
+
+  /* --- v2 Motion tokens --- */
+  --t-micro: 120ms;
+  --t-quick: 200ms;
+  --t-base: 300ms;
+  --t-slow: 450ms;
+  --ease-out: cubic-bezier(.16,1,.3,1);
+  --ease-in: cubic-bezier(.55,0,1,.45);
+  --ease-in-out: cubic-bezier(.65,0,.35,1);
+  --spring-playful: cubic-bezier(.34,1.56,.64,1);
 }
 
 html[data-color-scheme="dark"] {
@@ -413,6 +423,15 @@ html[data-color-scheme="dark"] {
   animation: float-up-fade var(--reaction-duration, 3000ms) ease-out both;
   transform-origin: center bottom;
   will-change: transform, opacity;
+}
+
+/* ===== REDUCED MOTION GUARD ===== */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
 }
 
 /* ===== v2 QUALITY UTILITIES ===== */
