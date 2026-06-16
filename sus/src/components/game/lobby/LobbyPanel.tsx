@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Id } from "../../../../convex/_generated/dataModel";
@@ -157,7 +157,6 @@ export default function LobbyPanel({
 }: LobbyPanelProps) {
   const reduceMotion = useReducedMotion();
   const [isThemeDialogOpen, setIsThemeDialogOpen] = useState(false);
-  const themeTriggerRef = useRef<HTMLButtonElement | null>(null);
 
   const selectedPackValue = room.settings.customPackId
     ? `custom:${room.settings.customPackId}`
@@ -228,7 +227,6 @@ export default function LobbyPanel({
 
           {showPackPicker && (
             <button
-              ref={themeTriggerRef}
               type="button"
               onClick={() => setIsThemeDialogOpen(true)}
               className="flex w-full max-w-[420px] items-center justify-between rounded-[var(--r-md)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-4 py-3 transition-[background-color,transform] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] active:scale-[0.99] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
@@ -261,7 +259,6 @@ export default function LobbyPanel({
               packOptions={packOptions}
               isHost={isHost}
               onSelectPack={handlePackSelection}
-              triggerRef={themeTriggerRef}
             />
           )}
 

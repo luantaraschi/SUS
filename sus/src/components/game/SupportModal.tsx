@@ -10,7 +10,6 @@ import {
   GlassField,
   GlassInput,
   GlassLabel,
-  GlassPanel,
   GlassSection,
 } from "./ui/glass";
 
@@ -39,12 +38,7 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
 
   return (
     <Modal open={isOpen} onClose={onClose} size="md">
-        <GlassPanel
-          tone="special"
-          className="h-full overflow-hidden rounded-[34px] p-5 sm:p-6"
-        >
-          <div className="custom-scrollbar relative z-10 overflow-y-auto pr-1">
-            <div className="space-y-5">
+          <div className="space-y-5">
             <div className="mx-auto max-w-lg text-center">
               <motion.div
                 initial={{ opacity: 0, scale: 0.88 }}
@@ -211,9 +205,7 @@ export function SupportModal({ isOpen, onClose }: SupportModalProps) {
                 </div>
               </GlassSection>
             </motion.div>
-            </div>
           </div>
-        </GlassPanel>
     </Modal>
   );
 }

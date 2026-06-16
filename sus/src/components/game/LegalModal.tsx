@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useI18n } from "@/lib/I18nContext";
 import type { Language } from "@/lib/locales";
-import { GlassPanel, GlassSection } from "./ui/glass";
+import { GlassSection } from "./ui/glass";
 import { Modal } from "@/components/ui/Modal";
 
 interface LegalModalProps {
@@ -353,10 +353,6 @@ const DOCUMENTS: Record<Language, Record<LegalModalProps["type"], LegalDocument>
   },
 };
 
-function getTone(type: LegalModalProps["type"]) {
-  return type === "privacy" ? "info" : "special";
-}
-
 const HEADER_ICONS: Record<LegalModalProps["type"], LucideIcon> = {
   privacy: ShieldCheck,
   terms: ScrollText,
@@ -367,16 +363,10 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
 
   const document = DOCUMENTS[language][type];
   const HeaderIcon = HEADER_ICONS[type];
-  const tone = getTone(type);
 
   return (
     <Modal open={isOpen} onClose={onClose} size="lg">
-        <GlassPanel
-          tone={tone}
-          className="overflow-hidden rounded-[34px] p-5 sm:p-6"
-        >
-          <div className="custom-scrollbar relative z-10 overflow-y-auto pr-1">
-            <div className="space-y-5">
+          <div className="space-y-5">
               <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06))] px-5 py-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] sm:px-6 sm:py-6">
                 <div className="absolute inset-y-0 right-[-12%] w-44 rounded-full bg-white/10 blur-3xl" />
                 <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
@@ -525,9 +515,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
                   </GlassSection>
                 </div>
               </section>
-            </div>
           </div>
-        </GlassPanel>
     </Modal>
   );
 }
