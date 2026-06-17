@@ -16,8 +16,8 @@ import {
 } from "lucide-react";
 import {
   motion,
+  useMotionValue,
   useReducedMotion,
-  useScroll,
   useSpring,
   type Variants,
 } from "framer-motion";
@@ -544,13 +544,23 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
   const [activeId, setActiveId] = useState<string>(document.sections[0]?.id ?? "");
 
   // Reading-progress bar bound to the internal scroll container.
+  // NOTE: we drive progress from a manual onScroll handler (not framer's
+  // useScroll({ container })) because the latter measures the container in a
+  // layout effect during hydration, which crashes the Next dev error boundary
+  // when the ref isn't attached yet. onScroll only fires client-side.
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({ container: scrollRef });
-  const progressX = useSpring(scrollYProgress, {
+  const scrollProgress = useMotionValue(0);
+  const progressX = useSpring(scrollProgress, {
     stiffness: 180,
     damping: 30,
     restDelta: 0.001,
   });
+
+  const handleBodyScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const el = e.currentTarget;
+    const max = el.scrollHeight - el.clientHeight;
+    scrollProgress.set(max > 0 ? el.scrollTop / max : 0);
+  };
 
   const scrollToSection = (id: string) => {
     setActiveId(id);
@@ -610,6 +620,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
       {/* Internal scroll container — owns scroll progress + sticky aside. */}
       <motion.div
         ref={scrollRef}
+        onScroll={handleBodyScroll}
         className="custom-scrollbar max-h-[64vh] space-y-5 overflow-y-auto pr-1"
         variants={reduce ? undefined : dossierBody}
         initial={reduce ? false : "initial"}
