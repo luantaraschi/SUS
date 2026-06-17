@@ -44,12 +44,13 @@ export function SpeakingPhase({
   const isHost = myPlayer.isHost;
   const isImpostor = myRole?.isImpostor ?? false;
 
-  // track previous speaker index to detect "becomes my turn"
-  const prevSpeakerIndexRef = useRef<number | null>(null);
+  // Per-effect first-run sentinels — each effect seeds its own guard independently.
+  // prevSpeakerIndexRef: undefined = not yet seeded (first run).
+  const prevSpeakerIndexRef = useRef<number | null | undefined>(undefined);
   // track previous voting-request count to detect threshold crossing
   const prevVotingCountRef = useRef<number>(0);
-  // mount guard — skip sounds on first render to avoid false fires on load/rejoin
-  const hasMountedRef = useRef(false);
+  // consensusSeededRef: false until the vote.consensus effect has seeded itself.
+  const consensusSeededRef = useRef(false);
   // signature halo pulse + consensus burst counters (drive one-shot visuals)
   const [haloPulse, setHaloPulse] = useState(0);
   const [consensusBurst, setConsensusBurst] = useState(0);
@@ -71,12 +72,11 @@ export function SpeakingPhase({
 
   // turn.you — fire when currentSpeakerIndex changes and it's now my turn.
   // The signature halo pulse is synced to this same beat (never duplicated).
+  // Uses its OWN first-run sentinel (prevSpeakerIndexRef === undefined).
   useEffect(() => {
-    if (currentSpeakerIndex === null) return;
-    if (!hasMountedRef.current) {
-      // First render: seed refs without playing so we don't fire on load/rejoin
+    if (prevSpeakerIndexRef.current === undefined) {
+      // First run: seed without playing, regardless of currentSpeakerIndex value.
       prevSpeakerIndexRef.current = currentSpeakerIndex;
-      hasMountedRef.current = true;
       return;
     }
     if (isMyTurnNow && prevSpeakerIndexRef.current !== currentSpeakerIndex) {
@@ -89,11 +89,14 @@ export function SpeakingPhase({
 
   // vote.consensus — fire when votingRequestedBy crosses the majority threshold.
   // The mint/gold Burst is synced to this same crossing.
+  // Uses its OWN first-run sentinel (consensusSeededRef) so it never shares state
+  // with the turn.you effect above.
   useEffect(() => {
     const count = votingRequestedBy.length;
-    if (!hasMountedRef.current) {
-      // First render: seed ref without playing
+    if (!consensusSeededRef.current) {
+      // First run: seed ref without playing
       prevVotingCountRef.current = count;
+      consensusSeededRef.current = true;
       return;
     }
     if (
@@ -119,7 +122,9 @@ export function SpeakingPhase({
   const orderedPlayers = speakingState.speakingOrder
     .map((id) => players.find((player) => player._id === id))
     .filter(Boolean) as PublicPlayer[];
-  const currentSpeaker = orderedPlayers[speakingState.currentSpeakerIndex] ?? null;
+  const currentSpeaker =
+    players.find((p) => p._id === speakingState.speakingOrder[speakingState.currentSpeakerIndex]) ??
+    null;
   const isMyTurn = currentSpeaker?._id === myPlayer._id;
 
   const hasRequestedVoting = speakingState.votingRequestedBy.includes(myPlayer._id);

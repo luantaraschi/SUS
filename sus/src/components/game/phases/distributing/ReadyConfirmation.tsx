@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AnimatePresence,
   motion,
@@ -495,26 +495,30 @@ export function ReadyConfirmation({
   const reveal = useCallback(() => setIsRevealing(true), []);
   const hide = useCallback(() => setIsRevealing(false), []);
 
-  const runConfirm = useCallback(() => {
-    void confirmSeen({
-      roundId: round._id,
-      playerId: myPlayer._id,
-      sessionId,
-    });
-  }, [confirmSeen, round._id, myPlayer._id, sessionId]);
+  // Ref to hold any pending visual-only timeout so we can clean it up on unmount.
+  const sealTimerRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (sealTimerRef.current !== null) clearTimeout(sealTimerRef.current);
+  }, []);
 
   const handleConfirm = useCallback(() => {
     if (sealing) return;
     setIsRevealing(false);
-    if (reduceMotion) {
-      runConfirm();
-      return;
-    }
-    // "Seal shut" micro + gold ring pulse, then commit on settle.
+    // Fire the mutation immediately — it's fire-and-forget.
+    confirmSeen({
+      roundId: round._id,
+      playerId: myPlayer._id,
+      sessionId,
+    }).catch(() => {});
+    if (reduceMotion) return;
+    // "Seal shut" micro + gold ring pulse — purely cosmetic, runs after the mutation.
     setSealing(true);
     setConfettiFire((n) => n + 1);
-    window.setTimeout(runConfirm, 360);
-  }, [sealing, reduceMotion, runConfirm]);
+    // Visual reset only; store the id so it can be cleared on unmount.
+    sealTimerRef.current = window.setTimeout(() => {
+      sealTimerRef.current = null;
+    }, 360);
+  }, [sealing, reduceMotion, confirmSeen, round._id, myPlayer._id, sessionId]);
 
   const secretLabel = isImpostor
     ? room.mode === "word"

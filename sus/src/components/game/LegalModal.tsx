@@ -542,6 +542,12 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
 
   // Active TOC chip — synced via scroll spy on section reveal.
   const [activeId, setActiveId] = useState<string>(document.sections[0]?.id ?? "");
+  // Derived: when `type` switches, activeId may point to a section from the
+  // previous doc. Resolve to the first section of the current doc instead.
+  // Done during render (not in an effect) to stay within React Compiler rules.
+  const effectiveActiveId = document.sections.some((s) => s.id === activeId)
+    ? activeId
+    : (document.sections[0]?.id ?? "");
 
   // Reading-progress bar bound to the internal scroll container.
   // NOTE: we drive progress from a manual onScroll handler (not framer's
@@ -567,8 +573,10 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
     const container = scrollRef.current;
     const target = container?.querySelector<HTMLElement>(`#dossier-card-${id}`);
     if (!container || !target) return;
+    const c = container.getBoundingClientRect();
+    const t = target.getBoundingClientRect();
     container.scrollTo({
-      top: target.offsetTop - 16,
+      top: container.scrollTop + (t.top - c.top) - 16,
       behavior: reduce ? "auto" : "smooth",
     });
   };
@@ -579,7 +587,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
       <div className="relative -mx-1 mb-4 h-[3px] overflow-hidden rounded-full bg-white/10">
         <motion.div
           className="h-full origin-left rounded-full"
-          style={{ backgroundColor: tone.accent, scaleX: reduce ? 1 : progressX }}
+          style={{ backgroundColor: tone.accent, scaleX: reduce ? scrollProgress : progressX }}
         />
       </div>
 
@@ -589,7 +597,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
         className="mb-4 flex flex-wrap gap-2"
       >
         {document.sections.map((section, i) => {
-          const isActive = activeId === section.id;
+          const isActive = effectiveActiveId === section.id;
           return (
             <button
               key={section.id}

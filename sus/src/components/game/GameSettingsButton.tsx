@@ -313,7 +313,16 @@ export default function GameSettingsButton({ sessionId }: GameSettingsButtonProp
         <Icon icon="solar:settings-bold" width={22} height={22} />
       </motion.button>
 
-      <Modal open={open} onClose={() => setOpen(false)} size="lg" title="Configuracoes">
+      <Modal
+        open={open}
+        onClose={() => {
+          setOpen(false);
+          // Reset so the load effect re-fetches on the next open.
+          setRemotePreferencesState("idle");
+        }}
+        size="lg"
+        title="Configuracoes"
+      >
         <motion.div
           variants={staggerContainer}
           initial="initial"
