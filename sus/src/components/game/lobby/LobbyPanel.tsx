@@ -146,10 +146,9 @@ export default function LobbyPanel({
     <div className="flex h-full min-h-0 flex-col">
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
         {/* Launch settle: a single confident scale dip on the whole stack when
-            the game is armed (keyed off launchKey, scale-only, no remount of
-            the stagger container below). */}
+            the game is armed (driven by launchKey, no key= so the panel stays
+            mounted and scroll/dialog state is preserved). */}
         <motion.div
-          key={`settle-${launchKey}`}
           initial={false}
           animate={
             reduceMotion || launchKey === 0

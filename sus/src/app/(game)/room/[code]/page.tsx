@@ -31,6 +31,7 @@ type OrbitPlayer = {
   avatarImageUrl?: string | null;
   isHost: boolean;
   isBot?: boolean;
+  joinedAt: number;
   status: "connected" | "ready" | "disconnected";
 };
 
@@ -46,16 +47,21 @@ function OrbitAvatar({
   canRemove,
   onRemove,
   launchKey,
+  mountedAt,
 }: {
   player: OrbitPlayer;
   canRemove: boolean;
   onRemove?: () => void;
   /** A changing value makes the whole squad give a synchronized upward hop. */
   launchKey: number;
+  /** Stable page-mount timestamp; bot Burst only fires for bots that joined after this. */
+  mountedAt: number;
 }) {
   const reduceMotion = useReducedMotion();
   // Deterministic per-player jitter so the squad hop reads as "almost together".
   const hopDelay = (player._id.charCodeAt(player._id.length - 1) % 8) * 0.012;
+  // Only burst for bots that joined after the page mounted — not pre-existing ones.
+  const botJoinedAfterMount = Boolean(player.isBot) && player.joinedAt > mountedAt;
   return (
     <motion.div
       layout
@@ -72,8 +78,8 @@ function OrbitAvatar({
         animate={reduceMotion || launchKey === 0 ? { y: 0 } : { y: [0, -10, 0] }}
         transition={reduceMotion ? { duration: 0 } : { ...spring.pop, delay: hopDelay }}
       >
-        {/* Playful puff when a bot joins the squad. */}
-        {!reduceMotion && player.isBot && (
+        {/* Playful puff only for bots that joined after this page mounted. */}
+        {!reduceMotion && botJoinedAfterMount && (
           <Burst fire colors={["var(--color-info)", "var(--glass-2)"]} count={8} />
         )}
         <PlayerAvatar
@@ -101,6 +107,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
   const { play: playSound } = useSound();
   const prevPlayerCountRef = useRef<number | null>(null);
 
+  const [mountedAt] = useState(() => Date.now());
   const [codeHidden, setCodeHidden] = useState(false);
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
@@ -199,10 +206,10 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
     }
     setActionError("");
     setIsStartingGame(true);
-    // Fire the "arm the game" celebration (Burst + panel settle + squad hop).
-    setLaunchKey((k) => k + 1);
     try {
       await startGame({ roomId: room._id, sessionId });
+      // Fire the "arm the game" celebration only on success (Burst + panel settle + squad hop).
+      setLaunchKey((k) => k + 1);
       router.push(`/room/${code.toUpperCase()}/play`);
     } catch (error) {
       setActionError(error instanceof Error ? error.message : "Nao foi possivel iniciar a partida.");
@@ -311,6 +318,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       canRemove={isHost && Boolean(player.isBot) && !removingBotId}
       onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
       launchKey={launchKey}
+      mountedAt={mountedAt}
     />
   );
 

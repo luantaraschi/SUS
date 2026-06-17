@@ -157,6 +157,7 @@ export default function HomePage() {
       window.setTimeout(() => router.push(`/room/${result.code}`), 220);
     } catch (createError) {
       setError(createError instanceof Error ? createError.message : "Erro ao criar sala.");
+    } finally {
       setLoading(false);
     }
   }, [avatarImageUrl, avatarSeed, createRoom, displayName, router, sessionId]);

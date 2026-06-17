@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Icon } from "@iconify/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { spring } from "@/lib/motion";
@@ -79,8 +80,13 @@ export default function CodeBlock({
 }: CodeBlockProps) {
   const reduceMotion = useReducedMotion();
   const confirmation = copied ? "Código copiado!" : linkCopied ? "Link copiado!" : null;
-  // copied flips false→true→false; treat the truthy beat as the wave trigger.
-  const waveKey = copied ? 1 : 0;
+  // Monotonic counter so each copy triggers a fresh ripple, not just the first.
+  const [waveKey, setWaveKey] = useState(0);
+
+  const handleCopyCode = () => {
+    setWaveKey((k) => k + 1);
+    onCopyCode();
+  };
 
   return (
     <div className="flex flex-col items-center gap-2.5">
@@ -113,7 +119,7 @@ export default function CodeBlock({
         {/* Access-pass: concentric r-md wrapper around the embossed r-sm tiles. */}
         <button
           type="button"
-          onClick={onCopyCode}
+          onClick={handleCopyCode}
           aria-label="Copiar código"
           className="flex flex-col items-center gap-1.5 rounded-[var(--r-md)] p-1.5 transition-transform duration-[var(--t-quick)] active:scale-[0.97] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
         >
@@ -141,7 +147,7 @@ export default function CodeBlock({
         </button>
 
         <div className="flex items-center gap-2">
-          <button type="button" onClick={onCopyCode} aria-label="Copiar código" className={iconButton}>
+          <button type="button" onClick={handleCopyCode} aria-label="Copiar código" className={iconButton}>
             <motion.span
               key={copied ? "copied" : "copy"}
               initial={reduceMotion ? false : { scale: copied ? 0.7 : 1 }}
