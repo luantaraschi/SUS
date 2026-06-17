@@ -3,6 +3,14 @@ import type { Doc } from "../../../../../convex/_generated/dataModel";
 import type { GlassTone } from "../../ui/glass";
 import type { RoleView } from "@/lib/game-view-types";
 
+/**
+ * Role "temperature" — drives the dossier seal theming (color, finial, throb).
+ * - impostor: hot, off-axis, heartbeat throb on the seal.
+ * - player:   calm, square, safe-green.
+ * - master:   ceremonial, special + gold accents (crown finial, double-rule).
+ */
+export type RoleTemperature = "impostor" | "player" | "master";
+
 export type RoleMeta = {
   tone: GlassTone;
   title: string;
@@ -11,6 +19,14 @@ export type RoleMeta = {
   /** Short inline guidance shown next to the revealed role. */
   guide: string;
   icon: typeof Shield;
+  /** Role temperature for seal theming. */
+  temperature: RoleTemperature;
+  /** Tiny centered eyebrow above the hero title. */
+  eyebrow: string;
+  /** One quiet inline "briefing" guidance line under the hero. */
+  briefing: string;
+  /** Primary themed CSS color token (e.g. "var(--color-imp)"). */
+  accentVar: string;
 };
 
 /**
@@ -35,6 +51,13 @@ export function getRoleMeta(
           ? "Voce nao recebeu a palavra. Blefe e descubra."
           : "Responda como se soubesse. Blefe e descubra.",
       icon: ShieldAlert,
+      temperature: "impostor",
+      eyebrow: "Dossie lacrado",
+      briefing:
+        mode === "word"
+          ? "Mantenha a calma. Ninguem pode saber que e voce."
+          : "Aja com naturalidade. A mesa esta te observando.",
+      accentVar: "var(--color-imp)",
     };
   }
 
@@ -47,6 +70,10 @@ export function getRoleMeta(
       accentLabel: "Controle da rodada",
       guide: "Voce observa e julga; nao joga esta rodada.",
       icon: Crown,
+      temperature: "master",
+      eyebrow: "Credencial cerimonial",
+      briefing: "Conduza a rodada e leia cada reacao da mesa.",
+      accentVar: "var(--color-special)",
     };
   }
 
@@ -60,5 +87,12 @@ export function getRoleMeta(
     accentLabel: "Informacao privada",
     guide: "De pistas que provem que voce sabe, sem entregar.",
     icon: Shield,
+    temperature: "player",
+    eyebrow: "Credencial verificada",
+    briefing:
+      mode === "word"
+        ? "Prove que voce sabe a palavra sem dize-la."
+        : "Responda com personalidade e compare as reacoes depois.",
+    accentVar: "var(--color-safe)",
   };
 }

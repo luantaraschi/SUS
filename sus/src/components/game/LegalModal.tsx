@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import type { LucideIcon } from "lucide-react";
 import {
   AlertTriangle,
@@ -13,9 +14,16 @@ import {
   Sparkles,
   UserRoundCheck,
 } from "lucide-react";
+import {
+  motion,
+  useReducedMotion,
+  useScroll,
+  useSpring,
+  type Variants,
+} from "framer-motion";
 import { useI18n } from "@/lib/I18nContext";
 import type { Language } from "@/lib/locales";
-import { GlassSection } from "./ui/glass";
+import { spring } from "@/lib/motion";
 import { Modal } from "@/components/ui/Modal";
 
 interface LegalModalProps {
@@ -358,164 +366,570 @@ const HEADER_ICONS: Record<LegalModalProps["type"], LucideIcon> = {
   terms: ScrollText,
 };
 
+// ---------------------------------------------------------------------------
+// Tone — Privacy tints cyan (--color-info), Terms tints rose (--color-imp).
+// Centralizing the tone tokens keeps the two documents visually distinct.
+// ---------------------------------------------------------------------------
+type ToneTokens = {
+  /** Solid accent (hairlines, active states, ghost tints). */
+  accent: string;
+  /** Faint accent wash for tinted fills (icon discs, header bleed). */
+  soft: string;
+  /** Stronger accent for hairlines, dashed borders and section underlines. */
+  line: string;
+};
+
+const TONE: Record<LegalModalProps["type"], ToneTokens> = {
+  privacy: {
+    accent: "var(--color-info)",
+    soft: "color-mix(in srgb, var(--color-info) 14%, transparent)",
+    line: "color-mix(in srgb, var(--color-info) 34%, transparent)",
+  },
+  terms: {
+    accent: "var(--color-imp)",
+    soft: "color-mix(in srgb, var(--color-imp) 14%, transparent)",
+    line: "color-mix(in srgb, var(--color-imp) 34%, transparent)",
+  },
+};
+
+// Numbered corner tabs for the evidence triptych.
+const EVIDENCE_TABS = ["01", "02", "03"] as const;
+// Slight diagonal baseline offset per card (px) for the "evidence" feel.
+const EVIDENCE_OFFSET = [0, 10, 20] as const;
+// Tiny rotate settle each card pins in at.
+const EVIDENCE_PIN_ROTATE = [-1.4, 0.8, -0.6] as const;
+
+// ---------------------------------------------------------------------------
+// Local motion variants (component-scoped — globals/motion.ts are read-only)
+// ---------------------------------------------------------------------------
+const dossierBody: Variants = {
+  animate: { transition: { staggerChildren: 0.09, delayChildren: 0.04 } },
+};
+
+const dossierRow: Variants = {
+  initial: { opacity: 0, y: 14 },
+  animate: { opacity: 1, y: 0, transition: spring.gentle },
+};
+
+// whileInView observes the INTERNAL scroll container (not the page viewport),
+// so reveals + the signature sweep fire as the user scrolls the dossier — not
+// all at once on open. framer-motion accepts the scroll ref as the IO root.
+type ViewRoot = React.RefObject<HTMLDivElement | null>;
+
+// ---------------------------------------------------------------------------
+// HighlighterSweep — SIGNATURE moment. A tone-colored bar swipes left→right
+// across the section title as it enters the viewport (~450ms), settling into a
+// short accent underline. Reduced motion: static underline, no sweep.
+// ---------------------------------------------------------------------------
+function HighlighterTitle({
+  id,
+  title,
+  accent,
+  reduce,
+  root,
+}: {
+  id: string;
+  title: string;
+  accent: string;
+  reduce: boolean;
+  root: ViewRoot;
+}) {
+  return (
+    <div className="relative inline-block">
+      <h3
+        id={`dossier-${id}`}
+        className="relative z-10 font-display text-2xl text-white sm:text-[2rem]"
+      >
+        {title}
+      </h3>
+
+      {/* The sweep bar — clipped to the title box, swipes across once. */}
+      {!reduce && (
+        <motion.span
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-[0.12em] top-[0.18em] z-0 origin-left rounded-[var(--r-xs)]"
+          style={{
+            backgroundColor: accent,
+            opacity: 0.26,
+            mixBlendMode: "screen",
+          }}
+          initial={{ scaleX: 0 }}
+          whileInView={{ scaleX: [0, 1, 1, 0] }}
+          viewport={{ once: true, amount: 0.7, root }}
+          transition={{
+            duration: 0.45,
+            ease: [0.16, 1, 0.3, 1],
+            times: [0, 0.45, 0.7, 1],
+          }}
+        />
+      )}
+
+      {/* The accent underline left behind after the sweep. Static when reduced. */}
+      <motion.span
+        aria-hidden
+        className="absolute -bottom-1 left-0 z-10 h-[2px] origin-left rounded-full"
+        style={{ backgroundColor: accent, width: "100%" }}
+        initial={reduce ? false : { scaleX: 0, opacity: 0 }}
+        whileInView={reduce ? undefined : { scaleX: 1, opacity: 1 }}
+        viewport={{ once: true, amount: 0.7, root }}
+        transition={{ delay: 0.32, duration: 0.34, ease: [0.16, 1, 0.3, 1] }}
+      />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SpineList — bullets as a vertical list with a tinted spine line that draws
+// (scaleY 0→1) and bullets that stagger in alongside it.
+// ---------------------------------------------------------------------------
+function SpineList({
+  bullets,
+  accent,
+  reduce,
+  root,
+}: {
+  bullets: string[];
+  accent: string;
+  reduce: boolean;
+  root: ViewRoot;
+}) {
+  return (
+    <div className="relative mt-4 pl-5">
+      {/* Tinted spine */}
+      <motion.span
+        aria-hidden
+        className="absolute left-1 top-1 bottom-1 w-[2px] origin-top rounded-full"
+        style={{ backgroundColor: accent, opacity: 0.5 }}
+        initial={reduce ? false : { scaleY: 0 }}
+        whileInView={reduce ? undefined : { scaleY: 1 }}
+        viewport={{ once: true, amount: 0.3, root }}
+        transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+      />
+      <motion.ul
+        className="space-y-3"
+        variants={reduce ? undefined : dossierBody}
+        initial={reduce ? false : "initial"}
+        whileInView={reduce ? undefined : "animate"}
+        viewport={{ once: true, amount: 0.2, root }}
+      >
+        {bullets.map((bullet) => (
+          <motion.li
+            key={bullet}
+            className="flex items-start gap-3"
+            variants={reduce ? undefined : dossierRow}
+          >
+            <span
+              className="mt-[7px] h-2 w-2 shrink-0 rounded-full"
+              style={{ backgroundColor: accent }}
+            />
+            <span className="font-body text-sm leading-relaxed text-white/74 sm:text-[15px]">
+              {bullet}
+            </span>
+          </motion.li>
+        ))}
+      </motion.ul>
+    </div>
+  );
+}
+
 export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
   const { language } = useI18n();
+  const reduce = useReducedMotion() ?? false;
 
   const document = DOCUMENTS[language][type];
   const HeaderIcon = HEADER_ICONS[type];
+  const tone = TONE[type];
+
+  // Active TOC chip — synced via scroll spy on section reveal.
+  const [activeId, setActiveId] = useState<string>(document.sections[0]?.id ?? "");
+
+  // Reading-progress bar bound to the internal scroll container.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { scrollYProgress } = useScroll({ container: scrollRef });
+  const progressX = useSpring(scrollYProgress, {
+    stiffness: 180,
+    damping: 30,
+    restDelta: 0.001,
+  });
+
+  const scrollToSection = (id: string) => {
+    setActiveId(id);
+    const container = scrollRef.current;
+    const target = container?.querySelector<HTMLElement>(`#dossier-card-${id}`);
+    if (!container || !target) return;
+    container.scrollTo({
+      top: target.offsetTop - 16,
+      behavior: reduce ? "auto" : "smooth",
+    });
+  };
 
   return (
     <Modal open={isOpen} onClose={onClose} size="lg">
-          <div className="space-y-5">
-              <section className="relative overflow-hidden rounded-[30px] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.06))] px-5 py-5 shadow-[0_24px_60px_rgba(0,0,0,0.22)] sm:px-6 sm:py-6">
-                <div className="absolute inset-y-0 right-[-12%] w-44 rounded-full bg-white/10 blur-3xl" />
-                <div className="relative flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-                  <div className="max-w-3xl">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-1.5 font-condensed text-[11px] uppercase tracking-[0.28em] text-white/66">
-                      <HeaderIcon size={14} />
-                      {document.eyebrow}
-                    </div>
-                    <h2 className="mt-4 font-display text-3xl text-white sm:text-4xl">
-                      {document.title}
-                    </h2>
-                    <p className="mt-3 max-w-2xl font-body text-sm leading-relaxed text-white/76 sm:text-base">
-                      {document.subtitle}
-                    </p>
-                  </div>
+      {/* Reading-progress bar — slim, tone-colored, pinned above the doc. */}
+      <div className="relative -mx-1 mb-4 h-[3px] overflow-hidden rounded-full bg-white/10">
+        <motion.div
+          className="h-full origin-left rounded-full"
+          style={{ backgroundColor: tone.accent, scaleX: reduce ? 1 : progressX }}
+        />
+      </div>
 
-                  <div className="flex flex-col gap-3 text-sm text-white/74 sm:min-w-[240px]">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/8 px-3 py-2 font-condensed text-[11px] uppercase tracking-[0.24em] text-white/68">
-                      <Clock3 size={14} />
-                      {document.updatedAt}
-                    </div>
-                    <div className="rounded-[22px] border border-white/10 bg-black/12 p-4 text-white/72 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-                      <div className="flex items-start gap-3">
-                        <Sparkles size={18} className="mt-0.5 shrink-0 text-white/82" />
-                        <p className="font-body text-sm leading-relaxed">{document.note}</p>
-                      </div>
-                    </div>
-                  </div>
+      {/* TOC chip-rail — pills 1..6 with a sliding active highlight (layoutId). */}
+      <nav
+        aria-label={language === "pt" ? "Sumario do dossie" : "Dossier contents"}
+        className="mb-4 flex flex-wrap gap-2"
+      >
+        {document.sections.map((section, i) => {
+          const isActive = activeId === section.id;
+          return (
+            <button
+              key={section.id}
+              type="button"
+              onClick={() => scrollToSection(section.id)}
+              aria-current={isActive ? "true" : undefined}
+              className="relative flex h-10 min-w-10 items-center justify-center rounded-[var(--r-pill)] px-3 font-condensed text-[12px] uppercase tracking-[0.18em] transition-[color,transform] duration-[var(--t-quick)] ease-[var(--ease-out)] hover:scale-[1.04] active:scale-95 focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] motion-reduce:transition-none motion-reduce:hover:scale-100"
+              style={{ color: isActive ? "#0b0518" : "rgba(255,255,255,0.6)" }}
+            >
+              {isActive && (
+                <motion.span
+                  layoutId={`dossier-toc-${type}`}
+                  className="absolute inset-0 rounded-[var(--r-pill)]"
+                  style={{ backgroundColor: tone.accent }}
+                  transition={
+                    reduce
+                      ? { duration: 0 }
+                      : { type: "spring", stiffness: 480, damping: 34 }
+                  }
+                />
+              )}
+              <span className="relative z-10">{i + 1}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Internal scroll container — owns scroll progress + sticky aside. */}
+      <motion.div
+        ref={scrollRef}
+        className="custom-scrollbar max-h-[64vh] space-y-5 overflow-y-auto pr-1"
+        variants={reduce ? undefined : dossierBody}
+        initial={reduce ? false : "initial"}
+        animate="animate"
+      >
+        {/* (1) Capa do dossie — asymmetric header with a wax-seal medallion. */}
+        <motion.section
+          variants={reduce ? undefined : dossierRow}
+          className="relative overflow-hidden rounded-[var(--r-xl)] border bg-[linear-gradient(135deg,rgba(255,255,255,0.16),rgba(255,255,255,0.05))] px-5 py-6 shadow-[var(--shadow-md)] sm:px-6"
+          style={{ borderColor: tone.line }}
+        >
+          {/* Tone wash bleeding from the seal side. */}
+          <div
+            className="absolute inset-y-0 right-[-14%] w-52 rounded-full blur-3xl"
+            style={{ backgroundColor: tone.soft }}
+          />
+
+          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-5">
+              {/* Wax-seal medallion — gold→tone gradient disc, breaks the rect. */}
+              <motion.div
+                aria-hidden
+                className="relative grid h-20 w-20 shrink-0 place-items-center rounded-[var(--r-pill)] shadow-[var(--shadow-md)]"
+                style={{
+                  background: `radial-gradient(circle at 32% 28%, var(--color-gold), ${
+                    type === "privacy" ? "var(--color-info)" : "var(--color-imp)"
+                  })`,
+                }}
+                initial={reduce ? false : { scale: 0.6, rotate: -14, opacity: 0 }}
+                animate={{ scale: 1, rotate: 0, opacity: 1 }}
+                transition={reduce ? { duration: 0 } : { ...spring.pop, delay: 0.12 }}
+              >
+                {/* Inner ring */}
+                <span className="absolute inset-[6px] rounded-[var(--r-pill)] border border-white/40" />
+                <span className="absolute inset-[10px] rounded-[var(--r-pill)] border border-black/15" />
+                <HeaderIcon size={30} className="relative text-[#1a0a2e]" strokeWidth={2.2} />
+              </motion.div>
+
+              <div className="max-w-2xl">
+                <div
+                  className="inline-flex items-center gap-2 rounded-[var(--r-pill)] border px-3 py-1.5 font-condensed text-[11px] uppercase tracking-[0.28em]"
+                  style={{ borderColor: tone.line, color: tone.accent }}
+                >
+                  <Sparkles size={13} />
+                  {language === "pt" ? "Dossie" : "Dossier"} · {document.eyebrow}
                 </div>
-              </section>
+                <h2 className="mt-3 font-display text-3xl text-white sm:text-4xl">
+                  {document.title}
+                </h2>
+                <p className="mt-3 font-body text-sm leading-relaxed text-white/76 sm:text-base">
+                  {document.subtitle}
+                </p>
+              </div>
+            </div>
 
-              <section className="grid gap-4 lg:grid-cols-3">
-                {document.highlights.map((item) => {
-                  const Icon = item.icon;
-
-                  return (
-                    <GlassSection
-                      key={item.label}
-                      className="rounded-[26px] p-4 sm:p-5"
-                    >
-                      <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/10 text-white shadow-[0_14px_30px_rgba(0,0,0,0.18)]">
-                        <Icon size={20} />
-                      </div>
-                      <p className="mt-4 font-condensed text-[11px] uppercase tracking-[0.24em] text-white/58">
-                        {item.label}
-                      </p>
-                      <p className="mt-2 font-display text-2xl text-white">
-                        {item.title}
-                      </p>
-                      <p className="mt-2 font-body text-sm leading-relaxed text-white/72">
-                        {item.text}
-                      </p>
-                    </GlassSection>
-                  );
-                })}
-              </section>
-
-              <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
-                <div className="space-y-4">
-                  {document.sections.map((section) => (
-                    <GlassSection
-                      key={section.id}
-                      className="rounded-[28px] p-5 sm:p-6"
-                    >
-                      <h3 className="font-display text-2xl text-white sm:text-[2rem]">
-                        {section.title}
-                      </h3>
-                      <p className="mt-3 font-body text-sm leading-relaxed text-white/76 sm:text-base">
-                        {section.body}
-                      </p>
-                      {section.bullets && (
-                        <ul className="mt-4 space-y-3">
-                          {section.bullets.map((bullet) => (
-                            <li key={bullet} className="flex items-start gap-3">
-                              <span className="mt-2 h-2.5 w-2.5 shrink-0 rounded-full bg-white/80" />
-                              <span className="font-body text-sm leading-relaxed text-white/74 sm:text-[15px]">
-                                {bullet}
-                              </span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </GlassSection>
-                  ))}
+            {/* Carimbo — a rotated "date stamp" with updatedAt + note. */}
+            <motion.div
+              className="shrink-0 self-end lg:self-center"
+              initial={reduce ? false : { rotate: 0, opacity: 0, scale: 0.9 }}
+              animate={{ rotate: -3.5, opacity: 1, scale: 1 }}
+              transition={reduce ? { duration: 0 } : { ...spring.gentle, delay: 0.24 }}
+            >
+              <div
+                className="max-w-[260px] rounded-[var(--r-md)] border-2 border-dashed p-3 text-center"
+                style={{ borderColor: tone.line }}
+              >
+                <div className="flex items-center justify-center gap-1.5 font-condensed text-[10px] uppercase tracking-[0.24em]" style={{ color: tone.accent }}>
+                  <Clock3 size={12} />
+                  {document.updatedAt}
                 </div>
-
-                <div className="space-y-4">
-                  <GlassSection className="rounded-[28px] p-5">
-                    <p className="font-condensed text-[11px] uppercase tracking-[0.24em] text-white/58">
-                      {language === "pt" ? "Leitura rapida" : "Quick read"}
-                    </p>
-                    <div className="mt-4 space-y-3">
-                      <div className="rounded-[20px] border border-white/10 bg-white/8 p-4">
-                        <p className="font-condensed text-[11px] uppercase tracking-[0.22em] text-white/54">
-                          {language === "pt" ? "Jogo social" : "Social play"}
-                        </p>
-                        <p className="mt-2 font-body text-sm leading-relaxed text-white/74">
-                          {language === "pt"
-                            ? "Nao use o app para compartilhar dados sensiveis. O jogo foi desenhado para conversa e deducao em grupo."
-                            : "Do not use the app to share sensitive data. The game is built for group conversation and deduction."}
-                        </p>
-                      </div>
-                      <div className="rounded-[20px] border border-white/10 bg-white/8 p-4">
-                        <p className="font-condensed text-[11px] uppercase tracking-[0.22em] text-white/54">
-                          {language === "pt" ? "Conta e perfil" : "Account and profile"}
-                        </p>
-                        <p className="mt-2 font-body text-sm leading-relaxed text-white/74">
-                          {language === "pt"
-                            ? "Cadastro e opcional. Sem login, o app ainda usa uma sessao local para identificar seu navegador."
-                            : "Sign-in is optional. Without an account, the app still uses a local session to identify your browser."}
-                        </p>
-                      </div>
-                    </div>
-                  </GlassSection>
-
-                  <GlassSection className="rounded-[28px] p-5">
-                    <div className="flex items-start gap-3">
-                      <Lock size={18} className="mt-0.5 shrink-0 text-white/80" />
-                      <div>
-                        <p className="font-condensed text-[11px] uppercase tracking-[0.24em] text-white/58">
-                          {language === "pt" ? "Boas praticas" : "Best practice"}
-                        </p>
-                        <p className="mt-3 font-body text-sm leading-relaxed text-white/74">
-                          {language === "pt"
-                            ? "Evite enviar documentos, contatos privados, senhas ou qualquer informacao pessoal sensivel em chats, respostas ou nomes de usuario."
-                            : "Avoid posting documents, private contact details, passwords or other sensitive personal information in chat, answers or usernames."}
-                        </p>
-                      </div>
-                    </div>
-                  </GlassSection>
-
-                  <GlassSection className="rounded-[28px] p-5">
-                    <div className="flex items-start gap-3">
-                      <AlertTriangle size={18} className="mt-0.5 shrink-0 text-[#ffd67a]" />
-                      <div>
-                        <p className="font-condensed text-[11px] uppercase tracking-[0.24em] text-white/58">
-                          {language === "pt" ? "Contato e revisao" : "Contact and review"}
-                        </p>
-                        <p className="mt-3 font-body text-sm leading-relaxed text-white/74">
-                          {language === "pt"
-                            ? "Se voce precisar tratar questoes de dados, direitos autorais ou moderacao, use os contatos publicos do projeto mostrados no footer."
-                            : "If you need to handle data, copyright or moderation matters, use the project's public contact channels shown in the footer."}
-                        </p>
-                      </div>
-                    </div>
-                  </GlassSection>
-                </div>
-              </section>
+                <p className="mt-2 font-body text-[11px] leading-relaxed text-white/60">
+                  {document.note}
+                </p>
+              </div>
+            </motion.div>
           </div>
+        </motion.section>
+
+        {/* (2) Evidence triptych — varied tones, diagonal offset, corner tabs. */}
+        <motion.section
+          variants={reduce ? undefined : dossierRow}
+          className="grid gap-4 lg:grid-cols-3"
+        >
+          {document.highlights.map((item, i) => {
+            const Icon = item.icon;
+            return (
+              <motion.article
+                key={item.label}
+                initial={
+                  reduce ? false : { opacity: 0, y: 16, rotate: EVIDENCE_PIN_ROTATE[i] * 3 }
+                }
+                whileInView={
+                  reduce ? undefined : { opacity: 1, y: 0, rotate: EVIDENCE_PIN_ROTATE[i] }
+                }
+                viewport={{ once: true, amount: 0.3, root: scrollRef }}
+                transition={reduce ? { duration: 0 } : { ...spring.pop, delay: i * 0.08 }}
+                whileHover={reduce ? undefined : { y: -4, rotate: 0 }}
+                whileTap={reduce ? undefined : { scale: 0.96 }}
+                className="group glass-section relative rounded-[var(--r-lg)] p-4 shadow-[var(--shadow-sm)] sm:p-5"
+                style={{
+                  marginTop: EVIDENCE_OFFSET[i],
+                  borderColor: tone.line,
+                  transitionProperty: "box-shadow",
+                  transitionDuration: "var(--t-quick)",
+                }}
+              >
+                {/* Numbered corner tab */}
+                <span
+                  className="absolute right-3 top-3 font-condensed text-[11px] font-bold tracking-[0.18em]"
+                  style={{ color: tone.accent }}
+                >
+                  {EVIDENCE_TABS[i]}
+                </span>
+
+                {/* Tinted icon disc — nudges on hover */}
+                <motion.div
+                  className="grid h-12 w-12 place-items-center rounded-[var(--r-md)] border text-white"
+                  style={{ backgroundColor: tone.soft, borderColor: tone.line }}
+                  whileHover={reduce ? undefined : { rotate: -6, scale: 1.06 }}
+                  transition={spring.press}
+                >
+                  <Icon size={20} style={{ color: tone.accent }} />
+                </motion.div>
+
+                <p
+                  className="mt-4 font-condensed text-[11px] uppercase tracking-[0.24em]"
+                  style={{ color: "rgba(255,255,255,0.58)" }}
+                >
+                  {item.label}
+                </p>
+                <p className="mt-2 font-display text-2xl text-white">{item.title}</p>
+                <p className="mt-2 font-body text-sm leading-relaxed text-white/72">
+                  {item.text}
+                </p>
+
+                {/* Hover shadow growth via box-shadow only (no transition:all). */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute inset-0 rounded-[var(--r-lg)] opacity-0 transition-opacity duration-[var(--t-quick)] ease-[var(--ease-out)] group-hover:opacity-100 motion-reduce:transition-none"
+                  style={{ boxShadow: "var(--shadow-md)" }}
+                />
+              </motion.article>
+            );
+          })}
+        </motion.section>
+
+        {/* (3) + (4) Sections + sticky "Leitura rapida" post-its. */}
+        <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_280px]">
+          {/* Section cards — ghost numeral + tone-hairline title + spine list. */}
+          <div className="space-y-4">
+            {document.sections.map((section, i) => (
+              <motion.article
+                key={section.id}
+                id={`dossier-card-${section.id}`}
+                className="glass-section relative overflow-hidden rounded-[var(--r-lg)] p-5 sm:p-6"
+                initial={reduce ? false : { opacity: 0, y: 18 }}
+                whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
+                viewport={{ once: true, amount: 0.25, root: scrollRef }}
+                transition={reduce ? { duration: 0 } : { ...spring.gentle }}
+                onViewportEnter={() => setActiveId(section.id)}
+              >
+                {/* Large ghost numeral, top-right */}
+                <span
+                  aria-hidden
+                  className="pointer-events-none absolute -right-2 -top-6 select-none font-display text-[7rem] leading-none text-white/[0.06]"
+                >
+                  {i + 1}
+                </span>
+
+                {/* Title on a tone hairline */}
+                <div
+                  className="relative border-b pb-3"
+                  style={{ borderColor: tone.line }}
+                >
+                  <HighlighterTitle
+                    id={section.id}
+                    title={section.title}
+                    accent={tone.accent}
+                    reduce={reduce}
+                    root={scrollRef}
+                  />
+                </div>
+
+                <p className="relative mt-3 font-body text-sm leading-relaxed text-white/76 sm:text-base">
+                  {section.body}
+                </p>
+
+                {section.bullets && (
+                  <SpineList
+                    bullets={section.bullets}
+                    accent={tone.accent}
+                    reduce={reduce}
+                    root={scrollRef}
+                  />
+                )}
+              </motion.article>
+            ))}
+          </div>
+
+          {/* Tilted post-it notes — sticky on lg+. */}
+          <div className="space-y-5 lg:sticky lg:top-2 lg:self-start">
+            <PostIt
+              tilt={-2}
+              accent={tone.accent}
+              line={tone.line}
+              reduce={reduce}
+              root={scrollRef}
+              eyebrow={language === "pt" ? "Leitura rapida" : "Quick read"}
+              icon={Sparkles}
+            >
+              <div className="space-y-3">
+                <div>
+                  <p className="font-condensed text-[11px] uppercase tracking-[0.22em] text-white/54">
+                    {language === "pt" ? "Jogo social" : "Social play"}
+                  </p>
+                  <p className="mt-1.5 font-body text-sm leading-relaxed text-white/74">
+                    {language === "pt"
+                      ? "Nao use o app para compartilhar dados sensiveis. O jogo foi desenhado para conversa e deducao em grupo."
+                      : "Do not use the app to share sensitive data. The game is built for group conversation and deduction."}
+                  </p>
+                </div>
+                <div>
+                  <p className="font-condensed text-[11px] uppercase tracking-[0.22em] text-white/54">
+                    {language === "pt" ? "Conta e perfil" : "Account and profile"}
+                  </p>
+                  <p className="mt-1.5 font-body text-sm leading-relaxed text-white/74">
+                    {language === "pt"
+                      ? "Cadastro e opcional. Sem login, o app ainda usa uma sessao local para identificar seu navegador."
+                      : "Sign-in is optional. Without an account, the app still uses a local session to identify your browser."}
+                  </p>
+                </div>
+              </div>
+            </PostIt>
+
+            <PostIt
+              tilt={1.5}
+              accent={tone.accent}
+              line={tone.line}
+              reduce={reduce}
+              root={scrollRef}
+              eyebrow={language === "pt" ? "Boas praticas" : "Best practice"}
+              icon={Lock}
+            >
+              <p className="font-body text-sm leading-relaxed text-white/74">
+                {language === "pt"
+                  ? "Evite enviar documentos, contatos privados, senhas ou qualquer informacao pessoal sensivel em chats, respostas ou nomes de usuario."
+                  : "Avoid posting documents, private contact details, passwords or other sensitive personal information in chat, answers or usernames."}
+              </p>
+            </PostIt>
+
+            <PostIt
+              tilt={-1.5}
+              accent={tone.accent}
+              line={tone.line}
+              reduce={reduce}
+              root={scrollRef}
+              eyebrow={language === "pt" ? "Contato e revisao" : "Contact and review"}
+              icon={AlertTriangle}
+              iconColor="var(--color-gold)"
+            >
+              <p className="font-body text-sm leading-relaxed text-white/74">
+                {language === "pt"
+                  ? "Se voce precisar tratar questoes de dados, direitos autorais ou moderacao, use os contatos publicos do projeto mostrados no footer."
+                  : "If you need to handle data, copyright or moderation matters, use the project's public contact channels shown in the footer."}
+              </p>
+            </PostIt>
+          </div>
+        </section>
+      </motion.div>
     </Modal>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// PostIt — a tilted note card that straightens slightly on hover.
+// ---------------------------------------------------------------------------
+function PostIt({
+  tilt,
+  accent,
+  line,
+  reduce,
+  root,
+  eyebrow,
+  icon: Icon,
+  iconColor,
+  children,
+}: {
+  tilt: number;
+  accent: string;
+  line: string;
+  reduce: boolean;
+  root: ViewRoot;
+  eyebrow: string;
+  icon: LucideIcon;
+  iconColor?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <motion.div
+      className="post-it-paper glass-section rounded-[var(--r-md)] p-4"
+      style={{ borderColor: line }}
+      initial={reduce ? false : { opacity: 0, y: 14, rotate: tilt * 2.4 }}
+      whileInView={reduce ? undefined : { opacity: 1, y: 0, rotate: tilt }}
+      viewport={{ once: true, amount: 0.3, root }}
+      transition={reduce ? { duration: 0 } : spring.gentle}
+      whileHover={reduce ? undefined : { rotate: 0, y: -3 }}
+    >
+      <div className="flex items-start gap-2.5">
+        <Icon
+          size={16}
+          className="mt-0.5 shrink-0"
+          style={{ color: iconColor ?? accent }}
+        />
+        <div className="min-w-0">
+          <p className="font-condensed text-[11px] uppercase tracking-[0.24em] text-white/58">
+            {eyebrow}
+          </p>
+          <div className="mt-2">{children}</div>
+        </div>
+      </div>
+    </motion.div>
   );
 }
