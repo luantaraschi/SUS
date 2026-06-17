@@ -41,7 +41,9 @@ export default function PacksPage() {
 
   const t = reduceMotion ? { duration: 0 } : spring.gentle;
 
-  if (user === undefined || myPacks === undefined) {
+  // Resolve auth state before checking query results.
+  // user === undefined → still loading; user === null → guest (not signed in).
+  if (user === undefined) {
     return (
       <div className="flex min-h-dvh items-center justify-center">
         <p className="font-display text-2xl text-[var(--color-text)] animate-pulse">Carregando...</p>
@@ -51,21 +53,43 @@ export default function PacksPage() {
 
   if (user === null) {
     return (
-      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-4 text-center">
-        <Icon icon="solar:lock-keyhole-bold" width={48} height={48} className="text-[var(--color-text-muted)] opacity-60" />
-        <p className="font-display text-xl text-[var(--color-text)]">
-          Voce precisa estar logado para criar pacotes.
-        </p>
-        <motion.button
-          onClick={() => router.push("/profile")}
-          whileHover={reduceMotion ? undefined : { y: -2, scale: 1.02 }}
-          whileTap={reduceMotion ? undefined : { scale: 0.96 }}
-          transition={spring.press}
-          className="flex h-11 items-center gap-2 rounded-[var(--r-pill)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-6 font-display text-sm uppercase tracking-widest text-[var(--color-text)] backdrop-blur-[var(--blur-md)] transition-[background-color] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-5 px-4 text-center">
+        <motion.span
+          animate={reduceMotion ? undefined : { y: [0, -6, 0] }}
+          transition={reduceMotion ? undefined : { duration: 3.2, ease: "easeInOut", repeat: Infinity }}
         >
-          <Icon icon="solar:arrow-left-bold" width={16} height={16} />
-          Voltar ao Perfil
-        </motion.button>
+          <Icon icon="solar:folder-with-files-bold" width={52} height={52} className="text-[var(--color-special)] opacity-70" />
+        </motion.span>
+        <div className="flex flex-col gap-2">
+          <p className="font-display text-2xl text-[var(--color-text)]">Entre para criar seus pacotes</p>
+          <p className="max-w-xs font-body text-sm text-[var(--color-text-muted)]">
+            Crie uma conta para montar e salvar seus proprios pacotes de palavras e perguntas.
+          </p>
+        </div>
+        <motion.div
+          whileHover={reduceMotion ? undefined : { y: -2 }}
+          whileTap={reduceMotion ? undefined : { scale: 0.97 }}
+          transition={spring.press}
+        >
+          <Button
+            variant="primary"
+            size="game-lg"
+            onClick={() => router.push("/")}
+            className="hover:brightness-110"
+          >
+            <Icon icon="solar:arrow-left-bold" width={20} height={20} />
+            Voltar e entrar
+          </Button>
+        </motion.div>
+      </div>
+    );
+  }
+
+  // At this point user is authenticated. Wait for packs query to resolve.
+  if (myPacks === undefined) {
+    return (
+      <div className="flex min-h-dvh items-center justify-center">
+        <p className="font-display text-2xl text-[var(--color-text)] animate-pulse">Carregando...</p>
       </div>
     );
   }
