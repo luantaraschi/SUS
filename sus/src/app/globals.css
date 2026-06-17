@@ -82,6 +82,8 @@
   --animate-bounce-result: bounce-result 900ms ease-in-out infinite;
   --animate-shake: shake 500ms ease-in-out;
   --animate-fade-in: fade-in 300ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-shimmer-sweep: shimmer-sweep 1.6s var(--ease-in-out) infinite;
+  --animate-marching-ants: marching-ants 600ms linear infinite;
 
   /* --- v2 Color tokens --- */
   --color-bg-1: #2A0A6E;
@@ -563,4 +565,53 @@ p { text-wrap: pretty; }
       scale(calc(var(--reaction-scale, 1) * 1.04))
       rotate(calc(var(--reaction-tilt, 0deg) + 2deg));
   }
+}
+
+/* A translateX gradient sweep, for highlight/shine effects.
+   Apply to an overlay element; the gradient is supplied by the element's bg. */
+@keyframes shimmer-sweep {
+  0% {
+    transform: translateX(-130%);
+  }
+  100% {
+    transform: translateX(130%);
+  }
+}
+
+/* background-position shift for dashed "sneaky" outlines (marching ants). */
+@keyframes marching-ants {
+  0% {
+    background-position: 0 0, 0 0, 0 0, 0 0;
+  }
+  100% {
+    background-position: 16px 0, -16px 0, 0 16px, 0 -16px;
+  }
+}
+
+/* ===== v2 SHINE / SNEAKY UTILITIES ===== */
+/* Shimmer overlay: a moving highlight band. Parent should be relative + overflow-hidden. */
+.shimmer-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 70%
+  );
+  animation: var(--animate-shimmer-sweep);
+}
+
+/* Dashed animated "sneaky" outline drawn with 4 edge gradients so it can march. */
+.marching-ants {
+  background-image:
+    linear-gradient(90deg, var(--ants-color, var(--w-60)) 50%, transparent 50%),
+    linear-gradient(90deg, var(--ants-color, var(--w-60)) 50%, transparent 50%),
+    linear-gradient(0deg, var(--ants-color, var(--w-60)) 50%, transparent 50%),
+    linear-gradient(0deg, var(--ants-color, var(--w-60)) 50%, transparent 50%);
+  background-repeat: repeat-x, repeat-x, repeat-y, repeat-y;
+  background-size: 16px 2px, 16px 2px, 2px 16px, 2px 16px;
+  background-position: 0 0, 0 100%, 0 0, 100% 0;
+  animation: var(--animate-marching-ants);
 }

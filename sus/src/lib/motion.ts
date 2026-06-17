@@ -32,3 +32,14 @@ export const phaseTransition: Variants = {
   animate: { opacity: 1, scale: 1, y: 0, transition: spring.gentle },
   exit: { opacity: 0, y: -8, transition: { duration: 0.18 } },
 };
+
+/** A stamp-in: drops in slightly oversized + offset, then snaps to rest. */
+export const slamIn: Variants = {
+  initial: { opacity: 0, scale: 1.12, y: 8 },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: { type: "spring", stiffness: 400, damping: 17 },
+  },
+};
