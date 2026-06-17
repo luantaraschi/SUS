@@ -1,16 +1,21 @@
 "use client";
 
-import { useState } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type Transition,
+} from "framer-motion";
 import { useMutation } from "convex/react";
 import type { Doc } from "../../../../../convex/_generated/dataModel";
 import { api } from "../../../../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { GlassPanel, GlassSection } from "../../ui/glass";
+import { Burst } from "@/components/ui/Burst";
 import type { RoleView, SafeRound } from "@/lib/game-view-types";
-import { getRoleMeta } from "./roleMeta";
-import { Eye, EyeOff, Fingerprint } from "lucide-react";
+import { getRoleMeta, type RoleTemperature } from "./roleMeta";
+import { Fingerprint, Eye } from "lucide-react";
 
 interface ReadyConfirmationProps {
   round: SafeRound;
@@ -20,86 +25,445 @@ interface ReadyConfirmationProps {
   sessionId: string;
 }
 
-/**
- * Secret reveal tile. The content is ALWAYS in the DOM but hidden via
- * opacity+scale (NOT a CSS `filter: blur`) so toggling it never triggers a
- * blur repaint/reflow flash. While hidden it is `select-none` + aria-hidden
- * so it can't be copied or read out. A "Segure para ver" overlay sits on top
- * until the player presses and holds.
- */
-function SecretTile({
-  label,
-  helper,
-  content,
-  badge,
-  badgeTone,
-  isRevealing,
+/* Local springs (do not edit shared motion.ts). Mirror spring.pop/gentle. */
+const SPRING_POP: Transition = { type: "spring", stiffness: 500, damping: 22 };
+const SPRING_GENTLE: Transition = {
+  type: "spring",
+  stiffness: 260,
+  damping: 24,
+};
+
+/* ---- Per-temperature seal theming -------------------------------------- */
+
+type SealTheme = {
+  accent: string; // primary themed color token
+  ring: string; // medallion ring border
+  halo: string; // radial halo color-mix
+  haloEnd: string;
+  badgeBorder: string;
+  badgeBg: string;
+  badgeText: string;
+};
+
+function sealTheme(t: RoleTemperature): SealTheme {
+  if (t === "impostor") {
+    return {
+      accent: "var(--color-imp)",
+      ring: "color-mix(in srgb, var(--color-imp) 55%, transparent)",
+      halo: "color-mix(in srgb, var(--color-imp) 30%, transparent)",
+      haloEnd: "color-mix(in srgb, var(--color-imp) 0%, transparent)",
+      badgeBorder: "color-mix(in srgb, var(--color-imp) 32%, transparent)",
+      badgeBg: "color-mix(in srgb, var(--color-imp) 16%, transparent)",
+      badgeText: "var(--color-imp)",
+    };
+  }
+  if (t === "master") {
+    return {
+      accent: "var(--color-special)",
+      ring: "color-mix(in srgb, var(--color-gold) 60%, transparent)",
+      halo: "color-mix(in srgb, var(--color-special) 30%, transparent)",
+      haloEnd: "color-mix(in srgb, var(--color-special) 0%, transparent)",
+      badgeBorder: "color-mix(in srgb, var(--color-gold) 40%, transparent)",
+      badgeBg: "color-mix(in srgb, var(--color-special) 16%, transparent)",
+      badgeText: "var(--color-gold)",
+    };
+  }
+  return {
+    accent: "var(--color-safe)",
+    ring: "color-mix(in srgb, var(--color-safe) 50%, transparent)",
+    halo: "color-mix(in srgb, var(--color-safe) 26%, transparent)",
+    haloEnd: "color-mix(in srgb, var(--color-safe) 0%, transparent)",
+    badgeBorder: "color-mix(in srgb, var(--color-safe) 30%, transparent)",
+    badgeBg: "color-mix(in srgb, var(--color-safe) 16%, transparent)",
+    badgeText: "var(--color-safe)",
+  };
+}
+
+/* ---- Clearance seal medallion ------------------------------------------ */
+
+function ClearanceSeal({
+  Icon,
+  theme,
+  temperature,
   reduceMotion,
 }: {
-  label: string;
-  helper: string;
-  content: string;
-  badge: string;
-  badgeTone: "impostor" | "safe";
-  isRevealing: boolean;
+  Icon: typeof Fingerprint;
+  theme: SealTheme;
+  temperature: RoleTemperature;
   reduceMotion: boolean;
 }) {
-  return (
-    <div className="mt-5">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--text-dim)]">
-            {label}
-          </p>
-          <p className="mt-2 font-body text-sm text-[var(--color-text-muted)]">
-            {helper}
-          </p>
-        </div>
-        <div
-          className={cn(
-            "shrink-0 rounded-[var(--r-pill)] border px-3 py-1 font-condensed text-[11px] uppercase tracking-[0.22em]",
-            badgeTone === "impostor"
-              ? "border-[color-mix(in_srgb,var(--color-imp)_30%,transparent)] bg-[color-mix(in_srgb,var(--color-imp)_16%,transparent)] text-[var(--color-imp)]"
-              : "border-[color-mix(in_srgb,var(--color-safe)_30%,transparent)] bg-[color-mix(in_srgb,var(--color-safe)_16%,transparent)] text-[var(--color-safe)]"
-          )}
-        >
-          {badge}
-        </div>
-      </div>
+  const isImpostor = temperature === "impostor";
+  const isMaster = temperature === "master";
 
-      <div className="relative mt-5 min-h-[7.5rem] overflow-hidden rounded-[var(--r-lg)] border border-[var(--w-12)] bg-black/25 shadow-[inset_0_1px_0_var(--w-08)]">
-        {/* The secret. Hidden via opacity+scale only — no filter, no flash. */}
+  // Slow heartbeat throb for the impostor seal (skipped under reduced motion).
+  const throb =
+    isImpostor && !reduceMotion
+      ? {
+          scale: [1, 1.045, 1, 1.06, 1],
+          transition: {
+            duration: 2.4,
+            ease: "easeInOut" as const,
+            repeat: Infinity,
+            repeatDelay: 0.3,
+            times: [0, 0.12, 0.24, 0.36, 1],
+          },
+        }
+      : {};
+
+  return (
+    <motion.div
+      className="relative grid place-items-center"
+      style={{ width: 80, height: 80 }}
+      initial={
+        reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.4, rotate: -12 }
+      }
+      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+      transition={reduceMotion ? { duration: 0.2 } : { ...SPRING_POP, delay: 0.12 }}
+    >
+      {/* Radial halo — one pulse on stamp-in. */}
+      {!reduceMotion && (
+        <motion.span
+          aria-hidden
+          className="pointer-events-none absolute -inset-3 rounded-[var(--r-pill)]"
+          style={{
+            background: `radial-gradient(circle, ${theme.halo}, ${theme.haloEnd} 70%)`,
+          }}
+          initial={{ opacity: 0, scale: 0.6 }}
+          animate={{ opacity: [0, 0.9, 0], scale: [0.6, 1.35, 1.5] }}
+          transition={{ duration: 0.9, delay: 0.18, ease: [0.16, 1, 0.3, 1] }}
+        />
+      )}
+
+      {/* Static tonal halo behind the medallion. */}
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -inset-2 rounded-[var(--r-pill)] opacity-70"
+        style={{
+          background: `radial-gradient(circle, ${theme.halo}, ${theme.haloEnd} 72%)`,
+        }}
+      />
+
+      {/* Throbbing seal body. */}
+      <motion.div
+        className={cn(
+          "relative grid h-20 w-20 place-items-center rounded-[var(--r-pill)] border bg-[var(--glass-2)] shadow-[var(--shadow-md)]",
+          isMaster ? "border-2" : "border"
+        )}
+        style={{ borderColor: theme.ring, color: theme.accent }}
+        animate={throb}
+      >
+        {/* Concentric rings. */}
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-1.5 rounded-[var(--r-pill)] border opacity-50"
+          style={{ borderColor: theme.ring }}
+        />
+        {/* Master gets a ceremonial double-rule. */}
+        {isMaster && (
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-3 rounded-[var(--r-pill)] border opacity-40"
+            style={{ borderColor: theme.ring }}
+          />
+        )}
+        <Icon size={isMaster ? 34 : 32} strokeWidth={2} />
+      </motion.div>
+
+      {/* Master crown finial — a small gold dot crowning the seal. */}
+      {isMaster && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute -top-1 left-1/2 h-2.5 w-2.5 -translate-x-1/2 rounded-[var(--r-pill)]"
+          style={{
+            background: "var(--color-gold)",
+            boxShadow: "0 0 10px color-mix(in srgb, var(--color-gold) 70%, transparent)",
+          }}
+        />
+      )}
+    </motion.div>
+  );
+}
+
+/* ---- Title with per-word staggered rise -------------------------------- */
+
+function HeroTitle({
+  title,
+  accent,
+  reduceMotion,
+}: {
+  title: string;
+  accent: string;
+  reduceMotion: boolean;
+}) {
+  const words = useMemo(() => title.split(" "), [title]);
+
+  if (reduceMotion) {
+    return (
+      <h2
+        className="text-center font-display leading-[0.96] text-[var(--color-text)]"
+        style={{ fontSize: "clamp(2.4rem, 9vw, 3.4rem)" }}
+      >
+        {title}
+      </h2>
+    );
+  }
+
+  return (
+    <motion.h2
+      className="flex flex-wrap items-baseline justify-center gap-x-[0.28em] gap-y-1 text-center font-display leading-[0.96] text-[var(--color-text)]"
+      style={{ fontSize: "clamp(2.4rem, 9vw, 3.4rem)" }}
+      initial="hidden"
+      animate="show"
+      variants={{
+        hidden: {},
+        show: { transition: { staggerChildren: 0.06, delayChildren: 0.22 } },
+      }}
+    >
+      {words.map((word, i) => (
+        <motion.span
+          key={`${word}-${i}`}
+          className="inline-block"
+          variants={{
+            hidden: { opacity: 0, y: 18, rotateX: -40 },
+            show: { opacity: 1, y: 0, rotateX: 0, transition: SPRING_POP },
+          }}
+          style={{
+            transformOrigin: "bottom",
+            // The trailing word picks up the role accent for emphasis.
+            color: i === words.length - 1 ? accent : undefined,
+          }}
+        >
+          {word}
+        </motion.span>
+      ))}
+    </motion.h2>
+  );
+}
+
+/* ---- The secret slab fused with the hold-to-decrypt button -------------- */
+
+function DecryptSlab({
+  label,
+  content,
+  theme,
+  isImpostor,
+  isRevealing,
+  reduceMotion,
+  onDown,
+  onUp,
+}: {
+  label: string;
+  content: string;
+  theme: SealTheme;
+  isImpostor: boolean;
+  isRevealing: boolean;
+  reduceMotion: boolean;
+  onDown: () => void;
+  onUp: () => void;
+}) {
+  // Decode the secret letter-by-letter (opacity + scale only — never blur).
+  const chars = useMemo(() => Array.from(content), [content]);
+
+  return (
+    <div
+      className="relative mt-6 overflow-hidden rounded-[var(--r-lg)] border"
+      style={{
+        borderColor: isRevealing
+          ? "color-mix(in srgb, var(--color-info) 55%, transparent)"
+          : "var(--w-12)",
+        transition: "border-color var(--t-quick) var(--ease-out)",
+      }}
+    >
+      {/* ── Secret display zone (above) ─────────────────────────────── */}
+      <div className="relative min-h-[8.5rem] overflow-hidden bg-black/30 shadow-[inset_0_1px_0_var(--w-08)]">
+        {/* Eyebrow label for the secret. */}
+        <span
+          className="absolute left-4 top-3 z-10 font-condensed text-[10px] uppercase tracking-[0.26em]"
+          style={{ color: theme.badgeText }}
+        >
+          {label}
+        </span>
+
+        {/* The secret. ALWAYS in the DOM; hidden via opacity+scale ONLY (no
+            filter, no remount). Letters decode in per-char on reveal and blank
+            quickly on release. select-none + pointer-events-none + aria-hidden
+            while hidden so it can't be copied or read out. */}
         <div
           aria-hidden={!isRevealing}
           className={cn(
-            "flex min-h-[7.5rem] items-center justify-center px-5 py-6 text-center transition-[opacity,transform] duration-[var(--t-base)] ease-[var(--ease-out)]",
-            isRevealing
-              ? "opacity-100"
-              : "select-none pointer-events-none opacity-0",
-            !isRevealing && !reduceMotion && "scale-95"
+            "flex min-h-[8.5rem] items-center justify-center px-5 pb-6 pt-9 text-center",
+            !isRevealing && "select-none pointer-events-none"
           )}
         >
-          <p className="font-display text-2xl text-[var(--color-text)] sm:text-3xl">
-            {content}
+          <p className="font-display text-3xl leading-tight text-[var(--color-text)] sm:text-4xl">
+            {reduceMotion ? (
+              <span
+                className="transition-opacity duration-[var(--t-base)]"
+                style={{ opacity: isRevealing ? 1 : 0 }}
+              >
+                {content}
+              </span>
+            ) : (
+              <span className="inline-flex flex-wrap items-baseline justify-center">
+                {chars.map((ch, i) => (
+                  <motion.span
+                    key={`${ch}-${i}`}
+                    className="inline-block"
+                    initial={false}
+                    animate={
+                      isRevealing
+                        ? { opacity: 1, scale: 1 }
+                        : { opacity: 0, scale: 0.4 }
+                    }
+                    transition={
+                      isRevealing
+                        ? { ...SPRING_POP, delay: 0.12 + i * 0.02 }
+                        : { duration: 0.12, ease: "easeIn" }
+                    }
+                    style={{ whiteSpace: ch === " " ? "pre" : undefined }}
+                  >
+                    {ch}
+                  </motion.span>
+                ))}
+              </span>
+            )}
           </p>
         </div>
+
+        {/* Cyan scan-line sweep while decrypting. */}
+        {!reduceMotion && (
+          <AnimatePresence>
+            {isRevealing && (
+              <motion.span
+                aria-hidden
+                className="pointer-events-none absolute inset-x-0 top-0 h-[3px]"
+                style={{
+                  background:
+                    "linear-gradient(90deg, transparent, var(--color-info), transparent)",
+                  boxShadow:
+                    "0 0 14px color-mix(in srgb, var(--color-info) 70%, transparent)",
+                }}
+                initial={{ y: 0, opacity: 0 }}
+                animate={{ y: ["0%", "13000%"], opacity: [0, 1, 1, 0] }}
+                exit={{ opacity: 0 }}
+                transition={{
+                  duration: 0.55,
+                  ease: "easeInOut",
+                  opacity: { times: [0, 0.1, 0.85, 1], duration: 0.55 },
+                }}
+              />
+            )}
+          </AnimatePresence>
+        )}
 
         {/* Locked overlay — fades out (no blur) while held. */}
         <div
           aria-hidden
           className={cn(
-            "pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-1.5 bg-black/30 transition-opacity duration-[var(--t-base)] ease-[var(--ease-out)]",
+            "pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-2",
+            "bg-black/35 transition-opacity duration-[var(--t-base)] ease-[var(--ease-out)]",
             isRevealing ? "opacity-0" : "opacity-100"
           )}
         >
-          <span className="flex h-9 w-9 items-center justify-center rounded-[var(--r-pill)] border border-[var(--w-16)] bg-[var(--w-08)]">
-            <EyeOff size={16} className="text-[var(--text-dim)]" />
+          {/* Fingerprint → eye morph (cross-fade, opacity/scale only). */}
+          <span
+            className="relative grid h-10 w-10 place-items-center rounded-[var(--r-pill)] border"
+            style={{ borderColor: "var(--w-16)", background: "var(--w-08)" }}
+          >
+            <Fingerprint
+              size={18}
+              className={cn(
+                "absolute text-[var(--text-dim)] transition-[opacity,transform] duration-[var(--t-quick)]",
+                isRevealing ? "scale-50 opacity-0" : "scale-100 opacity-100"
+              )}
+            />
+            <Eye
+              size={18}
+              className={cn(
+                "absolute transition-[opacity,transform] duration-[var(--t-quick)]",
+                isRevealing ? "scale-100 opacity-100" : "scale-50 opacity-0"
+              )}
+              style={{ color: "var(--color-info)" }}
+            />
           </span>
-          <span className="font-condensed text-[11px] uppercase tracking-[0.22em] text-[var(--text-dim)]">
-            Conteudo protegido
+          <span className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--text-dim)]">
+            Toque para decifrar
           </span>
         </div>
       </div>
+
+      {/* ── The fused hold-button (below, shared radius) ──────────────── */}
+      <button
+        type="button"
+        onPointerDown={onDown}
+        onPointerUp={onUp}
+        onPointerLeave={onUp}
+        onPointerCancel={onUp}
+        onContextMenu={(event) => event.preventDefault()}
+        aria-pressed={isRevealing}
+        className={cn(
+          "group relative w-full cursor-pointer touch-none select-none overflow-hidden",
+          "border-t border-[var(--w-12)] px-5 py-4 text-left text-[var(--color-text)]",
+          "transition-[background-color,transform] duration-[var(--t-quick)]",
+          "hover:bg-[var(--w-08)] active:scale-[0.99]",
+          "focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+        )}
+        style={{
+          background: isRevealing
+            ? "color-mix(in srgb, var(--color-info) 12%, transparent)"
+            : "var(--glass-1)",
+        }}
+      >
+        {/* Hold progress fill. */}
+        <span
+          aria-hidden
+          className={cn(
+            "pointer-events-none absolute inset-y-0 left-0 rounded-[inherit]",
+            isRevealing ? "w-full duration-[550ms]" : "w-0 duration-[var(--t-quick)]"
+          )}
+          style={{
+            background: "color-mix(in srgb, var(--color-info) 16%, transparent)",
+            transitionProperty: "width",
+            transitionTimingFunction: "var(--ease-out)",
+          }}
+        />
+        <span className="relative flex items-center justify-between gap-4">
+          <span>
+            <span className="block font-condensed text-[10px] uppercase tracking-[0.26em] text-[var(--text-dim)]">
+              {isImpostor ? "Acesso restrito" : "Privado"}
+            </span>
+            <span className="mt-1 block font-display text-lg sm:text-xl">
+              {isRevealing ? "Solte para lacrar" : "Segure para decifrar"}
+            </span>
+          </span>
+          {/* Lock glyph morph: fingerprint → eye. */}
+          <span
+            className="relative grid h-11 w-11 place-items-center rounded-[var(--r-pill)] border transition-[transform,border-color] duration-[var(--t-quick)] group-hover:scale-105"
+            style={{
+              borderColor: isRevealing
+                ? "color-mix(in srgb, var(--color-info) 55%, transparent)"
+                : "var(--w-12)",
+              background: isRevealing ? "var(--glass-2)" : "var(--w-08)",
+            }}
+          >
+            <Fingerprint
+              size={18}
+              className={cn(
+                "absolute text-[var(--text-dim)] transition-[opacity,transform] duration-[var(--t-quick)]",
+                isRevealing ? "scale-50 opacity-0" : "scale-100 opacity-100"
+              )}
+            />
+            <Eye
+              size={18}
+              className={cn(
+                "absolute transition-[opacity,transform] duration-[var(--t-quick)]",
+                isRevealing ? "scale-100 opacity-100" : "scale-50 opacity-0"
+              )}
+              style={{ color: "var(--color-info)" }}
+            />
+          </span>
+        </span>
+      </button>
     </div>
   );
 }
@@ -113,203 +477,269 @@ export function ReadyConfirmation({
 }: ReadyConfirmationProps) {
   const reduceMotion = useReducedMotion() ?? false;
   const [isRevealing, setIsRevealing] = useState(false);
+  const [sealing, setSealing] = useState(false);
+  const [confettiFire, setConfettiFire] = useState(0);
   const confirmSeen = useMutation(api.rounds.confirmSeen);
 
   const roleMeta = getRoleMeta(myRole?.role, room.mode);
-  const RoleIcon = roleMeta.icon;
+  const theme = useMemo(
+    () => sealTheme(roleMeta.temperature),
+    [roleMeta.temperature]
+  );
+  const SealIcon = roleMeta.icon;
 
   const isImpostor = myRole?.role === "impostor";
   const hasSecret = Boolean(myRole?.secretContent);
   const showHoldButton = myRole?.role === "player" || (isImpostor && hasSecret);
 
-  const handleConfirm = () => {
-    void confirmSeen({
+  const reveal = useCallback(() => setIsRevealing(true), []);
+  const hide = useCallback(() => setIsRevealing(false), []);
+
+  // Ref to hold any pending visual-only timeout so we can clean it up on unmount.
+  const sealTimerRef = useRef<number | null>(null);
+  useEffect(() => () => {
+    if (sealTimerRef.current !== null) clearTimeout(sealTimerRef.current);
+  }, []);
+
+  const handleConfirm = useCallback(() => {
+    if (sealing) return;
+    setIsRevealing(false);
+    // Fire the mutation immediately — it's fire-and-forget.
+    confirmSeen({
       roundId: round._id,
       playerId: myPlayer._id,
       sessionId,
-    });
-  };
+    }).catch(() => {});
+    if (reduceMotion) return;
+    // "Seal shut" micro + gold ring pulse — purely cosmetic, runs after the mutation.
+    setSealing(true);
+    setConfettiFire((n) => n + 1);
+    // Visual reset only; store the id so it can be cleared on unmount.
+    sealTimerRef.current = window.setTimeout(() => {
+      sealTimerRef.current = null;
+    }, 360);
+  }, [sealing, reduceMotion, confirmSeen, round._id, myPlayer._id, sessionId]);
+
+  const secretLabel = isImpostor
+    ? room.mode === "word"
+      ? "Dica de contexto"
+      : "Pergunta do impostor"
+    : room.mode === "word"
+      ? "Sua palavra secreta"
+      : "Sua pergunta";
+
+  const confirmLabel = room.mode === "word" ? "Ja decorei" : "Entendi";
 
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center overflow-hidden bg-black/80 p-4 backdrop-blur-md">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,var(--w-08),transparent_26%),radial-gradient(circle_at_bottom,color-mix(in_srgb,var(--color-special)_18%,transparent),transparent_36%)]" />
+      {/* Tonal ambience behind the dossier. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: `radial-gradient(circle at 50% 18%, ${theme.halo}, transparent 42%), radial-gradient(circle at 50% 96%, color-mix(in srgb, var(--color-special) 14%, transparent), transparent 40%)`,
+        }}
+      />
 
       <motion.div
-        initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 20, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
-        className="relative z-10 w-full max-w-2xl"
+        // "Envelope opening" — unfolds from the top edge.
+        initial={
+          reduceMotion
+            ? { opacity: 0 }
+            : { opacity: 0, y: 24, scaleY: 0.86 }
+        }
+        animate={{ opacity: 1, y: 0, scaleY: 1 }}
+        transition={reduceMotion ? { duration: 0.25 } : SPRING_GENTLE}
+        style={{ transformOrigin: "top center" }}
+        className="relative z-10 w-full max-w-md"
       >
-        <GlassPanel
-          tone={roleMeta.tone}
-          className="rounded-[var(--r-2xl)] px-5 py-6 sm:px-7 sm:py-8"
+        {/* Subtle off-axis tilt for the impostor dossier. */}
+        <motion.div
+          animate={
+            isImpostor && !reduceMotion ? { rotate: -1.4 } : { rotate: 0 }
+          }
+          transition={SPRING_GENTLE}
         >
-          <div className="relative z-10">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-              <div className="flex items-center gap-4">
-                <div
-                  className={cn(
-                    "flex h-14 w-14 shrink-0 items-center justify-center rounded-[var(--r-pill)] border border-[var(--glass-border)] bg-[var(--glass-2)] shadow-[var(--shadow-md)]",
-                    roleMeta.tone === "impostor" && "text-[var(--color-imp)]",
-                    roleMeta.tone === "safe" && "text-[var(--color-safe)]"
-                  )}
-                >
-                  <RoleIcon size={24} />
-                </div>
-                <div>
-                  <p className="font-condensed text-[11px] uppercase tracking-[0.28em] text-[var(--text-dim)]">
-                    {roleMeta.accentLabel}
-                  </p>
-                  <h2 className="mt-1 font-display text-2xl text-[var(--color-text)] sm:text-[2rem]">
-                    {roleMeta.title}
-                  </h2>
-                </div>
-              </div>
+          {/* Seal-shut micro on confirm + gold ring pulse. */}
+          <motion.div
+            animate={
+              sealing && !reduceMotion
+                ? { scaleY: [1, 0.985, 1] }
+                : { scaleY: 1 }
+            }
+            transition={{ duration: 0.36, ease: "easeInOut" }}
+            className={cn(
+              "glass-panel glass-shell relative overflow-hidden rounded-[var(--r-2xl)]",
+              `glass-tone-${roleMeta.tone}`
+            )}
+          >
+            {/* Perforated / torn top edge — dotted rule in glass-border. */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-x-0 top-0 h-3"
+              style={{
+                background:
+                  "repeating-radial-gradient(circle at 6px 0, var(--glass-border) 0 2.5px, transparent 2.6px 12px)",
+                opacity: 0.9,
+              }}
+            />
 
-              <div className="self-start rounded-[var(--r-pill)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-3 py-1.5 font-condensed text-[11px] uppercase tracking-[0.22em] text-[var(--color-text-muted)]">
-                Rodada em preparo
-              </div>
-            </div>
-
-            <p className="mt-5 max-w-xl font-body text-sm leading-relaxed text-[var(--color-text-muted)] sm:text-base">
-              {roleMeta.subtitle}
-            </p>
-
-            {/* Per-role inline guidance. */}
-            <div
-              className={cn(
-                "mt-4 flex items-start gap-2.5 rounded-[var(--r-md)] border px-4 py-3",
-                roleMeta.tone === "impostor"
-                  ? "border-[color-mix(in_srgb,var(--color-imp)_24%,transparent)] bg-[color-mix(in_srgb,var(--color-imp)_10%,transparent)]"
-                  : "border-[color-mix(in_srgb,var(--color-safe)_24%,transparent)] bg-[color-mix(in_srgb,var(--color-safe)_10%,transparent)]"
-              )}
-            >
-              <RoleIcon
-                size={16}
-                className={cn(
-                  "mt-0.5 shrink-0",
-                  roleMeta.tone === "impostor"
-                    ? "text-[var(--color-imp)]"
-                    : "text-[var(--color-safe)]"
+            {/* Gold ring pulse on confirm. */}
+            {!reduceMotion && (
+              <AnimatePresence>
+                {sealing && (
+                  <motion.span
+                    aria-hidden
+                    className="pointer-events-none absolute inset-0 rounded-[var(--r-2xl)]"
+                    style={{
+                      boxShadow:
+                        "inset 0 0 0 2px var(--color-gold), 0 0 28px color-mix(in srgb, var(--color-gold) 45%, transparent)",
+                    }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: [0, 0.95, 0] }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.5, ease: "easeOut" }}
+                  />
                 )}
-              />
-              <p className="font-body text-sm leading-relaxed text-[var(--color-text)]">
-                {roleMeta.guide}
-              </p>
-            </div>
-
-            {isImpostor && !hasSecret ? (
-              <GlassSection className="mt-6 rounded-[var(--r-lg)] p-5 text-left sm:p-6">
-                <p className="font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--text-dim)]">
-                  Sua situacao
-                </p>
-                <p className="mt-3 font-body text-base leading-relaxed text-[var(--color-text)]">
-                  {room.mode === "word"
-                    ? "Voce nao recebeu a palavra. Leia o clima da mesa, absorva o contexto e blefe com precisao."
-                    : "Voce recebeu a pergunta alternativa. Responda como se estivesse totalmente no contexto."}
-                </p>
-              </GlassSection>
-            ) : (
-              <GlassSection className="mt-6 rounded-[var(--r-lg)] p-5 sm:p-6">
-                <SecretTile
-                  label={
-                    isImpostor
-                      ? room.mode === "word"
-                        ? "Dica de contexto"
-                        : "Pergunta do impostor"
-                      : room.mode === "word"
-                        ? "Sua palavra secreta"
-                        : "Sua pergunta"
-                  }
-                  helper={
-                    isImpostor
-                      ? "Segure o botao abaixo para ver seu segredo."
-                      : "Revele so para voce e memorize antes de confirmar."
-                  }
-                  content={myRole?.secretContent ?? ""}
-                  badge={isImpostor ? "Sus" : "Seguro"}
-                  badgeTone={isImpostor ? "impostor" : "safe"}
-                  isRevealing={isRevealing}
-                  reduceMotion={reduceMotion}
-                />
-
-                {!isImpostor && room.mode === "word" && (
-                  <p className="mt-4 text-center font-body text-sm text-[var(--text-dim)]">
-                    Pense em uma pista relacionada. Seja especifico sem entregar
-                    demais.
-                  </p>
-                )}
-              </GlassSection>
+              </AnimatePresence>
             )}
 
-            {showHoldButton && (
-              <button
-                type="button"
-                onPointerDown={() => setIsRevealing(true)}
-                onPointerUp={() => setIsRevealing(false)}
-                onPointerLeave={() => setIsRevealing(false)}
-                onPointerCancel={() => setIsRevealing(false)}
-                onContextMenu={(event) => event.preventDefault()}
-                aria-pressed={isRevealing}
-                className="group relative mt-5 w-full cursor-pointer touch-none overflow-hidden rounded-[var(--r-md)] border border-[var(--w-16)] bg-[var(--glass-1)] px-4 py-4 text-left text-[var(--color-text)] transition-[background-color,box-shadow,transform] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] active:scale-[0.99] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
-              >
-                {/* Press progress / fill — width animates while held. */}
-                <span
-                  aria-hidden
-                  className={cn(
-                    "pointer-events-none absolute inset-y-0 left-0 rounded-[inherit] bg-[var(--w-16)] transition-[width] ease-[var(--ease-out)]",
-                    isRevealing
-                      ? "w-full duration-[600ms]"
-                      : "w-0 duration-[var(--t-quick)]"
-                  )}
-                />
-                {/* Border glow while held. */}
-                <span
-                  aria-hidden
-                  className={cn(
-                    "pointer-events-none absolute inset-0 rounded-[inherit] ring-1 ring-inset transition-opacity duration-[var(--t-quick)]",
-                    isRevealing
-                      ? "opacity-100 ring-[color-mix(in_srgb,var(--color-info)_55%,transparent)]"
-                      : "opacity-0 ring-transparent"
-                  )}
-                />
-                <span className="relative flex items-center justify-between gap-4">
-                  <span>
-                    <span className="block font-condensed text-[11px] uppercase tracking-[0.24em] text-[var(--text-dim)]">
-                      Privado
-                    </span>
-                    <span className="mt-1 block font-display text-xl">
-                      {isRevealing
-                        ? "Solte para esconder"
-                        : "Segure para ver seu segredo"}
-                    </span>
-                  </span>
-                  <span
-                    className={cn(
-                      "flex h-11 w-11 items-center justify-center rounded-[var(--r-pill)] border transition-[transform,border-color] duration-[var(--t-quick)]",
-                      isRevealing
-                        ? "scale-110 border-[color-mix(in_srgb,var(--color-info)_55%,transparent)] bg-[var(--glass-2)]"
-                        : "border-[var(--w-12)] bg-[var(--w-08)] group-hover:scale-105"
-                    )}
-                  >
-                    {isRevealing ? (
-                      <Eye size={18} />
-                    ) : (
-                      <Fingerprint size={18} />
-                    )}
-                  </span>
+            <div className="relative z-10 px-5 pb-6 pt-7 sm:px-7 sm:pb-7 sm:pt-8">
+              {/* ── ZONE 1 · HERO IDENTITY ─────────────────────────── */}
+              <div className="relative flex flex-col items-center pt-7">
+                {/* Confetti origin (gold) on confirm, anchored at the seal. */}
+                <span className="pointer-events-none absolute -top-1 left-1/2 h-0 w-0 -translate-x-1/2">
+                  <Burst
+                    fire={confettiFire}
+                    colors={[
+                      "var(--color-gold)",
+                      theme.accent,
+                      "var(--color-special)",
+                    ]}
+                    count={16}
+                  />
                 </span>
-              </button>
-            )}
 
-            <Button
-              onClick={handleConfirm}
-              className="mt-5 h-[52px] w-full rounded-[var(--r-md)] border border-[var(--glass-border)] bg-white text-[15px] font-semibold text-[var(--color-primary-press)] shadow-[var(--shadow-md)] transition-transform duration-[var(--t-quick)] hover:-translate-y-0.5 hover:bg-white"
-            >
-              {room.mode === "word" ? "Ja decorei" : "Entendi"}
-            </Button>
-          </div>
-        </GlassPanel>
+                {/* Clearance seal — half-overlapping the top notch. */}
+                <div className="-mt-[3.6rem]">
+                  <ClearanceSeal
+                    Icon={SealIcon}
+                    theme={theme}
+                    temperature={roleMeta.temperature}
+                    reduceMotion={reduceMotion}
+                  />
+                </div>
+
+                {/* Tiny eyebrow (status demoted). */}
+                <motion.p
+                  initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: reduceMotion ? 0 : 0.28, duration: 0.25 }}
+                  className="mt-3 font-condensed text-[11px] uppercase tracking-[0.3em] text-[var(--text-dim)]"
+                >
+                  {roleMeta.eyebrow}
+                </motion.p>
+
+                {/* Hero title with per-word rise. */}
+                <div className="mt-2">
+                  <HeroTitle
+                    title={roleMeta.title}
+                    accent={theme.accent}
+                    reduceMotion={reduceMotion}
+                  />
+                </div>
+              </div>
+
+              {/* ── ZONE 2 · QUIET BRIEFING LINE ───────────────────── */}
+              <motion.p
+                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: reduceMotion ? 0 : 0.4, duration: 0.3 }}
+                className="mx-auto mt-5 max-w-sm text-center font-body text-sm leading-relaxed text-[var(--color-text-muted)]"
+              >
+                {roleMeta.briefing}
+              </motion.p>
+
+              {/* ── ZONE 3 · THE SECRET ────────────────────────────── */}
+              {isImpostor && !hasSecret ? (
+                <motion.div
+                  initial={
+                    reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }
+                  }
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: reduceMotion ? 0 : 0.46, ...SPRING_GENTLE }}
+                  className="glass-section mt-6 rounded-[var(--r-lg)] p-5 text-center"
+                >
+                  <p
+                    className="font-condensed text-[11px] uppercase tracking-[0.24em]"
+                    style={{ color: theme.badgeText }}
+                  >
+                    Sua situacao
+                  </p>
+                  <p className="mt-3 font-body text-base leading-relaxed text-[var(--color-text)]">
+                    {room.mode === "word"
+                      ? "Voce nao recebeu a palavra. Leia o clima da mesa, absorva o contexto e blefe com precisao."
+                      : "Voce recebeu a pergunta alternativa. Responda como se estivesse totalmente no contexto."}
+                  </p>
+                </motion.div>
+              ) : showHoldButton ? (
+                <motion.div
+                  initial={
+                    reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }
+                  }
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: reduceMotion ? 0 : 0.46, ...SPRING_GENTLE }}
+                >
+                  <DecryptSlab
+                    label={secretLabel}
+                    content={myRole?.secretContent ?? ""}
+                    theme={theme}
+                    isImpostor={isImpostor}
+                    isRevealing={isRevealing}
+                    reduceMotion={reduceMotion}
+                    onDown={reveal}
+                    onUp={hide}
+                  />
+                  {!isImpostor && room.mode === "word" && (
+                    <p className="mt-3 text-center font-body text-xs text-[var(--text-dim)]">
+                      Pense em uma pista relacionada. Seja especifico sem
+                      entregar demais.
+                    </p>
+                  )}
+                </motion.div>
+              ) : (
+                // Master / impostor-without-hold: a quiet read-only briefing slab.
+                <motion.div
+                  initial={
+                    reduceMotion ? { opacity: 0 } : { opacity: 0, y: 12 }
+                  }
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: reduceMotion ? 0 : 0.46, ...SPRING_GENTLE }}
+                  className="glass-section mt-6 rounded-[var(--r-lg)] p-5 text-center"
+                >
+                  <p className="font-body text-base leading-relaxed text-[var(--color-text)]">
+                    {roleMeta.subtitle}
+                  </p>
+                </motion.div>
+              )}
+
+              {/* Confirm — gold-ringed, lifts on hover, presses on tap. */}
+              <motion.div
+                initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: reduceMotion ? 0 : 0.54, duration: 0.3 }}
+              >
+                <Button
+                  onClick={handleConfirm}
+                  disabled={sealing}
+                  className="mt-6 h-[54px] w-full rounded-[var(--r-md)] border border-[var(--glass-border)] bg-white text-[15px] font-semibold uppercase tracking-wide text-[var(--color-primary-press)] shadow-[var(--shadow-md)] transition-transform duration-[var(--t-quick)] hover:-translate-y-0.5 hover:bg-white active:scale-[0.96]"
+                >
+                  {confirmLabel}
+                </Button>
+              </motion.div>
+            </div>
+          </motion.div>
+        </motion.div>
       </motion.div>
     </div>
   );

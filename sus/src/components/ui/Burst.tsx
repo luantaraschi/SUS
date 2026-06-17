@@ -65,9 +65,8 @@ export function Burst({
 
   const particles = useMemo(
     () => makeParticles(count, colors, Number(fireKey) || 0),
-    // Re-roll only when a new burst fires.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [fireKey, count]
+    // Re-roll when a new burst fires or colors/count change.
+    [fireKey, count, colors]
   );
 
   // Don't render anything before the first burst.

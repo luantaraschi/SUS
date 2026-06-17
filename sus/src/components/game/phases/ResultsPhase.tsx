@@ -10,6 +10,8 @@ import PhaseIndicator from "../PhaseIndicator";
 import type { PublicPlayer, SafeRound } from "@/lib/game-view-types";
 import { useSound } from "@/lib/useSound";
 import { GlassPanel } from "../ui/glass";
+import { Burst } from "@/components/ui/Burst";
+import { phaseTransition } from "@/lib/motion";
 import { ResultsDisplay } from "./results/ResultsDisplay";
 import { Leaderboard } from "./results/Leaderboard";
 import { ShareSection } from "./results/ShareSection";
@@ -46,6 +48,8 @@ export function ResultsPhase({
   const [showResults, setShowResults] = useState(false);
   const [showRetry, setShowRetry] = useState(false);
   const [selectedMasterId, setSelectedMasterId] = useState<string | null>(null);
+  // Winner-confetti trigger: bumped exactly once on the reveal.
+  const [confettiFire, setConfettiFire] = useState(0);
   // Guard: play win/lose sound exactly once per results reveal
   const outcomeSoundPlayedRef = useRef(false);
 
@@ -69,12 +73,16 @@ export function ResultsPhase({
     void recomputeResults({ roundId: round._id, sessionId });
   }, [recomputeResults, round._id, roundResult, sessionId]);
 
-  // Wired reveal sounds — win/lose, fired exactly once per reveal.
+  // Wired reveal sounds — win/lose, fired exactly once per reveal. Also arms
+  // the winner confetti at the same beat (guarded by the same once-ref).
   useEffect(() => {
     if (!showResults || !roundResult) return;
     if (outcomeSoundPlayedRef.current) return;
     outcomeSoundPlayedRef.current = true;
     playSound(roundResult.impostorWon ? "result.lose" : "result.win");
+    // Schedule the confetti state update outside the synchronous effect body
+    // so it doesn't trigger cascading renders on the same commit.
+    window.setTimeout(() => setConfettiFire((n) => n + 1), 0);
   }, [showResults, roundResult, playSound]);
 
   // Offer a manual retry if the result stays unresolved.
@@ -122,6 +130,11 @@ export function ResultsPhase({
     ? players.find((player) => player._id === roundResult.votedOutId) ?? null
     : null;
   const groupWon = !roundResult.impostorWon;
+
+  // Winner-tinted confetti palette (grupo -> safe/gold, impostor -> imp/special).
+  const confettiColors = groupWon
+    ? ["var(--color-safe)", "var(--color-gold)", "var(--color-green)"]
+    : ["var(--color-imp)", "var(--color-special)", "var(--color-gold)"];
 
   const outcomeSummary = !roundResult.votedOutId
     ? "Houve empate nos votos. Sem eliminacao, o SUS escapou da rodada."
@@ -174,7 +187,11 @@ export function ResultsPhase({
             key="loading"
             initial={reduceMotion ? { opacity: 0 } : { scale: 0.94, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            exit={reduceMotion ? { opacity: 0 } : { scale: 1.04, opacity: 0 }}
+            exit={
+              reduceMotion
+                ? { opacity: 0 }
+                : { scale: 1.04, opacity: 0, filter: "blur(10px)" }
+            }
             transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
             className="flex min-h-[60dvh] items-center justify-center"
           >
@@ -196,11 +213,17 @@ export function ResultsPhase({
         ) : (
           <motion.div
             key="results"
-            initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 18 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full"
+            variants={reduceMotion ? undefined : phaseTransition}
+            initial={reduceMotion ? { opacity: 0 } : "initial"}
+            animate={reduceMotion ? { opacity: 1 } : "animate"}
+            className="relative w-full"
           >
+            {/* Winner confetti — one-shot, fired at the reveal beat, near the
+                top of the verdict stage. Reduced-motion safe (degrades inside). */}
+            <div className="pointer-events-none absolute inset-x-0 top-[18%] z-40 flex justify-center">
+              <Burst fire={confettiFire} colors={confettiColors} count={22} />
+            </div>
+
             <PhaseIndicator
               currentPhase="results"
               mode={round.mode}
