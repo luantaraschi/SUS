@@ -1,5 +1,6 @@
 "use client";
 
+import { type ReactNode } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Crown, Sparkles } from "lucide-react";
 import type { Doc } from "../../../../../convex/_generated/dataModel";
@@ -30,6 +31,71 @@ interface ShareSectionProps {
   onBackToLobby: () => void;
 }
 
+/** A "Voltando..." style 3-dot loader that shimmers while a transition runs. */
+function LoadingDots({ label, reduceMotion }: { label: string; reduceMotion: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      {label}
+      <span className="inline-flex items-center gap-0.5" aria-hidden>
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="inline-block h-1 w-1 rounded-full bg-current"
+            animate={reduceMotion ? undefined : { opacity: [0.3, 1, 0.3], y: [0, -2, 0] }}
+            transition={
+              reduceMotion
+                ? undefined
+                : { duration: 0.9, repeat: Infinity, ease: "easeInOut", delay: i * 0.15 }
+            }
+          />
+        ))}
+      </span>
+    </span>
+  );
+}
+
+/** Primary CTA: hover lift + sweep highlight, press scale(0.96). */
+function PrimaryAction({
+  children,
+  onClick,
+  disabled,
+  reduceMotion,
+  className,
+}: {
+  children: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  reduceMotion: boolean;
+  className?: string;
+}) {
+  return (
+    <motion.div
+      whileHover={reduceMotion || disabled ? undefined : { y: -2 }}
+      whileTap={reduceMotion || disabled ? undefined : { scale: 0.96 }}
+      transition={spring.press}
+      className="group/cta relative overflow-hidden rounded-[var(--r-md)]"
+    >
+      {/* Sweep highlight on hover. */}
+      {!reduceMotion && (
+        <span
+          aria-hidden
+          className="pointer-events-none absolute inset-y-0 -left-1/3 z-20 w-1/3 -translate-x-full bg-[linear-gradient(105deg,transparent,color-mix(in_srgb,white_55%,transparent),transparent)] opacity-0 transition-transform duration-700 ease-out group-hover/cta:translate-x-[360%] group-hover/cta:opacity-100"
+        />
+      )}
+      <Button
+        className={cn(
+          "h-[54px] w-full rounded-[var(--r-md)] border border-[var(--glass-border)] bg-white text-sm font-semibold text-[var(--color-primary-press)] shadow-[var(--shadow-md)] disabled:opacity-60",
+          className
+        )}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        {children}
+      </Button>
+    </motion.div>
+  );
+}
+
 export function ShareSection({
   round,
   players,
@@ -52,14 +118,22 @@ export function ShareSection({
   const hasRequestedNext = round.nextRoundReadyBy?.includes(myPlayer._id) ?? false;
   const nextReadyCount = round.nextRoundReadyBy?.length ?? 0;
 
-  const nextMasterOptions = getConnectedPlayers(players)
-    .map((player) => ({
-      value: String(player._id),
-      label: `${player.name}${player.isHost ? " (Host)" : ""}`,
-    }));
+  const nextMasterOptions = getConnectedPlayers(players).map((player) => ({
+    value: String(player._id),
+    label: `${player.name}${player.isHost ? " (Host)" : ""}`,
+  }));
 
-  const primaryButtonClass =
-    "h-[54px] rounded-[var(--r-md)] border border-[var(--glass-border)] bg-white text-sm font-semibold text-[var(--color-primary-press)] shadow-[var(--shadow-md)] transition-transform duration-[var(--t-quick)] hover:-translate-y-0.5 hover:bg-white disabled:translate-y-0 disabled:opacity-60";
+  const VoteCount = (
+    <motion.span
+      key={nextReadyCount}
+      initial={reduceMotion ? undefined : { scale: 1.4 }}
+      animate={reduceMotion ? undefined : { scale: 1 }}
+      transition={{ duration: 0.34, ease: [0.34, 1.56, 0.64, 1] }}
+      className="tnum inline-block"
+    >
+      {nextReadyCount}
+    </motion.span>
+  );
 
   return (
     <motion.div
@@ -82,45 +156,64 @@ export function ShareSection({
 
             {isMasterMode && !isSpectator ? (
               isHost ? (
-                <Button
-                  className={primaryButtonClass}
+                <PrimaryAction
+                  reduceMotion={reduceMotion}
                   disabled={isReturningToLobby}
                   onClick={onStartNextRoundHost}
                 >
-                  Proxima rodada (Host)
-                </Button>
-              ) : (
-                <Button
-                  className={cn(
-                    primaryButtonClass,
-                    "disabled:border-[var(--w-08)] disabled:bg-[var(--w-16)] disabled:text-[var(--text-dim)]"
+                  {isReturningToLobby ? (
+                    <LoadingDots label="Iniciando" reduceMotion={reduceMotion} />
+                  ) : (
+                    "Proxima rodada (Host)"
                   )}
+                </PrimaryAction>
+              ) : (
+                <PrimaryAction
+                  reduceMotion={reduceMotion}
                   disabled={hasRequestedNext}
                   onClick={onRequestNextRound}
+                  className="disabled:border-[var(--w-08)] disabled:bg-[var(--w-16)] disabled:text-[var(--text-dim)]"
                 >
-                  {hasRequestedNext
-                    ? `Aguardando... (${nextReadyCount} votos)`
-                    : `Proxima rodada (${nextReadyCount} votos)`}
-                </Button>
+                  {hasRequestedNext ? (
+                    <span className="inline-flex items-center gap-1">Aguardando ({VoteCount} votos)</span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">Proxima rodada ({VoteCount} votos)</span>
+                  )}
+                </PrimaryAction>
               )
             ) : !isSpectator && isHost ? (
-              <Button
-                className={primaryButtonClass}
+              <PrimaryAction
+                reduceMotion={reduceMotion}
                 disabled={isReturningToLobby}
                 onClick={onStartNextRoundDefault}
               >
-                Proxima rodada
-              </Button>
+                {isReturningToLobby ? (
+                  <LoadingDots label="Iniciando" reduceMotion={reduceMotion} />
+                ) : (
+                  "Proxima rodada"
+                )}
+              </PrimaryAction>
             ) : null}
 
             {isHost && (
-              <Button
-                onClick={onBackToLobby}
-                disabled={isReturningToLobby}
-                className="h-[54px] rounded-[var(--r-md)] border border-[var(--glass-border)] bg-[var(--glass-1)] text-sm font-semibold text-[var(--color-text)] transition-[transform,background-color] duration-[var(--t-quick)] hover:-translate-y-0.5 hover:bg-[var(--glass-2)] disabled:translate-y-0 disabled:opacity-60"
+              <motion.div
+                whileHover={reduceMotion || isReturningToLobby ? undefined : { y: -2 }}
+                whileTap={reduceMotion || isReturningToLobby ? undefined : { scale: 0.96 }}
+                transition={spring.press}
+                className="rounded-[var(--r-md)]"
               >
-                {isReturningToLobby ? "Voltando..." : "Voltar ao Lobby"}
-              </Button>
+                <Button
+                  onClick={onBackToLobby}
+                  disabled={isReturningToLobby}
+                  className="h-[54px] w-full rounded-[var(--r-md)] border border-[var(--glass-border)] bg-[var(--glass-1)] text-sm font-semibold text-[var(--color-text)] transition-[background-color] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] disabled:opacity-60"
+                >
+                  {isReturningToLobby ? (
+                    <LoadingDots label="Voltando" reduceMotion={reduceMotion} />
+                  ) : (
+                    "Voltar ao Lobby"
+                  )}
+                </Button>
+              </motion.div>
             )}
           </div>
 
