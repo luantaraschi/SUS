@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { useRouter } from "next/navigation";
 import { Icon } from "@iconify/react";
@@ -24,8 +24,11 @@ export default function PacksPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [packTitle, setPackTitle] = useState("");
   const [packMode, setPackMode] = useState<"word" | "question">("word");
-  const [items, setItems] = useState<{ content: string; hint: string }[]>([
-    { content: "", hint: "" },
+  // Each item has a stable `id` so AnimatePresence can key rows correctly
+  // when a middle item is removed (avoids bleeding focus/value across inputs).
+  const nextItemId = useRef(1);
+  const [items, setItems] = useState<{ id: number; content: string; hint: string }[]>([
+    { id: nextItemId.current++, content: "", hint: "" },
   ]);
   const [errorMsg, setErrorMsg] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -68,28 +71,27 @@ export default function PacksPage() {
   }
 
   const handleAddItem = () => {
-    setItems([...items, { content: "", hint: "" }]);
+    setItems([...items, { id: nextItemId.current++, content: "", hint: "" }]);
   };
 
-  const handleRemoveItem = (index: number) => {
+  const handleRemoveItem = (id: number) => {
     if (items.length <= 1) return;
-    setItems(items.filter((_, itemIndex) => itemIndex !== index));
+    setItems(items.filter((item) => item.id !== id));
   };
 
   const handleItemChange = (
-    index: number,
+    id: number,
     field: "content" | "hint",
     value: string
   ) => {
-    const nextItems = [...items];
-    nextItems[index][field] = value;
-    setItems(nextItems);
+    setItems(items.map((item) => item.id === id ? { ...item, [field]: value } : item));
   };
 
   const resetForm = () => {
     setPackTitle("");
     setPackMode("word");
-    setItems([{ content: "", hint: "" }]);
+    nextItemId.current = 1;
+    setItems([{ id: nextItemId.current++, content: "", hint: "" }]);
     setErrorMsg("");
   };
 
@@ -102,7 +104,9 @@ export default function PacksPage() {
       return;
     }
 
-    const validItems = items.filter((item) => item.content.trim() !== "");
+    const validItems = items
+      .filter((item) => item.content.trim() !== "")
+      .map(({ content, hint }) => ({ content, hint }));
     if (validItems.length === 0) {
       setErrorMsg("Adicione pelo menos um item valido.");
       return;
@@ -126,9 +130,14 @@ export default function PacksPage() {
   };
 
   const handleDelete = async (packId: Id<"customPacks">) => {
-    await deletePack({ packId });
-    setPendingDeleteId(null);
-    setExpandedPackId((cur) => (cur === packId ? null : cur));
+    try {
+      await deletePack({ packId });
+      setExpandedPackId((cur) => (cur === packId ? null : cur));
+    } catch (error: unknown) {
+      setErrorMsg(error instanceof Error ? error.message : "Erro ao apagar pacote.");
+    } finally {
+      setPendingDeleteId(null);
+    }
   };
 
   const validItemCount = items.filter((item) => item.content.trim() !== "").length;
@@ -491,9 +500,9 @@ export default function PacksPage() {
 
               <motion.div layout className="flex flex-col gap-3">
                 <AnimatePresence initial={false}>
-                  {items.map((item, index) => (
+                  {items.map((item) => (
                     <motion.div
-                      key={index}
+                      key={item.id}
                       layout
                       initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: -6, scale: 0.98 }}
                       animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -504,21 +513,21 @@ export default function PacksPage() {
                       <input
                         type="text"
                         value={item.content}
-                        onChange={(event) => handleItemChange(index, "content", event.target.value)}
+                        onChange={(event) => handleItemChange(item.id, "content", event.target.value)}
                         placeholder={packMode === "word" ? "Palavra (Ex: Maca)" : "Pergunta principal"}
                         className="w-full flex-1 rounded-[var(--r-sm)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-3 py-2.5 font-body text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary-1)] focus-visible:shadow-[var(--ring-focus)] transition-[border-color] duration-[var(--t-quick)]"
                       />
                       <input
                         type="text"
                         value={item.hint}
-                        onChange={(event) => handleItemChange(index, "hint", event.target.value)}
+                        onChange={(event) => handleItemChange(item.id, "hint", event.target.value)}
                         placeholder={packMode === "word" ? "Dica (Ex: Fruta)" : "Pergunta para o Impostor"}
                         className="w-full flex-1 rounded-[var(--r-sm)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-3 py-2.5 font-body text-sm text-[var(--color-text)] outline-none placeholder:text-[var(--color-text-muted)] focus:border-[var(--color-primary-1)] focus-visible:shadow-[var(--ring-focus)] transition-[border-color] duration-[var(--t-quick)]"
                       />
                       {items.length > 1 && (
                         <motion.button
                           type="button"
-                          onClick={() => handleRemoveItem(index)}
+                          onClick={() => handleRemoveItem(item.id)}
                           whileHover={reduceMotion ? undefined : { scale: 1.1, rotate: -6 }}
                           whileTap={reduceMotion ? undefined : { scale: 0.9 }}
                           transition={spring.press}

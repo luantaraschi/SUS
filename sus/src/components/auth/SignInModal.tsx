@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useAuthActions } from "@convex-dev/auth/react";
 import { Icon } from "@iconify/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
@@ -76,6 +76,10 @@ export default function SignInModal({ onClose, onSuccess, open }: SignInModalPro
   const [errorShakeKey, setErrorShakeKey] = useState(0);
   const [successBurstKey, setSuccessBurstKey] = useState(0);
 
+  // Timeout ref — cleared on unmount and on a new sign-in attempt.
+  const successTimeoutRef = useRef<number | null>(null);
+  useEffect(() => () => { if (successTimeoutRef.current !== null) clearTimeout(successTimeoutRef.current); }, []);
+
   // Per-field focus for the glow treatment.
   const [emailFocused, setEmailFocused] = useState(false);
   const [passwordFocused, setPasswordFocused] = useState(false);
@@ -97,6 +101,11 @@ export default function SignInModal({ onClose, onSuccess, open }: SignInModalPro
   const handlePasswordAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     if (isSubmitting || success) return;
+    // Clear any previous pending success navigation before starting a new attempt.
+    if (successTimeoutRef.current !== null) {
+      clearTimeout(successTimeoutRef.current);
+      successTimeoutRef.current = null;
+    }
     setIsSubmitting(true);
     setError(null);
     try {
@@ -107,7 +116,7 @@ export default function SignInModal({ onClose, onSuccess, open }: SignInModalPro
       setIsSubmitting(false);
       setSuccess(true);
       setSuccessBurstKey((k) => k + 1);
-      window.setTimeout(() => onSuccess(), reduce ? 0 : 620);
+      successTimeoutRef.current = window.setTimeout(() => onSuccess(), reduce ? 0 : 620);
     } catch {
       if (!isSignIn) {
         setError("Erro ao criar conta. Talvez o email já esteja em uso?");

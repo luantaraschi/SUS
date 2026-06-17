@@ -411,12 +411,7 @@ export default function ProfilePage() {
                   tone="primary"
                   value={avatarMode}
                   onChange={(v) => {
-                    if (v === "upload") {
-                      setAvatarMode("upload");
-                      fileInputRef.current?.click();
-                    } else {
-                      setAvatarMode("generated");
-                    }
+                    setAvatarMode(v as "generated" | "upload");
                   }}
                   options={[
                     {
@@ -431,8 +426,10 @@ export default function ProfilePage() {
                     },
                   ]}
                 />
+                {/* Hidden file input — opened via the label below (most robust on iOS). */}
                 <input
                   ref={fileInputRef}
+                  id="avatar-file-input"
                   type="file"
                   accept="image/*"
                   onChange={handleFileChange}
@@ -468,15 +465,15 @@ export default function ProfilePage() {
                     transition={spring.press}
                     className="flex-1"
                   >
-                    <Button
-                      variant="glass"
-                      size="game-md"
-                      className="!h-11 !text-sm"
-                      onClick={() => fileInputRef.current?.click()}
+                    {/* Native label: tapping it directly opens the OS file picker —
+                        works on iOS Safari where programmatic .click() from onChange is blocked. */}
+                    <label
+                      htmlFor="avatar-file-input"
+                      className="inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-[var(--r-pill)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-5 font-display text-sm uppercase tracking-widest text-[var(--color-text)] shadow-[var(--shadow-sm)] backdrop-blur-[var(--blur-md)] transition-[background-color] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] focus-within:shadow-[var(--ring-focus)]"
                     >
                       <Icon icon="solar:gallery-add-bold" width={16} height={16} />
                       Escolher Foto
-                    </Button>
+                    </label>
                   </motion.div>
                 </div>
               </div>

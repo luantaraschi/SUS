@@ -66,6 +66,15 @@ export default function ThemePickerDialog({
   const [pickedValue, setPickedValue] = useState<string | null>(null);
   const [burstKey, setBurstKey] = useState(0);
 
+  // Wrap onOpenChange so pickedValue is reset when the dialog is opened — prevents
+  // a stale pick from the previous session re-bursting on a fresh open.
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (nextOpen) {
+      setPickedValue(null);
+    }
+    onOpenChange(nextOpen);
+  };
+
   const handlePick = (value: string) => {
     if (!isHost) return;
     playSound("ui.toggle");
@@ -223,7 +232,7 @@ export default function ThemePickerDialog({
   return (
     <Modal
       open={open}
-      onClose={() => onOpenChange(false)}
+      onClose={() => handleOpenChange(false)}
       size="lg"
       className="max-w-5xl"
     >

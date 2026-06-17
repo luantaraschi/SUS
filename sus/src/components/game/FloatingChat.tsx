@@ -49,6 +49,9 @@ export default function FloatingChat({
   const [sentKey, setSentKey] = useState(0);
 
   const sendMessage = useMutation(api.chat.sendMessage);
+  // Busy-guard: prevents a rapid double-Enter from firing two identical mutations
+  // before setText("") propagates through the React render cycle.
+  const sendingRef = useRef(false);
 
   const handleSend = useCallback(
     (messageText: string, isEmoji: boolean) => {
@@ -80,10 +83,15 @@ export default function FloatingChat({
   );
 
   const handleTextSubmit = useCallback(() => {
-    if (!text.trim()) {
+    const trimmed = text.trim();
+    if (!trimmed || sendingRef.current) {
       return;
     }
-    handleSend(text, false);
+    sendingRef.current = true;
+    // Clear input immediately so a second Enter before re-render is a no-op.
+    setText("");
+    handleSend(trimmed, false);
+    sendingRef.current = false;
     // Replay the "sent" flourish on the plane button.
     setSentKey((k) => k + 1);
   }, [handleSend, text]);
