@@ -5,10 +5,13 @@ import { Icon } from "@iconify/react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import type { Id } from "../../../../convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
+import { SegmentedControl } from "@/components/ui/SegmentedControl";
+import { Switch } from "@/components/ui/Switch";
+import { Burst } from "@/components/ui/Burst";
 import ThemePickerDialog from "@/components/game/ThemePickerDialog";
 import GlassSelect from "@/components/game/ui/GlassSelect";
 import { THEME_ICON_MAP } from "@/lib/themeIcons";
-import { spring } from "@/lib/motion";
+import { spring, staggerContainer, staggerItem } from "@/lib/motion";
 import CodeBlock from "./CodeBlock";
 import Counter from "./Counter";
 import { MAX_PLAYERS, MAX_ROUNDS, MIN_PLAYERS, MIN_ROUNDS } from "./useRoomSettings";
@@ -58,7 +61,10 @@ export type LobbyPanelProps = {
   isHost: boolean;
   actionError: string;
   isAddingBot: boolean;
+  isStartingGame: boolean;
   startDisabled: boolean;
+  /** A changing value fires the launch celebration (Burst + panel settle). */
+  launchKey: number;
   startReadinessMessage: string | null;
   onToggleCodeHidden: () => void;
   onShare: () => void;
@@ -76,48 +82,8 @@ export type LobbyPanelProps = {
   onLeave: () => void;
 };
 
-function SegmentedToggle<T extends string>({
-  options,
-  value,
-  onChange,
-  disabled,
-  layoutId,
-}: {
-  options: Array<{ value: T; label: string }>;
-  value: T;
-  onChange: (value: T) => void;
-  disabled: boolean;
-  layoutId: string;
-}) {
-  return (
-    <div className="relative isolate flex rounded-[var(--r-pill)] border border-[var(--glass-border)] bg-[var(--glass-1)] p-1">
-      {options.map((option) => {
-        const active = value === option.value;
-        return (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onChange(option.value)}
-            disabled={disabled}
-            aria-pressed={active}
-            className={`relative z-10 rounded-[var(--r-pill)] px-6 py-2.5 font-display text-sm uppercase tracking-widest transition-colors duration-[var(--t-quick)] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:cursor-not-allowed sm:px-7 sm:text-base ${
-              active ? "text-white" : "text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
-            }`}
-          >
-            {option.label}
-            {active && (
-              <motion.span
-                layoutId={layoutId}
-                className="absolute inset-0 -z-10 rounded-[var(--r-pill)] bg-[linear-gradient(180deg,var(--color-primary-1),var(--color-primary-2))] shadow-[var(--shadow-sm)]"
-                transition={spring.pop}
-              />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
+/** Hairline divider used between the grouped counters (inset, not a border). */
+const consoleDivider = "hidden h-12 w-px self-center bg-[var(--glass-border)] sm:block";
 
 /**
  * The main lobby panel: room code, settings, mode/theme, player guidance and
@@ -138,7 +104,9 @@ export default function LobbyPanel({
   isHost,
   actionError,
   isAddingBot,
+  isStartingGame,
   startDisabled,
+  launchKey,
   startReadinessMessage,
   onToggleCodeHidden,
   onShare,
@@ -167,6 +135,7 @@ export default function LobbyPanel({
   const showPackPicker = packOptions.length > 0 && !(room.mode === "question" && room.questionMode === "master");
   const belowMinimum = playerCount < MIN_PLAYERS;
   const roomFull = playerCount >= room.settings.maxPlayers;
+  const questionMode: QuestionMode = room.questionMode === "master" ? "master" : "system";
 
   const handlePackSelection = (value: string) => {
     onPackChange(value);
@@ -176,68 +145,132 @@ export default function LobbyPanel({
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto pr-1">
-        <div className="flex min-h-full flex-col items-center gap-5 pb-2">
-          <CodeBlock
-            code={code.toUpperCase()}
-            hidden={codeHidden}
-            copied={codeCopied}
-            linkCopied={copied}
-            onToggleHidden={onToggleCodeHidden}
-            onCopyCode={onCopyCode}
-            onShare={onShare}
-          />
+        {/* Launch settle: a single confident scale dip on the whole stack when
+            the game is armed (keyed off launchKey, scale-only, no remount of
+            the stagger container below). */}
+        <motion.div
+          key={`settle-${launchKey}`}
+          initial={false}
+          animate={
+            reduceMotion || launchKey === 0
+              ? { scale: 1 }
+              : { scale: [1, 0.985, 1], transition: { duration: 0.4, ease: "easeOut" } }
+          }
+          className="flex min-h-full origin-center flex-col"
+        >
+        {/* The briefing assembles top-to-bottom. */}
+        <motion.div
+          variants={staggerContainer}
+          initial="initial"
+          animate="animate"
+          className="flex min-h-full flex-1 flex-col items-center gap-5 pb-2"
+        >
+          {/* Mission-control eyebrow */}
+          <motion.span
+            variants={staggerItem}
+            className="font-condensed text-[11px] uppercase tracking-[0.28em] text-[var(--text-dim)]"
+          >
+            Briefing da Sala
+          </motion.span>
 
-          <div className="flex flex-wrap justify-center gap-x-5 gap-y-4 sm:gap-x-8">
-            <Counter
-              label="Jogadores"
-              value={room.settings.maxPlayers}
-              onDecrement={() => onChangeMaxPlayers(-1)}
-              onIncrement={() => onChangeMaxPlayers(1)}
-              disableDecrement={!isHost || room.settings.maxPlayers <= Math.max(MIN_PLAYERS, playerCount)}
-              disableIncrement={!isHost || room.settings.maxPlayers >= MAX_PLAYERS}
+          <motion.div variants={staggerItem} className="w-full">
+            <CodeBlock
+              code={code.toUpperCase()}
+              hidden={codeHidden}
+              copied={codeCopied}
+              linkCopied={copied}
+              onToggleHidden={onToggleCodeHidden}
+              onCopyCode={onCopyCode}
+              onShare={onShare}
             />
-            <Counter
-              label="Rodadas"
-              value={room.settings.rounds}
-              onDecrement={() => onChangeRounds(-1)}
-              onIncrement={() => onChangeRounds(1)}
-              disableDecrement={!isHost || room.settings.rounds <= MIN_ROUNDS}
-              disableIncrement={!isHost || room.settings.rounds >= MAX_ROUNDS}
-            />
-            <Counter
-              label="Impostores"
-              value={numImpostors}
-              onDecrement={() => onChangeImpostors(-1)}
-              onIncrement={() => onChangeImpostors(1)}
-              disableDecrement={!isHost || numImpostors <= 1}
-              disableIncrement={!isHost || numImpostors >= maxImpostors}
-            />
-          </div>
+          </motion.div>
 
-          <SegmentedToggle
-            layoutId="modeIndicator"
-            value={room.mode}
-            onChange={onModeChange}
-            disabled={!isHost}
-            options={[
-              { value: "word", label: "Palavra" },
-              { value: "question", label: "Pergunta" },
-            ]}
-          />
+          {/* Console: the three steppers read as one instrument cluster. */}
+          <motion.div
+            variants={staggerItem}
+            className="flex w-full max-w-[460px] items-stretch justify-center gap-3 rounded-[var(--r-lg)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-3 py-3 shadow-[var(--shadow-sm)] sm:gap-0 sm:px-5"
+          >
+            <div className="flex flex-1 justify-center sm:px-2">
+              <Counter
+                label="Jogadores"
+                value={room.settings.maxPlayers}
+                onDecrement={() => onChangeMaxPlayers(-1)}
+                onIncrement={() => onChangeMaxPlayers(1)}
+                disableDecrement={!isHost || room.settings.maxPlayers <= Math.max(MIN_PLAYERS, playerCount)}
+                disableIncrement={!isHost || room.settings.maxPlayers >= MAX_PLAYERS}
+              />
+            </div>
+            <span aria-hidden className={consoleDivider} />
+            <div className="flex flex-1 justify-center sm:px-2">
+              <Counter
+                label="Rodadas"
+                value={room.settings.rounds}
+                onDecrement={() => onChangeRounds(-1)}
+                onIncrement={() => onChangeRounds(1)}
+                disableDecrement={!isHost || room.settings.rounds <= MIN_ROUNDS}
+                disableIncrement={!isHost || room.settings.rounds >= MAX_ROUNDS}
+              />
+            </div>
+            <span aria-hidden className={consoleDivider} />
+            <div className="flex flex-1 justify-center sm:px-2">
+              <Counter
+                label="Impostores"
+                value={numImpostors}
+                onDecrement={() => onChangeImpostors(-1)}
+                onIncrement={() => onChangeImpostors(1)}
+                disableDecrement={!isHost || numImpostors <= 1}
+                disableIncrement={!isHost || numImpostors >= maxImpostors}
+                accent="imp"
+              />
+            </div>
+          </motion.div>
+
+          <motion.div variants={staggerItem} className="w-full max-w-[420px]">
+            <SegmentedControl
+              aria-label="Modo de jogo"
+              tone="primary"
+              value={room.mode}
+              onChange={(v) => onModeChange(v as Mode)}
+              options={[
+                {
+                  value: "word",
+                  label: "Palavra",
+                  icon: <Icon icon="solar:document-text-bold" width={18} height={18} />,
+                },
+                {
+                  value: "question",
+                  label: "Pergunta",
+                  icon: <Icon icon="solar:question-circle-bold" width={18} height={18} />,
+                },
+              ]}
+            />
+          </motion.div>
 
           {showPackPicker && (
-            <button
+            <motion.button
+              variants={staggerItem}
               type="button"
               onClick={() => setIsThemeDialogOpen(true)}
-              className="flex w-full max-w-[420px] items-center justify-between rounded-[var(--r-md)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-4 py-3 transition-[background-color,transform] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] active:scale-[0.99] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
+              className="flex w-full max-w-[420px] items-center justify-between rounded-[var(--r-md)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-4 py-3 shadow-[var(--shadow-sm)] transition-[background-color,transform] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] active:scale-[0.99] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)]"
             >
               <span className="flex min-w-0 items-center gap-3">
-                <Icon
-                  icon={THEME_ICON_MAP[selectedPack?.icon ?? "star"] ?? "solar:star-bold"}
-                  width={20}
-                  height={20}
-                  className="shrink-0 text-[var(--color-special)]"
-                />
+                <AnimatePresence mode="wait" initial={false}>
+                  <motion.span
+                    key={selectedPack?.icon ?? "star"}
+                    initial={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
+                    transition={reduceMotion ? { duration: 0.12 } : spring.pop}
+                    className="flex shrink-0"
+                  >
+                    <Icon
+                      icon={THEME_ICON_MAP[selectedPack?.icon ?? "star"] ?? "solar:star-bold"}
+                      width={20}
+                      height={20}
+                      className="text-[var(--color-special)]"
+                    />
+                  </motion.span>
+                </AnimatePresence>
                 <span className="truncate font-body text-base text-[var(--color-text)]">
                   {selectedPack?.title ?? "Clássico"}
                 </span>
@@ -246,9 +279,15 @@ export default function LobbyPanel({
                 <span className="hidden font-condensed text-[11px] uppercase tracking-[0.22em] text-[var(--color-text-muted)] sm:inline">
                   Tema
                 </span>
-                <Icon icon="solar:alt-arrow-down-bold" width={16} height={16} className="text-[var(--color-text-muted)]" />
+                <motion.span
+                  animate={{ rotate: isThemeDialogOpen ? 180 : 0 }}
+                  transition={reduceMotion ? { duration: 0 } : { duration: 0.18, ease: "easeOut" }}
+                  className="flex"
+                >
+                  <Icon icon="solar:alt-arrow-down-bold" width={16} height={16} className="text-[var(--color-text-muted)]" />
+                </motion.span>
               </span>
-            </button>
+            </motion.button>
           )}
 
           {showPackPicker && (
@@ -263,43 +302,44 @@ export default function LobbyPanel({
           )}
 
           {room.mode === "word" && (
-            <button
-              type="button"
-              onClick={onToggleHint}
-              disabled={!isHost}
-              aria-pressed={room.settings.impostorHint}
-              className="flex items-center gap-3 focus-visible:outline-none disabled:cursor-not-allowed"
-            >
-              <span
-                className={`relative h-7 w-12 rounded-[var(--r-pill)] transition-colors duration-[var(--t-quick)] sm:h-8 sm:w-14 ${
-                  room.settings.impostorHint ? "bg-[var(--color-safe)]" : "bg-[var(--glass-2)]"
-                } ${!isHost ? "opacity-50" : ""}`}
-              >
-                <span
-                  className={`absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow-[var(--shadow-sm)] transition-transform duration-[var(--t-quick)] sm:h-7 sm:w-7 ${
-                    room.settings.impostorHint ? "translate-x-5 sm:translate-x-6" : ""
-                  }`}
-                />
-              </span>
+            <motion.div variants={staggerItem} className="flex items-center gap-3">
+              <Switch
+                aria-label="Dica do Impostor"
+                tone="safe"
+                checked={room.settings.impostorHint}
+                onCheckedChange={onToggleHint}
+                disabled={!isHost}
+              />
               <span className="font-condensed text-xs uppercase tracking-[0.18em] text-[var(--color-text-muted)] sm:text-sm">
                 Dica do Impostor
               </span>
-            </button>
+            </motion.div>
           )}
 
           {room.mode === "question" && (
-            <div className="flex w-full max-w-[420px] flex-col items-center gap-3 rounded-[var(--r-lg)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-4 py-4">
+            <motion.div
+              variants={staggerItem}
+              className="flex w-full max-w-[420px] flex-col items-center gap-3 rounded-[var(--r-lg)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-4 py-4 shadow-[var(--shadow-sm)]"
+            >
               <span className="font-condensed text-xs uppercase tracking-[0.22em] text-[var(--color-text-muted)] sm:text-sm">
                 Tipo de Pergunta
               </span>
-              <SegmentedToggle
-                layoutId="questionModeIndicator"
-                value={room.questionMode === "master" ? "master" : "system"}
-                onChange={onQuestionModeChange}
-                disabled={!isHost}
+              <SegmentedControl
+                aria-label="Tipo de pergunta"
+                tone="info"
+                value={questionMode}
+                onChange={(v) => onQuestionModeChange(v as QuestionMode)}
                 options={[
-                  { value: "system", label: "Prontas" },
-                  { value: "master", label: "Mestre Cria" },
+                  {
+                    value: "system",
+                    label: "Prontas",
+                    icon: <Icon icon="solar:document-text-bold" width={18} height={18} />,
+                  },
+                  {
+                    value: "master",
+                    label: "Mestre Cria",
+                    icon: <Icon icon="solar:question-circle-bold" width={18} height={18} />,
+                  },
                 ]}
               />
 
@@ -324,11 +364,11 @@ export default function LobbyPanel({
                   />
                 </div>
               )}
-            </div>
+            </motion.div>
           )}
 
           {/* Player count + empty-state guidance */}
-          <div className="flex w-full max-w-[420px] flex-col items-center gap-2">
+          <motion.div variants={staggerItem} className="flex w-full max-w-[420px] flex-col items-center gap-2">
             <p className="text-center font-body text-sm text-[var(--color-text-muted)] sm:text-base">
               <span className="tnum font-display text-[var(--color-text)]">{playerCount}</span>{" "}
               jogador{playerCount !== 1 ? "es" : ""} na sala
@@ -342,9 +382,16 @@ export default function LobbyPanel({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0 }}
                   transition={spring.gentle}
-                  className="flex w-full flex-col items-center gap-2.5 rounded-[var(--r-lg)] border border-dashed border-[var(--w-28)] bg-[var(--glass-1)] px-4 py-4 text-center"
+                  className="flex w-full flex-col items-center gap-2.5 rounded-[var(--r-lg)] border border-dashed border-[var(--glass-border)] bg-[var(--glass-1)] px-4 py-4 text-center"
                 >
-                  <Icon icon="solar:users-group-rounded-bold" width={26} height={26} className="text-[var(--color-warn)]" />
+                  <motion.span
+                    initial={false}
+                    animate={reduceMotion ? { rotate: 0 } : { rotate: [0, -6, 6, 0] }}
+                    transition={reduceMotion ? { duration: 0 } : { duration: 0.6, ease: "easeInOut", delay: 0.2 }}
+                    className="flex"
+                  >
+                    <Icon icon="solar:users-group-rounded-bold" width={26} height={26} className="text-[var(--color-warn)]" />
+                  </motion.span>
                   <p className="font-body text-sm text-[var(--color-text)]">
                     Faltam jogadores para começar{" "}
                     <span className="text-[var(--color-text-muted)]">(mínimo {MIN_PLAYERS}).</span>
@@ -366,7 +413,12 @@ export default function LobbyPanel({
                       disabled={isAddingBot || roomFull}
                       className="!w-auto px-5"
                     >
-                      <Icon icon="solar:add-circle-bold" width={18} height={18} />
+                      <Icon
+                        icon={isAddingBot ? "solar:refresh-bold" : "solar:add-circle-bold"}
+                        width={18}
+                        height={18}
+                        className={isAddingBot ? "animate-spin" : ""}
+                      />
                       Adicionar Bot
                     </Button>
                   )}
@@ -374,28 +426,37 @@ export default function LobbyPanel({
               )}
             </AnimatePresence>
 
-            {isHost && !belowMinimum && !roomFull && (
-              <button
-                type="button"
-                onClick={onAddBot}
-                disabled={isAddingBot}
-                className="flex items-center gap-1.5 rounded-[var(--r-pill)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-4 py-2 font-display text-xs uppercase tracking-widest text-[var(--color-text)] transition-[background-color,transform] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] active:scale-[0.96] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:opacity-50 sm:text-sm"
-              >
-                <Icon
-                  icon={isAddingBot ? "solar:refresh-bold" : "solar:add-circle-bold"}
-                  width={16}
-                  height={16}
-                  className={isAddingBot ? "animate-spin" : ""}
-                />
-                Adicionar Bot
-              </button>
-            )}
+            <AnimatePresence initial={false}>
+              {isHost && !belowMinimum && !roomFull && (
+                <motion.button
+                  key="add-bot-pill"
+                  initial={reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={spring.gentle}
+                  type="button"
+                  onClick={onAddBot}
+                  disabled={isAddingBot}
+                  whileTap={reduceMotion ? undefined : { scale: 0.96 }}
+                  className="flex items-center gap-1.5 rounded-[var(--r-pill)] border border-[var(--glass-border)] bg-[var(--glass-1)] px-4 py-2 font-display text-xs uppercase tracking-widest text-[var(--color-text)] transition-[background-color,transform] duration-[var(--t-quick)] hover:bg-[var(--glass-2)] focus-visible:outline-none focus-visible:shadow-[var(--ring-focus)] disabled:opacity-50 sm:text-sm"
+                >
+                  <Icon
+                    icon={isAddingBot ? "solar:refresh-bold" : "solar:add-circle-bold"}
+                    width={16}
+                    height={16}
+                    className={isAddingBot ? "animate-spin" : ""}
+                  />
+                  Adicionar Bot
+                </motion.button>
+              )}
+            </AnimatePresence>
 
             {startReadinessMessage && (
               <p className="text-center font-body text-xs text-[var(--color-imp)] sm:text-sm">{startReadinessMessage}</p>
             )}
-          </div>
-        </div>
+          </motion.div>
+        </motion.div>
+        </motion.div>
       </div>
 
       <div className="mt-auto flex w-full flex-col gap-2 border-t border-[var(--glass-border)] pt-4">
@@ -413,10 +474,41 @@ export default function LobbyPanel({
           )}
         </AnimatePresence>
         {isHost && (
-          <Button variant="primary" size="game-lg" onClick={onStart} disabled={startDisabled}>
-            <Icon icon="solar:play-bold" width={20} height={20} />
-            Iniciar
-          </Button>
+          // Signature "arm the game": a gold-led Burst erupts from the button
+          // center on launch; a calm ready-pulse breathes while it can fire.
+          <div className="relative">
+            <Burst
+              fire={launchKey}
+              colors={["var(--color-gold)", "var(--color-primary-1)", "var(--color-special)"]}
+              count={18}
+            />
+            <motion.div
+              animate={
+                reduceMotion || startDisabled
+                  ? { scale: 1 }
+                  : { scale: [1, 1.012, 1] }
+              }
+              transition={
+                reduceMotion || startDisabled
+                  ? { duration: 0 }
+                  : { duration: 2.4, ease: "easeInOut", repeat: Infinity }
+              }
+            >
+              <Button variant="primary" size="game-lg" onClick={onStart} disabled={startDisabled}>
+                {isStartingGame ? (
+                  <>
+                    <Icon icon="solar:refresh-bold" width={20} height={20} className="animate-spin" />
+                    Iniciando...
+                  </>
+                ) : (
+                  <>
+                    <Icon icon="solar:play-bold" width={20} height={20} />
+                    Iniciar
+                  </>
+                )}
+              </Button>
+            </motion.div>
+          </div>
         )}
         <Button variant="glass" size="game-lg" onClick={onLeave}>
           <Icon icon="solar:arrow-left-bold" width={20} height={20} />

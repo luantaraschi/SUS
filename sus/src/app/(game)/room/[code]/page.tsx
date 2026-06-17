@@ -14,9 +14,10 @@ import GameSettingsButton from "@/components/game/GameSettingsButton";
 import LobbyPanel from "@/components/game/lobby/LobbyPanel";
 import { MIN_PLAYERS, useRoomSettings } from "@/components/game/lobby/useRoomSettings";
 import { BubbleText } from "@/components/ui/bubble-text";
-import { staggerContainer, staggerItem } from "@/lib/motion";
+import { Burst } from "@/components/ui/Burst";
+import { spring, staggerContainer } from "@/lib/motion";
 import { Icon } from "@iconify/react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useSound } from "@/lib/useSound";
 
 function getAvatarStatus(status: "connected" | "ready" | "disconnected") {
@@ -33,36 +34,61 @@ type OrbitPlayer = {
   status: "connected" | "ready" | "disconnected";
 };
 
+/** Avatars "report for duty": pop slightly past 1.0 then settle (spring.pop). */
+const orbitArrival = {
+  initial: { opacity: 0, scale: 0.6, y: 8 },
+  animate: { opacity: 1, scale: 1, y: 0, transition: spring.pop },
+};
+
 /** Animated, removable avatar used in the orbit rings around the lobby panel. */
 function OrbitAvatar({
   player,
   canRemove,
   onRemove,
+  launchKey,
 }: {
   player: OrbitPlayer;
   canRemove: boolean;
   onRemove?: () => void;
+  /** A changing value makes the whole squad give a synchronized upward hop. */
+  launchKey: number;
 }) {
+  const reduceMotion = useReducedMotion();
+  // Deterministic per-player jitter so the squad hop reads as "almost together".
+  const hopDelay = (player._id.charCodeAt(player._id.length - 1) % 8) * 0.012;
   return (
     <motion.div
       layout
-      variants={staggerItem}
+      variants={reduceMotion ? { initial: { opacity: 0 }, animate: { opacity: 1 } } : orbitArrival}
       initial="initial"
       animate="animate"
       exit={{ opacity: 0, scale: 0.7, transition: { duration: 0.2 } }}
     >
-      <PlayerAvatar
-        name={player.name}
-        avatarSeed={player.emoji}
-        imageUrl={player.avatarImageUrl}
-        isHost={player.isHost}
-        isBot={player.isBot}
-        status={getAvatarStatus(player.status)}
-        size="orbit"
-        interactive
-        canRemove={canRemove}
-        onRemove={onRemove}
-      />
+      {/* Synchronized "go" hop, keyed off the launch beat. */}
+      <motion.div
+        className="relative"
+        key={`hop-${launchKey}`}
+        initial={false}
+        animate={reduceMotion || launchKey === 0 ? { y: 0 } : { y: [0, -10, 0] }}
+        transition={reduceMotion ? { duration: 0 } : { ...spring.pop, delay: hopDelay }}
+      >
+        {/* Playful puff when a bot joins the squad. */}
+        {!reduceMotion && player.isBot && (
+          <Burst fire colors={["var(--color-info)", "var(--glass-2)"]} count={8} />
+        )}
+        <PlayerAvatar
+          name={player.name}
+          avatarSeed={player.emoji}
+          imageUrl={player.avatarImageUrl}
+          isHost={player.isHost}
+          isBot={player.isBot}
+          status={getAvatarStatus(player.status)}
+          size="orbit"
+          interactive
+          canRemove={canRemove}
+          onRemove={onRemove}
+        />
+      </motion.div>
     </motion.div>
   );
 }
@@ -79,6 +105,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
   const [copied, setCopied] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [isStartingGame, setIsStartingGame] = useState(false);
+  const [launchKey, setLaunchKey] = useState(0);
   const [isAddingBot, setIsAddingBot] = useState(false);
   const [removingBotId, setRemovingBotId] = useState<string | null>(null);
   const [actionError, setActionError] = useState("");
@@ -172,6 +199,8 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
     }
     setActionError("");
     setIsStartingGame(true);
+    // Fire the "arm the game" celebration (Burst + panel settle + squad hop).
+    setLaunchKey((k) => k + 1);
     try {
       await startGame({ roomId: room._id, sessionId });
       router.push(`/room/${code.toUpperCase()}/play`);
@@ -250,7 +279,9 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       isHost={isHost}
       actionError={actionError}
       isAddingBot={isAddingBot}
+      isStartingGame={isStartingGame}
       startDisabled={startDisabled}
+      launchKey={launchKey}
       startReadinessMessage={startReadiness.message}
       onToggleCodeHidden={() => setCodeHidden((current) => !current)}
       onShare={handleShare}
@@ -279,6 +310,7 @@ export default function RoomLobbyPage({ params }: { params: Promise<{ code: stri
       player={player}
       canRemove={isHost && Boolean(player.isBot) && !removingBotId}
       onRemove={player.isBot ? () => void handleRemoveBot(player._id) : undefined}
+      launchKey={launchKey}
     />
   );
 
