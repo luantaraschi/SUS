@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { MessageCircle, Users } from "lucide-react";
 import type { Doc } from "../../../../convex/_generated/dataModel";
@@ -43,6 +43,9 @@ const tableZone = {
   animate: { opacity: 1, y: 0, transition: spring.gentle },
 };
 
+// Static guidance copy — module-level constant avoids a useless useMemo.
+const GUIDANCE = "Discutam: quem convence? Quem desconversa?";
+
 // Per-seat float profile so the circle never breathes in lockstep — each seat
 // gets its own gentle amplitude / period from a deterministic index hash.
 function seatFloat(index: number) {
@@ -77,10 +80,6 @@ export function DiscussionPhase({
   const urgent = remaining !== null && remaining <= 10;
 
   const seatCount = visiblePlayers.length;
-  const guidance = useMemo(
-    () => "Discutam: quem convence? Quem desconversa?",
-    []
-  );
 
   return (
     <motion.div
@@ -210,7 +209,7 @@ export function DiscussionPhase({
 
               {/* Microcopy guidance. */}
               <p className="mx-auto mt-4 max-w-2xl font-body text-base leading-relaxed text-[var(--color-text-muted)] sm:text-lg">
-                {guidance}
+                {GUIDANCE}
               </p>
             </div>
           </GlassPanel>

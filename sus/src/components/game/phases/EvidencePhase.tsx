@@ -69,27 +69,19 @@ export function EvidencePhase({
   const consensusReached = majority > 0 && readyCount >= majority;
 
   // vote.consensus — fire once when readyCount crosses the majority threshold.
-  // Mirrors SpeakingPhase: own first-run sentinel + setState scheduled OUTSIDE
-  // the synchronous effect body (React Compiler safe). The mint wave + Burst are
-  // synced to this same crossing.
-  const consensusSeededRef = useRef(false);
-  const prevReadyCountRef = useRef(0);
+  // Uses a "fire once" guard ref so the burst/sound also triggers when majority
+  // DECREASES to a value already met by the current readyCount (e.g. disconnect).
+  // The ref resets when readyCount drops below majority so it can re-arm.
+  const consensusFiredRef = useRef(false);
   const [consensusBurst, setConsensusBurst] = useState(0);
   useEffect(() => {
-    if (!consensusSeededRef.current) {
-      prevReadyCountRef.current = readyCount;
-      consensusSeededRef.current = true;
-      return;
-    }
-    if (
-      majority > 0 &&
-      readyCount >= majority &&
-      prevReadyCountRef.current < majority
-    ) {
+    if (readyCount >= majority && majority > 0 && !consensusFiredRef.current) {
+      consensusFiredRef.current = true;
       playSound("vote.consensus");
       window.setTimeout(() => setConsensusBurst((n) => n + 1), 0);
+    } else if (readyCount < majority || majority === 0) {
+      consensusFiredRef.current = false;
     }
-    prevReadyCountRef.current = readyCount;
   }, [readyCount, majority]);
 
   // 2-3 seconds after mount, reveal the normal question (preserved delay).

@@ -209,9 +209,15 @@ export function AnsweringPhase({
                 <p className="relative font-condensed text-[11px] uppercase tracking-[0.28em] text-[var(--text-dim)]">
                   {isMasterAction ? "Sua pergunta" : "A pergunta"}
                 </p>
-                <p className="relative mt-3 font-display text-xl leading-snug text-[var(--color-text)] sm:text-2xl">
-                  {question}
-                </p>
+                {question ? (
+                  <p className="relative mt-3 font-display text-xl leading-snug text-[var(--color-text)] sm:text-2xl">
+                    {question}
+                  </p>
+                ) : (
+                  <p className="relative mt-3 animate-pulse font-body text-sm text-[var(--text-dim)]">
+                    Carregando pergunta...
+                  </p>
+                )}
               </GlassSection>
             </motion.div>
 
@@ -527,6 +533,19 @@ function AwaitingRoster({
   const total = roster.length;
   const allIn = total > 0 && answeredCount >= total;
 
+  // Monotonic burst counter — fires once when allIn first becomes true,
+  // resets when allIn goes false so it can re-arm if the game resets.
+  const [rosterBurst, setRosterBurst] = useState(0);
+  const rosterFiredRef = useRef(false);
+  useEffect(() => {
+    if (allIn && !rosterFiredRef.current) {
+      rosterFiredRef.current = true;
+      window.setTimeout(() => setRosterBurst((n) => n + 1), 0);
+    } else if (!allIn) {
+      rosterFiredRef.current = false;
+    }
+  }, [allIn]);
+
   return (
     <div className="mx-auto flex w-full max-w-2xl flex-col items-center px-4 py-8">
       <motion.div
@@ -542,7 +561,7 @@ function AwaitingRoster({
           {/* Completion celebration — one-shot when the table fills. */}
           <span className="pointer-events-none absolute inset-x-0 top-6 z-20 flex justify-center">
             <Burst
-              fire={allIn ? answeredCount : 0}
+              fire={rosterBurst}
               colors={["var(--color-safe)", "var(--color-gold)"]}
               count={18}
             />
